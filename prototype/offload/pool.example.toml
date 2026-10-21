@@ -1,5 +1,0 @@
-# Copy to ~/.config/offload/pool.toml (or point OFFLOAD_CONFIG at it).
-# One [[host]] table per machine; `address` is anything `ssh` accepts.
-[[host]]
-name = "nixbox"
-address = "offload@192.168.40.240"

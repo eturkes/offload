@@ -5,7 +5,6 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 ## Artifacts
 
 - `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote}`); contract `.agent/contract.md`. Install: `CGO_ENABLED=0 go build -trimpath -o ~/.local/bin/offload.new ./cmd/offload && mv ~/.local/bin/offload.new ~/.local/bin/offload` (installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides); example `pool.example.toml`. User docs `README.md`.
-- `prototype/offload/offload.py` = retired PROTOTYPE CLI (Python), superseded by `cmd/offload`; retires at phase close.
 - `machines/nixbox/` = NixOS config of pool host `nixbox` (`offload@192.168.40.240`); runbook `machines/nixbox/README.md`. Deploy: `machines/nixbox/deploy`; reinstall: `machines/nixbox/install /dev/nvme0n1` (box on installer ISO from `installer.nix`).
 
 ## Decisions
@@ -30,20 +29,9 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [x] 0886be2 nixbox: `eturkes` user + idle slice + trading/Codexify deps → deploy
-- [x] 47a8417 trading → nixbox: copy every file, checksum-verify, rebuild env on nixbox, trading gates there
-- [ ] Codexify + Codex CLI on nixbox for trading; owner steps = tunnel auth, ChatGPT connector, Codex login
-- [x] 97f8ffe trading on nixbox: deployed paused + Luna set up (owner activates via ChatGPT); nixbox state documented + committed in trading (trading 04a1a31)
-- [ ] controller trading copy deleted (owner confirmed immediately before; nixbox = live copy, controller project snapshots keep older copies)
-- [x] c9539b5 foundation: Go module, LICENSE + NOTICE, entry point, one test, gate (`.agent/gate`), CI + Dependabot, gate rule
-- [x] e7cb43a contract (`.agent/contract.md`, consultant-reviewed) + pool file + probe
-- [x] d4d4828 slots: heavy interop + pool slots
-- [x] 5bde281 sync engine: git-exact up/down, remote deletion pass, non-git fallback, repo root, worktree detection
-- [x] 4ff8ad4 run: watcher (session kill, remote lock), local + remote execution, placement loop, CLI + `offload status`, `--get`
-- [x] 47a8417 ship: installed binary at `~/.local/bin/offload`, global `CLAUDE.md` rule re-derived (agents repo), README
-- [ ] close: review ledger closed, prototype retired (`prototype-whole-product` tag), Phase MAINTAIN
+- [ ] Codexify on nixbox (binary 2.3.3 + Codex CLI 0.163.0 installed for `eturkes`): owner steps = `ssh -t eturkes@192.168.40.240 codexify quickstart` (access root /home/eturkes/Projects/trading; tunnel + runtime key + ChatGPT connector, service install) and `ssh -t eturkes@192.168.40.240 codex login --device-auth` (Luna's prerequisite); then `codexify doctor` healthy
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
 
-IMPLEMENT — whole product
+MAINTAIN — whole product
