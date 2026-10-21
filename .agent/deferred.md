@@ -1,7 +1,7 @@
 # Deferred
 
 - `machines/nixbox/install` EFI-entry rewrite (stale `Linux Boot Manager` → USB fall-through) = `machines/nixbox/efi-entry`, checked against a fake `efibootmgr` + a live dry run alone. Accept: next reinstall boots the disk with no manual `efibootmgr`. Owed (owner): a reinstall (wipes the disk; box on the installer stick).
-- nixbox BIOS 1.5.4 (old) → firmware updates via `fwupd`. A capsule may change PCR 7 → TPM refuses → recovery key at console. Accept: `fwupdmgr get-updates` empty + box reboots unattended after.
+- nixbox BIOS 1.5.4 (old; fwupd offers 1.43.0 + dbx 20241101) → firmware updates via `fwupd`, runbook = `machines/nixbox/README.md` `Firmware` (capsule app signed by our db key, verified). Accept: `fwupdmgr get-updates` empty + box reboots unattended after. Owed (owner): approval + a window within reach of the console (PCR 7 moves; custom Secure Boot keys may reset).
 - LUKS header/root-swap attack: token sealed to PCR 7 + PCR 15 = 0, initrd `tpm2-measure-pcr=yes` deployed (generation 6); a scratch volume unlocked with measurement left the token sealed (live box). Accept: TPM policy also binds the volume, and a swapped-header boot fails to unseal. Owed (owner-approved reboot): the box boots unattended on the new token + after boot PCR 15 ≠ 0 + the token refuses (README attacker check).
 - nixbox on Wi-Fi only → rsync of large inputs is link-bound. Accept: USB-C Ethernet adapter added to `network.nix` + measured throughput recorded.
 - A git-worktree checkout runs in local slots only (its `.git` = a file pointing into the main repo). Accept: remote run of a worktree with its own HEAD + index (common `.git` + worktree gitdir overlay); a history-reading gate passes there.
