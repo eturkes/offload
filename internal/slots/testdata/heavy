@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Advisory command slots; default = 2, HEAVY_SLOTS overrides.
+set -u
+dir=${XDG_RUNTIME_DIR:-/tmp}/heavy
+slots=${HEAVY_SLOTS:-2}
+if [[ ! $slots =~ ^[0-9]+$ ]]; then
+  printf 'heavy: HEAVY_SLOTS must be a positive integer.\n' >&2
+  exit 2
+fi
+slots=${slots#"${slots%%[!0]*}"}
+if [[ -z $slots ]] || [[ $((slots)) != "$slots" ]]; then
+  printf 'heavy: HEAVY_SLOTS must be a positive shell integer.\n' >&2
+  exit 2
+fi
+mkdir -p -- "$dir" || exit 1
+holders() {
+  local i
+  for ((i = 1; i <= slots; i++)); do
+    flock -n "$dir/slot$i" true 2>/dev/null ||
+      printf 'slot %s: %s\n' "$i" "$(cat "$dir/slot$i.owner" 2>/dev/null)"
+  done
+}
+case ${1-} in
+  --status) holders; exit 0 ;;
+  ''|-h|--help)
+    printf 'Usage: heavy COMMAND [ARG...]\n       heavy --status\n\nHEAVY_SLOTS sets the slot count (default: 2).\n'
+    exit 2
+    ;;
+esac
+owner=
+child=
+launching=
+pending=
+cleanup() {
+  [[ -z $owner ]] || : > "$owner"
+}
+interrupt() {
+  if [[ -n $launching ]]; then
+    pending=$1
+    pending_code=$2
+    return
+  fi
+  trap '' HUP INT TERM
+  if [[ -n $child ]]; then
+    kill -s "$1" "$child" 2>/dev/null || :
+    wait "$child" 2>/dev/null
+  fi
+  exit "$2"
+}
+trap cleanup EXIT
+trap 'interrupt HUP 129' HUP
+trap 'interrupt INT 130' INT
+trap 'interrupt TERM 143' TERM
+waited=
+while :; do
+  for ((i = 1; i <= slots; i++)); do
+    exec {lock}> "$dir/slot$i" || exit 1
+    # Acquisition has its own status channel; every command exit code remains valid.
+    if flock -n -E 75 "$lock"; then
+      owner=$dir/slot$i.owner
+      {
+        printf '%s since %(%T)T:' "$$" -1
+        printf ' %q' "$@"
+        printf '\n'
+      } > "$owner"
+      # Restore inherited signal handling and preserve stdin for the async child.
+      # The wrapper owns the lock; descendants receive no lock descriptor.
+      launching=1
+      (
+        trap - EXIT HUP INT QUIT TERM
+        exec -- "$@"
+      ) {lock}>&- <&0 &
+      child=$!
+      launching=
+      [[ -z $pending ]] || interrupt "$pending" "$pending_code"
+      wait "$child"
+      exit "$?"
+    else
+      rc=$?
+      exec {lock}>&-
+      [[ $rc == 75 ]] || exit "$rc"
+    fi
+  done
+  if [[ -z $waited ]]; then
+    printf 'heavy: all %s slots busy, waiting:\n%s\n' "$slots" "$(holders)" >&2
+    waited=1
+  fi
+  sleep 3
+done
