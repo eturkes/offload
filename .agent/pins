@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pins — every hand-moved version pin vs its latest upstream release (Dependabot moves none of
-# them): `.agent/tool --pins`, Go (`go.mod` `go` line; each workflow's setup-go `go-version` must
+# them): `.agent/tool --pins` (a git-built tool tracks its newest tag, or nixpkgs' revision), Go (`go.mod` `go` line; each workflow's setup-go `go-version` must
 # equal it), uv (setup-uv `version`), zizmor (`.agent/gate`). Prints a markdown table; rc 0 = all
 # current, 1 = a pin behind or a Go copy off `go.mod`, 2 = a lookup failed. Network ⇒ not a gate
 # step; runs weekly in `.github/workflows/pins.yml`. GH_TOKEN, when set, authenticates GitHub calls.
@@ -19,6 +19,10 @@ latest() { # latest <source> → newest stable release, without a leading v/go
     go:*) get "https://proxy.golang.org/${1#go:}/@latest" | jq -er .Version ;;
     golang) get 'https://go.dev/dl/?mode=json' | jq -er '[.[] | select(.stable)][0].version' ;;
     pypi:*) get "https://pypi.org/pypi/${1#pypi:}/json" | jq -er .info.version ;;
+    gittag:*) git ls-remote --tags --refs "${1#gittag:}" | sed -n 's#.*refs/tags/v\{0,1\}\([0-9][0-9.]*\)$#\1#p' |
+      sort -V | tail -n 1 | grep . ;;
+    nixpkgs:*) get "https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-unstable/${1#nixpkgs:}" |
+      sed -n 's/^ *rev = "\([0-9a-f]\{40\}\)";/\1/p' | head -n 1 | grep . ;;
     *) return 1 ;;
   esac | sed 's/^v//; s/^go//'
 }

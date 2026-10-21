@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # tool — run one pinned gate tool, fetched once into gitignored .tools/. Release assets are refused
-# unless their sha256 matches the pin; go-installed tools are verified by the Go checksum database.
+# unless their sha256 matches the pin; go-installed tools are verified by the Go checksum database;
+# Rust tools without release binaries are built (`cargo install --locked`) from a pinned commit id.
 # Pins cover Linux x86_64 alone (controller + CI). Bump = new version + digest from the release page.
 #   .agent/tool <name> [args…]
 #   .agent/tool --pins          `<name> <version> <source>` per pin (source = github:<owner>/<repo> |
-#                               go:<module>), read by `.agent/pins`
+#                               go:<module> | gittag:<repo url> | nixpkgs:<package.nix path>), read by
+#                               `.agent/pins`
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-names="golangci-lint betterleaks actionlint shellcheck nixfmt govulncheck gotestsum mutago"
+names="golangci-lint betterleaks actionlint shellcheck nixfmt statix deadnix govulncheck gotestsum mutago"
 gh=https://github.com
 spec() { # spec <name>: sets v + (sum, url, member) | pkg
 case $1 in
@@ -26,6 +28,10 @@ case $1 in
   nixfmt) v=1.5.0 sum=aa029247ab89c897e2f3948463967553f902f86e86e3402fa28cb29c4a44f745
     url=$gh/NixOS/nixfmt/releases/download/v$v/nixfmt
     member= ;;
+  # No upstream release since 2023; nixpkgs builds this maintained fork ⇒ its revision = the pin.
+  statix) v=52530001bdbc8e94aae0d406a929c7ad7f09d9d1 git=$gh/molybdenumsoftware/statix rev=$v
+    track=nixpkgs:pkgs/by-name/st/statix/package.nix ;;
+  deadnix) v=1.3.2 git=$gh/astro/deadnix rev=ba988ddf46f1e57abe3dfacbfbd17fec5a7276d9 track=gittag:$gh/astro/deadnix ;;
   govulncheck) v=1.9.0 pkg=golang.org/x/vuln/cmd/govulncheck ;;
   gotestsum) v=1.13.0 pkg=gotest.tools/gotestsum ;;
   mutago) v=2.10.35 pkg=github.com/quality-gates/mutago/v2/cmd/mutago ;; # mutation credit, not a gate step
@@ -34,9 +40,15 @@ esac
 }
 if [ "${1:-}" = --pins ]; then
   for n in $names; do
-    url='' pkg=''
+    url='' pkg='' track=''
     spec "$n"
-    if [ -n "$pkg" ]; then src=go:${pkg%%/cmd/*}; else src=github:$(echo "$url" | cut -d/ -f4,5); fi
+    if [ -n "$track" ]; then
+      src=$track
+    elif [ -n "$pkg" ]; then
+      src=go:${pkg%%/cmd/*}
+    else
+      src=github:$(echo "$url" | cut -d/ -f4,5)
+    fi
     echo "$n $v $src"
   done
   exit 0
@@ -52,6 +64,10 @@ if [ ! -x "$bin" ]; then
   mkdir -p "$dir"
   if [ -n "${pkg:-}" ]; then
     GOBIN=$dir GOFLAGS=-mod=mod go install "$pkg@v$v"
+  elif [ -n "${git:-}" ]; then
+    cargo install --quiet --locked --git "$git" --rev "$rev" --root "$dir/cargo" "$name"
+    mv "$dir/cargo/bin/$name" "$bin"
+    rm -rf "$dir/cargo"
   else
     dl=$dir/download
     curl -fsSL -o "$dl" "$url"
