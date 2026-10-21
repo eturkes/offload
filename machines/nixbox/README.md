@@ -37,6 +37,12 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - PCR 7: the 1.5.4 → 1.43.0 flash left it + the active PK/KEK/db/dbx byte-identical (only the `*Default` stores changed); the dbx update moved it ⇒ the bound token refused, the open token unlocked. Custom keys survived that flash; a later BIOS may reset them ⇒ owner within reach of the console for BIOS updates.
 - Update: hold both controller slot locks (`${XDG_RUNTIME_DIR}/offload/hosts/nixbox/slot{1,2}`, `flock`) for the window — each reboot kills runs on the box → `machines/nixbox/tpm-bind --open` → on the box `sudo fwupdmgr update -y --no-reboot-check && sudo reboot` → box answers SSH (BIOS flash ≈ 8 min) → `fwupdmgr get-updates` empty → `machines/nixbox/tpm-bind` (re-seal to the new PCR 7, wipes the open token) → reboot once more, unattended.
 
+## Codexify
+
+- `eturkes` runs Codexify ≥ 2.3 (user unit `codexify.service`, outbound OpenAI tunnel): every chat selects a workspace; only that directory's `AGENTS.md` loads.
+- Workspace = `~` for every chat: catalogue entry `.` (name `home`, alias `trading`) in `~/.codexify/codexify.config.json`; `~/AGENTS.md` routes work to `~/Projects/trading`. `worktrees.mode` = `never`: `auto` gives each later chat on `~` a git worktree, and `~` holds no repo.
+- Source + deploy = controller agents repo: `~/.local/app/agents/codex/nixbox/AGENTS.codexify.md` → `~/.local/app/agents/codex/nixbox/deploy-instructions` (`--check` = drift, rc 1). Check on the box: `~/.codexify/bin/codexify projects list --query trading` → selector `.`.
+
 ## Idle task
 
 - `user-1001.slice` (`eturkes`) = `CPUWeight=idle` (cgroup `cpu.idle` yields to siblings only ⇒ set on the user slice, sibling of `offload`'s). IO weight unenforced (NVMe scheduler `none`).
