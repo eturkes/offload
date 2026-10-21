@@ -209,3 +209,24 @@ func TestKilledHolderFreesSlot(t *testing.T) { // S6
 	}
 	s.Release()
 }
+
+func TestSlotFilesNeverFollowSymlinks(t *testing.T) { // security: /tmp fallback symlink plant
+	for _, planted := range []string{"slot1", "slot1.owner"} {
+		dir := t.TempDir()
+		victim := filepath.Join(t.TempDir(), "victim")
+		if err := os.WriteFile(victim, []byte("precious"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(victim, filepath.Join(dir, planted)); err != nil {
+			t.Fatal(err)
+		}
+		s, ok, err := Dir{Path: dir, Total: 1}.TryAcquire(" x")
+		s.Release()
+		if b, _ := os.ReadFile(victim); string(b) != "precious" {
+			t.Fatalf("%s planted: victim now %q (ok %v err %v)", planted, b, ok, err)
+		}
+		if ok || err == nil {
+			t.Fatalf("%s planted: acquired through a symlink (err %v)", planted, err)
+		}
+	}
+}

@@ -31,16 +31,16 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 ## Tasks
 
 - [x] 0886be2 nixbox: `eturkes` user + idle slice + trading/Codexify deps → deploy
-- [ ] trading → nixbox: copy every file, checksum-verify, rebuild env on nixbox, trading gates there
+- [x] 47a8417 trading → nixbox: copy every file, checksum-verify, rebuild env on nixbox, trading gates there
 - [ ] Codexify + Codex CLI on nixbox for trading; owner steps = tunnel auth, ChatGPT connector, Codex login
-- [ ] trading on nixbox: deployed paused + Luna set up (owner activates via ChatGPT); nixbox state documented + committed in trading
+- [ ] trading on nixbox: deployed paused + Luna set up (owner activates via ChatGPT); nixbox state documented + committed in trading (trading 04a1a31)
 - [ ] controller trading copy deleted (confirm immediately before)
 - [x] c9539b5 foundation: Go module, LICENSE + NOTICE, entry point, one test, gate (`.agent/gate`), CI + Dependabot, gate rule
 - [x] e7cb43a contract (`.agent/contract.md`, consultant-reviewed) + pool file + probe
 - [x] d4d4828 slots: heavy interop + pool slots
 - [x] 5bde281 sync engine: git-exact up/down, remote deletion pass, non-git fallback, repo root, worktree detection
 - [x] 4ff8ad4 run: watcher (session kill, remote lock), local + remote execution, placement loop, CLI + `offload status`, `--get`
-- [ ] ship: installed binary at `~/.local/bin/offload`, global `CLAUDE.md` rule re-derived (agents repo), README
+- [x] 47a8417 ship: installed binary at `~/.local/bin/offload`, global `CLAUDE.md` rule re-derived (agents repo), README
 - [ ] close: review ledger closed, prototype retired (`prototype-whole-product` tag), Phase MAINTAIN
 - Deferred queue → `.agent/deferred.md`
 
