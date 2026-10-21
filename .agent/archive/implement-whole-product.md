@@ -14,4 +14,6 @@ Units (sha = landing commit):
 - [x] (close) controller trading copy deleted (owner confirmed immediately before; nixbox = live copy; controller project snapshots keep older copies)
 - [x] (close) review: 5 lens reviewers + security lens, ledger .agent/review.md (37 rows, 0 open); prototype retired (tag prototype-whole-product); Phase → MAINTAIN
 
+- [x] (after close) Codexify on nixbox: owner ran quickstart + Codex login; a key ID pasted as the runtime key gave 401 on every tunnel poll → owner re-ran quickstart with the sk- secret; doctor healthy, polls succeed
+
 Review ledger: .agent/review.md. Owner rulings: commit 11d6dd7 body + spec Decisions.
