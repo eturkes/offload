@@ -134,7 +134,7 @@ Then a process that the command started also stops when it starts its own sessio
 If offload cannot start the scope, it tells you on stderr and runs the command without a scope.
 Without a scope, a process that starts its own session is not stopped.
 A process that another systemd unit takes over is not stopped.
-An offload run that the command starts stops together with its own command.
+An offload run that the command starts also stops its own command. A command of that inner run that ignores TERM can outlive it.
 
 ## See the pool
 

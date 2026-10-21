@@ -62,6 +62,13 @@ func Multiplex(getenv func(string) string) ([]string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
+	// An existing dir may refuse new entries; ssh's master would then fail to bind and mark the host down.
+	probe, err := os.CreateTemp(dir, ".probe-")
+	if err != nil {
+		return nil, fmt.Errorf("socket directory %s refuses new files: %w", dir, err)
+	}
+	_ = probe.Close()
+	_ = os.Remove(probe.Name())
 	return []string{"-o", "ControlMaster=auto", "-o", "ControlPath=" + dir + "/%C", "-o", "ControlPersist=60"}, nil
 }
 

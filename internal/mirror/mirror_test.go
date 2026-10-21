@@ -228,6 +228,10 @@ func TestGlobalExcludes(t *testing.T) {
 	if got, err := GlobalExcludes(context.Background(), root); err != nil || got != ".idea/\n" {
 		t.Fatalf("configured: %q %v", got, err)
 	}
+	write(t, custom, "*.tmp\x00junk\nkeep\x00\n\x00x\nlast") // git's pattern = the bytes before a NUL
+	if got, err := GlobalExcludes(context.Background(), root); err != nil || got != "*.tmp\nkeep\n\nlast" {
+		t.Fatalf("NUL: %q %v; want each line cut at its NUL", got, err)
+	}
 }
 
 func TestRootsThatCopyEverythingStayLocal(t *testing.T) { // Y1: never mirror / or $HOME to a host

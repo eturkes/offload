@@ -218,7 +218,13 @@ func GlobalExcludes(ctx context.Context, root string) (string, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}
-	return string(data), err
+	// The host gets this text as one NUL-terminated record (Y5). git cuts each pattern at a NUL
+	// (add_patterns_from_buffer → strlen) ⇒ dropping the rest of that line changes no pattern.
+	lines := strings.Split(string(data), "\n")
+	for i, l := range lines {
+		lines[i], _, _ = strings.Cut(l, "\x00")
+	}
+	return strings.Join(lines, "\n"), err
 }
 
 func defaultExcludes() string {
