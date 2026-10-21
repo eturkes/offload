@@ -275,8 +275,11 @@ func rsync(ctx context.Context, stdin []byte, args ...string) error {
 	return nil
 }
 
+// base = every transfer's rsync flags. --modify-window=-1: rsync's quick check (size + mtime)
+// otherwise compares whole seconds, so a same-size rewrite within the second of its last sync — a
+// 41-byte ref after a quick commit, a quick edit — would never cross.
 func base(target remote.Target, meta string) []string {
-	return []string{"-a", "-e", target.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
+	return []string{"-a", "--modify-window=-1", "-e", target.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
 }
 
 // UploadGit sends list, then mirrors .git (Y4). The list goes without --delete: a local file where

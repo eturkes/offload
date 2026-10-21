@@ -212,6 +212,22 @@ func TestY5GlobalExcludesReachTheHost(t *testing.T) { // Y5 + Y6 + X8: the exclu
 	}
 }
 
+func TestY4SameSecondRewriteCrosses(t *testing.T) { // Y4: rsync's quick check at nanosecond precision
+	s := newSandbox(t, true)
+	second := time.Now().Truncate(time.Second).Add(-time.Minute)
+	stamp := func(at time.Duration) { must(t, os.Chtimes(s.path("tracked"), second.Add(at), second.Add(at))) }
+	s.write("tracked", "aaaa\n")
+	stamp(100 * time.Millisecond)
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	s.write("tracked", "bbbb\n") // same size, same second, other nanoseconds
+	stamp(600 * time.Millisecond)
+	r := s.run("run", "--pool", "--", "cat", "tracked")
+	r.requireCode(t, 0)
+	if r.stdout != "bbbb\n" {
+		t.Fatalf("host ran on %q, want the rewrite", r.stdout)
+	}
+}
+
 func TestY4GitMetadataMirrorDeletes(t *testing.T) {
 	s := newSandbox(t, true)
 	s.write(".git/old-metadata", "obsolete\n")
