@@ -138,3 +138,14 @@ func tryLock(path string) (f *os.File, held bool, err error) {
 	}
 	return f, true, nil
 }
+
+// File = the slot's lock fd, for a child that must keep the slot held past offload's own exit.
+func (s *Slot) File() *os.File { return s.file }
+
+// TryLock flocks path non-blocking, creating it and its directory; held = false when busy.
+func TryLock(path string) (f *os.File, held bool, err error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, false, err
+	}
+	return tryLock(path)
+}

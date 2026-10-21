@@ -14,8 +14,9 @@ step() { # step <name> <cmd…>
   rc=$?
   names+=("$name") rcs+=("$rc") secs+=("$(awk -v a="$t0" -v b="$EPOCHREALTIME" 'BEGIN{printf "%.1f", b - a}')")
 }
-shell_scripts() { # tracked files with a sh/bash shebang
+shell_scripts() { # tracked files with a sh/bash shebang + embedded *.bash scripts
   git ls-files -z | xargs -0 awk 'FNR == 1 && /^#!.*[/ ](ba)?sh([ \t]|$)/ { print FILENAME } { nextfile }'
+  git ls-files '*.bash'
 }
 tests=.tools/test.json
 mkdir -p .tools
