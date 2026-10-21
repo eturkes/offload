@@ -195,6 +195,23 @@ func TestY4GitUploadDifferential(t *testing.T) {
 	}
 }
 
+func TestY5GlobalExcludesReachTheHost(t *testing.T) { // Y5 + Y6 + X8: the excludes record governs R and D
+	s := newSandbox(t, true)
+	excludes := filepath.Join(s.base, "global-excludes")
+	s.write(excludes, "*.tmp\n")
+	s.git("config", "--global", "core.excludesFile", excludes)
+	s.run("run", "--pool", "--", "touch", "out.tmp").requireCode(t, 0)
+	remote := filepath.Join(s.workdir("alpha"), "out.tmp")
+	if !exists(remote) {
+		t.Fatal("the command's ignored output is missing on the host")
+	}
+	assertAbsent(t, s.path("out.tmp")) // ignored ⇒ never downloaded (Y6)
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	if !exists(remote) {
+		t.Error("an output the global excludes ignore was pruned on the host (Y5)")
+	}
+}
+
 func TestY4GitMetadataMirrorDeletes(t *testing.T) {
 	s := newSandbox(t, true)
 	s.write(".git/old-metadata", "obsolete\n")

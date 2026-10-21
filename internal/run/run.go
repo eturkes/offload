@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -25,7 +27,26 @@ var (
 	localScript string
 	//go:embed remote.bash
 	remoteScript string
+
+	runScript = watchScript + remoteScript
+	runSum    = func() string { h := sha256.Sum256([]byte(runScript)); return hex.EncodeToString(h[:]) }()
 )
+
+// boot = the ssh command's script (X8): $1 bytes of stdin (head -c never reads past them), sha256
+// $2 (a short or corrupt copy fails it), become
+// <meta>/run-<16 hex>.bash (temp file + rename; content-addressed ⇒ concurrent runs of other
+// offload versions never swap it under each other), then that file runs — a remote ps shows its path,
+// never the script. A short or corrupt copy never runs: 125. Its own failure path: the script's
+// `fail` does not exist yet.
+const boot = `__f=$4/run-${2:0:16}.bash
+cd && mkdir -p "$4" && head -c "$1" >"$__f.$$" && [ "$(sha256sum <"$__f.$$")" = "$2  -" ] &&
+  mv -f "$__f.$$" "$__f" || {
+  rm -f "$__f.$$"
+  printf 'offload: %s: cannot install the run script in %s\n' "$(uname -n)" "$4" >&2
+  exit 125
+}
+shift 2
+exec bash "$__f" "$@"`
 
 // ErrNotStarted = the remote side failed before the command ran (no status record).
 var ErrNotStarted = errors.New("remote setup failed")
@@ -53,25 +74,29 @@ type Remote struct {
 	Argv     []string
 }
 
+// command = the ssh command line + the stdin head for a run with this nonce: the run script, then
+// (git mode) NONCE, EXCLUDES and every upload path, NUL-terminated (X8, Y5).
+func (r Remote) command(nonce string) (string, []byte) {
+	words := []string{
+		"bash", "-c", boot, "offload", strconv.Itoa(len(runScript)), runSum,
+		r.Workdir, r.Meta, r.Sub, r.Mode, nonce, strconv.Itoa(len(r.Paths)), remote.Join(r.Argv),
+	}
+	var b bytes.Buffer
+	b.WriteString(runScript)
+	if r.Mode == "git" {
+		for _, rec := range append([]string{nonce, r.Excludes}, r.Paths...) {
+			b.WriteString(rec)
+			b.WriteByte(0)
+		}
+	}
+	return remote.Join(words), b.Bytes()
+}
+
 // Run executes r.Argv remotely. A nil error = the command ran; its status is returned unchanged.
 func (r Remote) Run(ctx context.Context) (int, error) {
 	nonce := rand.Text()
-	words := []string{
-		"bash", "-c", watchScript + remoteScript, "offload", r.Workdir, r.Meta, r.Sub, r.Mode,
-		nonce, strconv.Itoa(len(r.Paths)), r.Excludes, remote.Join(r.Argv),
-	}
-	var preamble []byte
-	if r.Mode == "git" {
-		var b bytes.Buffer
-		b.WriteString(nonce)
-		b.WriteByte(0)
-		for _, p := range r.Paths {
-			b.WriteString(p)
-			b.WriteByte(0)
-		}
-		preamble = b.Bytes()
-	}
-	cmd := remote.Command(context.Background(), "ssh", r.Target.SSHArgs(remote.Join(words))...)
+	script, preamble := r.command(nonce)
+	cmd := remote.Command(context.Background(), "ssh", r.Target.SSHArgs(script)...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	rc, err := supervise(ctx, cmd, preamble)
 	if err != nil || ctx.Err() != nil || (rc != 125 && rc != 255) {
