@@ -5,7 +5,7 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 ## Files
 
 - `host.nix` = shared facts (iface, address, stateVersion, controller key).
-- `configuration.nix` = installed system; `network.nix` = NM Wi-Fi profile + static IPv4 (installer + system); `secureboot.nix` = lanzaboote v1.2.0.
+- `configuration.nix` = installed system; `network.nix` = NM Wi-Fi profile + static IPv4 (installer + system); `secureboot.nix` = lanzaboote v1.2.0 + fwupd's signed-app bind (`Firmware`).
 - `installer.nix` = headless ISO: Wi-Fi + static IP + sshd with controller key.
 - `wifi.nix` = `{ ssid; psk; }`, gitignored, mode 600 on the box. Regenerate from the controller's NM profile `JCOM_hSAf`.
 - `hardware-configuration.nix` = written by `install`.
@@ -31,9 +31,11 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 
 ## Firmware
 
-- fwupd capsules boot under our Secure Boot: lanzaboote's `fwupd-efi.service` signs `fwupdx64.efi` with our db key into `/run/fwupd-efi` (`sbverify --cert /var/lib/sbctl/keys/db/db.pem` → OK), `DisableShimForSecureBoot=true`. Firmware lacks capsule-on-disk (`OsIndicationsSupported` = 0x03) ⇒ this signed app is the only path.
-- BIOS + dbx updates move PCR 7 ⇒ the bound token refuses at the next boot. A BIOS update may also reset custom Secure Boot keys (Dell keeps active + default stores apart; no source confirms custom keys survive) ⇒ owner within reach of the console.
-- Update: `machines/nixbox/tpm-bind --open` → on the box `sudo fwupdmgr update -y --no-reboot-check && sudo reboot` → box answers SSH → `fwupdmgr get-updates` empty → `machines/nixbox/tpm-bind` (re-seal to the new PCR 7, wipes the open token) → reboot once more, unattended.
+- Installed: BIOS 1.43.0 (Dell blocks downgrades), dbx 20260707.
+- fwupd capsules boot under our Secure Boot: lanzaboote's `fwupd-efi.service` signs `fwupdx64.efi` with our db key into `/run/fwupd-efi` (`sbverify --cert /var/lib/sbctl/keys/db/db.pem` → OK), `DisableShimForSecureBoot=true`; fwupd copies it to `\EFI\nixos\fwupdx64.efi` + sets BootNext = `Linux Firmware Updater`. Firmware lacks capsule-on-disk (`OsIndicationsSupported` = 0x03) ⇒ this signed app is the only path.
+- fwupd ≥ 2.1 reads the app from fwupd-efi's store dir alone (lanzaboote's `FWUPD_EFIAPPDIR` ignored) ⇒ `secureboot.nix` binds `/run/fwupd-efi` over that dir in fwupd's namespace. Check: `sudo nsenter -t $(systemctl show fwupd -p MainPID --value) -m ls <fwupd-efi>/libexec/fwupd/efi` lists `fwupdx64.efi.signed`; absent → staging fails with `fwupdx64.efi.signed cannot be found`.
+- PCR 7: the 1.5.4 → 1.43.0 flash left it + the active PK/KEK/db/dbx byte-identical (only the `*Default` stores changed); the dbx update moved it ⇒ the bound token refused, the open token unlocked. Custom keys survived that flash; a later BIOS may reset them ⇒ owner within reach of the console for BIOS updates.
+- Update: hold both controller slot locks (`${XDG_RUNTIME_DIR}/offload/hosts/nixbox/slot{1,2}`, `flock`) for the window — each reboot kills runs on the box → `machines/nixbox/tpm-bind --open` → on the box `sudo fwupdmgr update -y --no-reboot-check && sudo reboot` → box answers SSH (BIOS flash ≈ 8 min) → `fwupdmgr get-updates` empty → `machines/nixbox/tpm-bind` (re-seal to the new PCR 7, wipes the open token) → reboot once more, unattended.
 
 ## Idle task
 
