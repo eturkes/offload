@@ -127,6 +127,82 @@ exit 7`
 	}
 }
 
+// requireScope skips where no user systemd manager (found as the watcher finds it) starts a scope;
+// OFFLOAD_REQUIRE_SCOPE=1 (CI with a lingering user manager) turns that absence into a failure.
+func requireScope(t *testing.T) {
+	t.Helper()
+	for _, d := range []string{os.Getenv("XDG_RUNTIME_DIR"), "/run/user/" + strconv.Itoa(os.Getuid())} {
+		if fi, err := os.Stat(filepath.Join(d, "systemd", "private")); d == "" || err != nil || fi.Mode()&os.ModeSocket == 0 {
+			continue
+		}
+		c := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")
+		c.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+d)
+		if c.Run() == nil {
+			return
+		}
+		break
+	}
+	if os.Getenv("OFFLOAD_REQUIRE_SCOPE") != "" {
+		t.Fatal("OFFLOAD_REQUIRE_SCOPE is set, but systemd-run --user --scope fails")
+	}
+	t.Skip("no user systemd manager: scope teardown is untestable here")
+}
+
+func TestX1ScopeEndsDoubleForkedDaemon(t *testing.T) {
+	requireScope(t)
+	daemon := `setsid -f bash -c 'echo $$ > "$0"; exec sleep 300' "$1"
+while [ ! -s "$1" ]; do sleep 0.01; done
+`
+	for _, tc := range []struct {
+		name, place string
+		kill        bool
+	}{
+		{"local-leader-exit", "--local", false},
+		{"remote-leader-exit", "--pool", false},
+		{"local-controller-kill", "--local", true},
+		{"remote-controller-kill", "--pool", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newSandbox(t, false)
+			pidFile := filepath.Join(s.base, "daemon.pid")
+			if tc.kill {
+				p := s.start("run", tc.place, "--", "bash", "-c", daemon+"sleep 300", "_", pidFile)
+				p.await("daemon pid", func() bool { return exists(pidFile) && readPIDIfAny(pidFile) > 1 })
+				p.signal(syscall.SIGKILL)
+				p.wait(2 * time.Second)
+			} else {
+				s.run("run", tc.place, "--", "bash", "-c", daemon+"exit 5", "_", pidFile).requireCode(t, 5)
+			}
+			pid := readPID(t, pidFile)
+			t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+			requirePIDsGone(t, []int{pid}, 3*time.Second)
+		})
+	}
+}
+
+func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
+	for _, place := range []string{"--local", "--pool"} {
+		t.Run(place, func(t *testing.T) {
+			s := newSandbox(t, false)
+			s.write(filepath.Join(s.base, "bin", "systemd-run"), "#!/bin/sh\necho 'systemd-run: refused' >&2\nexit 1\n")
+			must(t, os.Chmod(filepath.Join(s.base, "bin", "systemd-run"), 0o700))
+			runs := filepath.Join(s.base, "runs")
+			r := s.run("run", place, "--", "bash", "-c", `echo run >> "$1"; echo own-stderr >&2; exit 6`, "_", runs)
+			r.requireCode(t, 6)
+			if got := s.read(runs); got != "run\n" || strings.Contains(r.stderr, "refused") || !strings.Contains(r.stderr, "own-stderr") ||
+				!strings.Contains(r.stderr, "no systemd scope") {
+				t.Fatalf("runs %q stderr %q", got, r.stderr)
+			}
+		})
+	}
+}
+
+func readPIDIfAny(path string) int {
+	data, _ := os.ReadFile(path)
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(data)))
+	return pid
+}
+
 func TestX2ArgvAndEnvironment(t *testing.T) {
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {

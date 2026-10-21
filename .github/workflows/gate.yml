@@ -40,7 +40,19 @@ jobs:
           version: "0.13.1"
           enable-cache: false
 
+      - name: Start a user systemd manager (scope teardown tests)
+        shell: bash
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          for _ in $(seq 50); do
+            if [ -S "/run/user/$(id -u)/systemd/private" ]; then exit 0; fi
+            sleep 0.2
+          done
+          echo "no user manager socket under /run/user/$(id -u)" >&2
+          exit 1
+
       - name: Run the full gate
         env:
           GOTOOLCHAIN: local
+          OFFLOAD_REQUIRE_SCOPE: "1"
         run: .agent/gate
