@@ -18,16 +18,18 @@ const DefaultSlots = 2
 
 // Host is one [[host]] table.
 type Host struct {
-	Name    string `toml:"name"`
-	Address string `toml:"address"`
-	Slots   int    `toml:"slots"`
+	Name      string `toml:"name"`
+	Address   string `toml:"address"`
+	Slots     int    `toml:"slots"`
+	Multiplex bool   `toml:"multiplex"`
 }
 
 // rawHost tells an absent `slots` (default) from an explicit 0 (refused).
 type rawHost struct {
-	Name    string `toml:"name"`
-	Address string `toml:"address"`
-	Slots   *int   `toml:"slots"`
+	Name      string `toml:"name"`
+	Address   string `toml:"address"`
+	Slots     *int   `toml:"slots"`
+	Multiplex bool   `toml:"multiplex"`
 }
 
 type file struct {
@@ -86,7 +88,7 @@ func Load(path string) ([]Host, error) {
 	hosts := make([]Host, len(f.Host))
 	for i, r := range f.Host {
 		h := &hosts[i]
-		h.Name, h.Address, h.Slots = r.Name, r.Address, DefaultSlots
+		h.Name, h.Address, h.Slots, h.Multiplex = r.Name, r.Address, DefaultSlots, r.Multiplex
 		if r.Slots != nil {
 			h.Slots = *r.Slots
 		}

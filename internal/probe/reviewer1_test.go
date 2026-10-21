@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/eturkes/offload/internal/remote"
 )
 
 func TestReviewR1ProbeDeadlineWithInheritedOutput(t *testing.T) {
@@ -25,7 +27,7 @@ func TestReviewR1ProbeDeadlineWithInheritedOutput(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := Probe(ctx, "fake-host")
+		_, err := Probe(ctx, remote.Target{Address: "fake-host"})
 		done <- err
 	}()
 	finished := false

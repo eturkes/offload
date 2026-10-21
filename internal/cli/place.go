@@ -14,6 +14,7 @@ import (
 	"github.com/eturkes/offload/internal/mirror"
 	"github.com/eturkes/offload/internal/pool"
 	"github.com/eturkes/offload/internal/probe"
+	"github.com/eturkes/offload/internal/remote"
 	"github.com/eturkes/offload/internal/slots"
 )
 
@@ -23,11 +24,12 @@ const (
 )
 
 type placer struct {
-	opts   options
-	heavy  slots.Dir
-	hosts  []pool.Host
-	tree   mirror.Tree
-	stderr io.Writer
+	opts    options
+	heavy   slots.Dir
+	hosts   []pool.Host
+	targets map[string]remote.Target
+	tree    mirror.Tree
+	stderr  io.Writer
 
 	downUntil map[string]time.Time
 	downWhy   map[string]string
@@ -130,7 +132,7 @@ func (p *placer) tryPool(ctx context.Context) (placement, bool, error) {
 
 	var wg sync.WaitGroup
 	for _, c := range cands {
-		wg.Go(func() { c.stats, c.err = probe.Probe(ctx, c.host.Address) })
+		wg.Go(func() { c.stats, c.err = probe.Probe(ctx, p.targets[c.host.Name]) })
 	}
 	wg.Wait()
 
@@ -207,11 +209,12 @@ func status(stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "  %s\n", line)
 	}
 
+	targets := targets(hosts, stderr)
 	stats := make([]probe.Stats, len(hosts))
 	errs := make([]error, len(hosts))
 	var wg sync.WaitGroup
 	for i, h := range hosts {
-		wg.Go(func() { stats[i], errs[i] = probe.Probe(context.Background(), h.Address) })
+		wg.Go(func() { stats[i], errs[i] = probe.Probe(context.Background(), targets[h.Name]) })
 	}
 	wg.Wait()
 

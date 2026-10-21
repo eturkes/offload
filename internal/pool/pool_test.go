@@ -45,6 +45,13 @@ func TestLoadDefaultsSlots(t *testing.T) { // P2
 	}
 }
 
+func TestLoadMultiplex(t *testing.T) { // P2: multiplex = bool, default false
+	hosts, err := Load(write(t, "[[host]]\nname = \"a\"\naddress = \"a\"\n\n[[host]]\nname = \"b\"\naddress = \"b\"\nmultiplex = true\n"))
+	if err != nil || len(hosts) != 2 || hosts[0].Multiplex || !hosts[1].Multiplex {
+		t.Fatalf("hosts = %+v, err %v", hosts, err)
+	}
+}
+
 func TestLoadRejects(t *testing.T) { // P2
 	cases := map[string]struct{ body, want string }{
 		"unknown host key":  {"[[host]]\nname = \"a\"\naddress = \"a\"\nslot = 3\n", "slot"},
@@ -64,6 +71,7 @@ func TestLoadRejects(t *testing.T) { // P2
 		"negative slots":    {"[[host]]\nname = \"a\"\naddress = \"a\"\nslots = -1\n", "slots"},
 		"zero slots":        {"[[host]]\nname = \"a\"\naddress = \"a\"\nslots = 0\n", "slots"},
 		"bad toml":          {"[[host]\n", "pool.toml"},
+		"string multiplex":  {"[[host]]\nname = \"a\"\naddress = \"a\"\nmultiplex = \"yes\"\n", "pool.toml"},
 	}
 	for name, c := range cases {
 		_, err := Load(write(t, c.body))

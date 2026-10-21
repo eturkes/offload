@@ -60,6 +60,7 @@ type host struct {
 	gpus  int
 	slots int
 	down  bool
+	mux   bool
 }
 
 type sandbox struct {
@@ -105,7 +106,7 @@ func newSandbox(t *testing.T, git bool, hosts ...host) *sandbox {
 		if h.slots == 0 {
 			h.slots = 2
 		}
-		fmt.Fprintf(&pool, "[[host]]\nname = %q\naddress = %q\nslots = %d\n", h.name, "agent@"+h.name, h.slots)
+		fmt.Fprintf(&pool, "[[host]]\nname = %q\naddress = %q\nslots = %d\nmultiplex = %t\n", h.name, "agent@"+h.name, h.slots, h.mux)
 		if !h.down {
 			must(t, os.MkdirAll(filepath.Join(s.hosts, h.name), 0o700))
 			s.write(filepath.Join(s.hosts, h.name, ".probe"), fmt.Sprintf("%d %.6f 1048576 %d\n", h.cpus, h.load, h.gpus))

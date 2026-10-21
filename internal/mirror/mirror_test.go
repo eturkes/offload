@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/eturkes/offload/internal/remote"
 )
 
 func run(t *testing.T, dir string, args ...string) string {
@@ -229,7 +231,7 @@ func TestRootsThatCopyEverythingStayLocal(t *testing.T) { // Y1: never mirror / 
 		}
 	}
 	for _, root := range []string{"", "relative", "/"} {
-		err := UploadPlain(context.Background(), Tree{Root: root, Sub: "."}, "nohost")
+		err := UploadPlain(context.Background(), Tree{Root: root, Sub: "."}, remote.Target{Address: "nohost"})
 		if err == nil || !strings.Contains(err.Error(), "refusing to sync") {
 			t.Errorf("UploadPlain(root %q): %v; want a refusal before rsync", root, err)
 		}

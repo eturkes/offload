@@ -89,3 +89,62 @@ func TestY1HomeDirectoryNeverGoesToAHost(t *testing.T) {
 	}
 	s.run("run", "--", "true").requireCode(t, 0) // without --pool: a local slot
 }
+
+// sshCalls = every argv the fake ssh logged for host, NUL-joined.
+func sshCalls(t *testing.T, s *sandbox, host string) []string {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(s.hosts, host, ".ssh-call-*"))
+	must(t, err)
+	calls := make([]string, len(paths))
+	for i, p := range paths {
+		b, err := os.ReadFile(p)
+		must(t, err)
+		calls[i] = string(b)
+	}
+	return calls
+}
+
+func TestX5MultiplexOptIn(t *testing.T) {
+	// probe, 2 uploads, run (exit 255 ⇒ status lookup), download, --get = 7 connections
+	cmd := []string{"run", "--get", "out", "--", "bash", "-c", "echo x > out; exit 255"}
+	t.Run("on", func(t *testing.T) {
+		s := newSandbox(t, true, host{name: "alpha", cpus: 8, load: 1, mux: true})
+		short, err := os.MkdirTemp("/tmp", "ox") // the sandbox runtime path is too long for a socket dir
+		must(t, err)
+		t.Cleanup(func() { _ = os.RemoveAll(short) })
+		s.setenv("XDG_RUNTIME_DIR", short)
+		r := s.run(cmd...)
+		r.requireCode(t, 255)
+		calls := sshCalls(t, s, "alpha")
+		if len(calls) < 7 {
+			t.Fatalf("%d ssh calls, want ≥ 7", len(calls))
+		}
+		want := []string{"-o\x00ControlMaster=auto\x00", "-o\x00ControlPath=" + short + "/offload/ssh/%C\x00", "-o\x00ControlPersist=60\x00"}
+		for _, c := range calls {
+			requireContains(t, c, want...)
+		}
+		if fi, err := os.Stat(filepath.Join(short, "offload", "ssh")); err != nil || fi.Mode().Perm() != 0o700 {
+			t.Errorf("socket dir: %v %v", fi, err)
+		}
+	})
+	for name, tc := range map[string]struct {
+		mux  bool
+		note string
+	}{"off-by-default": {false, ""}, "socket-dir-too-long": {true, "connection multiplexing off"}} {
+		t.Run(name, func(t *testing.T) {
+			s := newSandbox(t, true, host{name: "alpha", cpus: 8, load: 1, mux: tc.mux})
+			r := s.run(cmd...)
+			r.requireCode(t, 255)
+			for _, c := range sshCalls(t, s, "alpha") {
+				if strings.Contains(c, "Control") {
+					t.Errorf("multiplexing option in %q", c)
+				}
+			}
+			if tc.note != "" {
+				requireContains(t, r.stderr, tc.note)
+			} else if strings.Contains(r.stderr, "multiplexing") {
+				t.Errorf("unexpected note: %q", r.stderr)
+			}
+		})
+	}
+}

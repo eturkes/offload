@@ -42,11 +42,13 @@ Write one `[[host]]` table for each pool host in `~/.config/offload/pool.toml`:
 name = "nixbox"
 address = "offload@192.168.40.240"
 slots = 2
+multiplex = true
 ```
 
 - `name` identifies the host in messages. Use letters, digits, `.`, `_` and `-`.
 - `address` is `[user@]host` or a host alias from your `~/.ssh/config`. To use a port or an IPv6 address, define an alias.
 - `slots` is the number of runs the host takes at the same time. The default is 2. When offload is killed, its host slot becomes free at once, but its command can need up to 10 seconds more to stop.
+- `multiplex = true` makes all connections to the host share one SSH connection. A run then starts faster. The shared connection stays open for 60 seconds after its last use. offload keeps its sockets in `$XDG_RUNTIME_DIR/offload/ssh`. When that path is not available, offload connects without sharing and tells you why. The default is `false`.
 
 To use a different file, set `OFFLOAD_CONFIG` to its path.
 `pool.example.toml` contains this example.
