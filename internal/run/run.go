@@ -36,11 +36,11 @@ var (
 // $2 (a short or corrupt copy fails it), become
 // <meta>/run-<16 hex>.bash (temp file + rename; content-addressed ⇒ concurrent runs of other
 // offload versions never swap it under each other), then that file runs — a remote ps shows its path,
-// never the script. A short or corrupt copy never runs: 125. Its own failure path: the script's
-// `fail` does not exist yet.
+// never the script. A short or corrupt copy never runs: 125. mv -T: a directory at the name fails
+// (125) instead of swallowing the copy. Its own failure path: the script's `fail` does not exist yet.
 const boot = `__f=$4/run-${2:0:16}.bash
 cd && mkdir -p "$4" && head -c "$1" >"$__f.$$" && [ "$(sha256sum <"$__f.$$")" = "$2  -" ] &&
-  mv -f "$__f.$$" "$__f" || {
+  mv -fT "$__f.$$" "$__f" || {
   rm -f "$__f.$$"
   printf 'offload: %s: cannot install the run script in %s\n' "$(uname -n)" "$4" >&2
   exit 125
