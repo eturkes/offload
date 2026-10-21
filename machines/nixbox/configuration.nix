@@ -72,7 +72,8 @@ in
   zramSwap.enable = true;
   services.fstrim.enable = true;
 
-  # Always on AC → cap charge at 80 % to spare the battery.
+  # Always on AC → cap charge at 80 % to spare the battery. dell-laptop threshold writes only store
+  # the custom values; the firmware keeps its current mode (Adaptive) until charge_types = Custom.
   systemd.services.battery-charge-limit = {
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
@@ -83,6 +84,7 @@ in
       b=/sys/class/power_supply/BAT0
       echo 75 > $b/charge_control_start_threshold
       echo 80 > $b/charge_control_end_threshold
+      echo Custom > $b/charge_types
     '';
   };
 
@@ -129,6 +131,9 @@ in
   };
   # Nix-built python bypasses nix-ld → wheels miss libstdc++; uv's standalone builds go through it.
   environment.variables.UV_PYTHON_PREFERENCE = "only-managed";
+  # uv's standalone pythons (OpenSSL dir /etc/ssl) read /etc/ssl/cert.pem, which NixOS lacks ⇒ 0
+  # trusted CAs, every stdlib TLS call fails verification — in services as in offload's `bash -lc`.
+  environment.etc."ssl/cert.pem".source = "/etc/ssl/certs/ca-certificates.crt";
   virtualisation.podman.enable = true;
   environment.systemPackages = with pkgs; [
     rsync
