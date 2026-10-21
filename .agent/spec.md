@@ -24,7 +24,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - Pool hosts = dedicated machines; LAN-only (nftables: port 22 from 192.168.40.0/24 alone), key-only SSH, no passwords on any account. nixbox accounts: `offload` (offload runs + deploys; wheel, passwordless sudo) + `eturkes` (unprivileged; trading, its idle task, Codexify; home `/home/eturkes` ⇒ trading's tracked absolute paths hold).
 - Trading lives on nixbox at `/home/eturkes/Projects/trading`, every file incl. key files (owner ruling over trading's never-copy rule); ChatGPT iterates on it through Codexify on nixbox (single project). Controller copy deleted after a checksum-verified copy (confirm immediately before).
 - Pool host OS = NixOS, config declarative in `machines/<host>/`; Wi-Fi secret stays on controller + box (gitignored `wifi.nix`).
-- nixbox disk = LUKS2 root, TPM2 auto-unlock bound to PCR 7 + Secure Boot with own keys (lanzaboote) ⇒ unattended reboots; recovery key on the controller only.
+- nixbox disk = LUKS2 root, TPM2 auto-unlock bound to PCR 7 + PCR 15 = 0 (volume key measured into PCR 15 at unlock ⇒ a swapped header cannot unseal it) + Secure Boot with own keys (lanzaboote) ⇒ unattended reboots; recovery key on the controller only.
 - nixbox compute posture = performance governor, thermald, earlyoom, zram, lid/suspend ignored, battery capped 80 %; nix-ld + `UV_PYTHON_PREFERENCE=only-managed` so prebuilt wheels run.
 
 ## Tasks

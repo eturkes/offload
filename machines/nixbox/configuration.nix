@@ -15,8 +15,13 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
   # Root = LUKS2 unlocked by the TPM → unattended reboots; no passphrase slot (recovery key alone).
+  # The volume key goes into PCR 15 right after unlock; the token demands PCR 15 = 0 (`tpm-bind`) ⇒
+  # a swapped-header volume unlocked first leaves the real token sealed.
   boot.initrd.systemd.enable = true;
-  boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" ];
+  boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [
+    "tpm2-device=auto"
+    "tpm2-measure-pcr=yes"
+  ];
   # consoleblank: panel off after 60 s → less heat under a shut lid.
   # intel_iommu: DMA isolation against Thunderbolt-port attacks on the unlocked RAM.
   boot.kernelParams = [

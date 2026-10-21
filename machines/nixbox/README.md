@@ -9,6 +9,7 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - `installer.nix` = headless ISO: Wi-Fi + static IP + sshd with controller key.
 - `wifi.nix` = `{ ssid; psk; }`, gitignored, mode 600 on the box. Regenerate from the controller's NM profile `<redacted>`.
 - `hardware-configuration.nix` = written by `install`.
+- `tpm-bind` = re-seal the TPM2 LUKS token from the controller (Disk + boot security).
 - `efi-entry` = run by `install`: one `Linux Boot Manager` entry on the new ESP (stale ones from a reused disk deleted). Dry run on the live box: `ssh offload@<ip> 'sudo DRY_RUN=1 sh -s -- /dev/nvme0n1' < machines/nixbox/efi-entry`.
 - `idle.nix` = idle task: user `eturkes` (uid 1001, unprivileged, lingering) owns trading; its `user-1001.slice` runs at `CPUWeight=idle` ⇒ offload runs (user `offload`) preempt it.
 
@@ -23,8 +24,9 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 
 - Root = LUKS2 `cryptroot`; slots = `tpm2` + `recovery`, no passphrase.
 - Secure Boot = own keys (sbctl, `/var/lib/sbctl`) + Microsoft (`--microsoft`, keeps option ROMs + fwupd capsules booting).
-- TPM slot bound to PCR 7 (Secure Boot policy) ⇒ unattended reboots + upgrades; disabling SB or changing keys ⇒ TPM refuses ⇒ recovery key.
-- Re-bind after key changes: `sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 --unlock-key-file=<(printf %s "$RK") /dev/nvme0n1p2`.
+- TPM slot bound to PCR 7 (Secure Boot policy) + PCR 15 = 0; the initrd measures the volume key into PCR 15 right after unlock (`tpm2-measure-pcr=yes`) ⇒ a swapped LUKS header unlocked first (attacker passphrase) leaves the real token sealed. Unattended reboots + upgrades unaffected; disabling SB or changing keys ⇒ TPM refuses ⇒ recovery key.
+- Re-seal (key or firmware changes) = `machines/nixbox/tpm-bind` (unlocks with the controller's recovery key: after boot PCR 15 ≠ 0, so the TPM token itself never authorizes changes).
+- Attacker check: attach a scratch LUKS image with `systemd-cryptsetup attach <name> <loop> <keyfile> tpm2-measure-pcr=yes`, then `sudo env LD_LIBRARY_PATH=/run/current-system/sw/lib/cryptsetup cryptsetup open --test-passphrase --token-only --token-id <tpm2 token> <luks dev>` → refused (`TPM policy does not match`). The plugin path is needed: NixOS cryptsetup does not find systemd's token plugin.
 - `/boot/EFI/nixos/kernel-*.efi` shows unsigned in `sbctl verify` by design: the signed lanzaboote stub checks it by hash.
 
 ## Idle task

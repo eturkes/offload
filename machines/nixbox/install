@@ -1,7 +1,7 @@
 #!/bin/sh
 # install <disk> — run from the controller while nixbox runs the installer ISO (installer.nix):
 # wipes <disk> (GPT: 1 GiB ESP + LUKS2 ext4 root), creates Secure Boot keys, installs
-# machines/nixbox, enrolls TPM2 (no PCRs yet; PCR 7 after firmware enrollment, README.md) +
+# machines/nixbox, enrolls TPM2 (no PCRs yet; `tpm-bind` after firmware enrollment, README.md) +
 # a recovery key → $RECOVERY_KEY, drops the setup keyfile, pulls back hardware-configuration.nix,
 # reboots. Needs machines/nixbox/wifi.nix (gitignored).
 set -eu
