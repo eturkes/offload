@@ -23,8 +23,15 @@ type Host struct {
 	Slots   int    `toml:"slots"`
 }
 
+// rawHost tells an absent `slots` (default) from an explicit 0 (refused).
+type rawHost struct {
+	Name    string `toml:"name"`
+	Address string `toml:"address"`
+	Slots   *int   `toml:"slots"`
+}
+
 type file struct {
-	Host []Host `toml:"host"`
+	Host []rawHost `toml:"host"`
 }
 
 // ErrNotExist marks a missing pool file (run → local slots only; status/--pool → error).
@@ -76,8 +83,13 @@ func Load(path string) ([]Host, error) {
 		return nil, fmt.Errorf("%s lists no [[host]] tables", path)
 	}
 	seen, seenAddr := map[string]bool{}, map[string]bool{}
-	for i := range f.Host {
-		h := &f.Host[i]
+	hosts := make([]Host, len(f.Host))
+	for i, r := range f.Host {
+		h := &hosts[i]
+		h.Name, h.Address, h.Slots = r.Name, r.Address, DefaultSlots
+		if r.Slots != nil {
+			h.Slots = *r.Slots
+		}
 		switch {
 		case !validName.MatchString(h.Name) || h.Name == "." || h.Name == "..":
 			return nil, fmt.Errorf("%s: host %d: name %q must match [A-Za-z0-9._-]+", path, i+1, h.Name)
@@ -87,12 +99,10 @@ func Load(path string) ([]Host, error) {
 			return nil, fmt.Errorf("%s: host %s: address %q must be [user@]host or an ssh_config alias", path, h.Name, h.Address)
 		case seenAddr[h.Address]:
 			return nil, fmt.Errorf("%s: address %q appears twice", path, h.Address)
-		case h.Slots < 0:
+		case h.Slots < 1:
 			return nil, fmt.Errorf("%s: host %s: slots must be at least 1", path, h.Name)
-		case h.Slots == 0:
-			h.Slots = DefaultSlots
 		}
 		seen[h.Name], seenAddr[h.Address] = true, true
 	}
-	return f.Host, nil
+	return hosts, nil
 }

@@ -109,6 +109,9 @@ func (d Dir) Holders() []string {
 	var out []string
 	for i := 1; i <= d.Total; i++ {
 		p := filepath.Join(d.Path, "slot"+strconv.Itoa(i))
+		if _, err := os.Lstat(p); errors.Is(err, os.ErrNotExist) {
+			continue // never created ⇒ never held
+		}
 		f, held, err := tryLock(p)
 		if err == nil && held {
 			_ = f.Close()

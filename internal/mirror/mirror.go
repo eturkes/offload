@@ -256,18 +256,23 @@ func base(meta string) []string {
 	return []string{"-a", "-e", remote.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
 }
 
-// UploadGit sends list + mirrors .git (Y4). `.git` lock files never cross; stale remote ones go.
+// UploadGit sends list, then mirrors .git (Y4). The list goes without --delete: a local file where
+// the host keeps a directory of ignored files makes rsync fail (125) instead of deleting them.
+// `.git` lock files never cross; stale remote ones go.
 func UploadGit(ctx context.Context, t Tree, address string, list []string) error {
 	var in bytes.Buffer
 	for _, p := range list {
 		in.WriteString(p)
 		in.WriteByte(0)
 	}
-	in.WriteString(".git\x00")
-	args := append(base(t.Meta()), "-r", "--mkpath", "--from0", "--files-from=-", "--delete",
-		"--delete-excluded", "--filter=- /.git/*.lock", "--filter=- /.git/**/*.lock",
+	files := append(base(t.Meta()), "--mkpath", "--from0", "--files-from=-",
 		t.Root+"/", address+":"+t.Workdir()+"/")
-	return rsync(ctx, in.Bytes(), args...)
+	if err := rsync(ctx, in.Bytes(), files...); err != nil {
+		return err
+	}
+	dotgit := append(base(t.Meta()), "--mkpath", "--delete", "--delete-excluded",
+		"--filter=- /*.lock", "--filter=- /**/*.lock", t.Root+"/.git/", address+":"+t.Workdir()+"/.git/")
+	return rsync(ctx, nil, dotgit...)
 }
 
 // UploadPlain mirrors a non-git tree under rsync's .gitignore filter (Y7).
@@ -292,9 +297,14 @@ func DownloadPlain(ctx context.Context, t Tree, address string) error {
 }
 
 // Get copies one root-relative path back whatever its ignore status (Y8); a trailing "/" = contents.
+// A path without the slash lands in its parent directory, so fetching a directory twice never nests
+// it inside itself.
 func Get(ctx context.Context, t Tree, address, rel string) error {
-	args := append(base(t.Meta()), "--update", "--mkpath",
-		address+":"+t.Workdir()+"/"+rel, filepath.Join(t.Root, rel)+trailingSlash(rel))
+	dst := filepath.Join(t.Root, rel) + "/"
+	if !strings.HasSuffix(rel, "/") {
+		dst = filepath.Join(t.Root, filepath.Dir(rel)) + "/"
+	}
+	args := append(base(t.Meta()), "--update", "--mkpath", address+":"+t.Workdir()+"/"+rel, dst)
 	return rsync(ctx, nil, args...)
 }
 

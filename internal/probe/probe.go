@@ -17,8 +17,12 @@ import (
 const Script = `nproc; cut -d' ' -f1 /proc/loadavg; awk '/^MemAvailable:/{print $2}' /proc/meminfo; ` +
 	`{ nvidia-smi -L 2>/dev/null || true; } | grep -c '^GPU' || true`
 
-// Timeout bounds one probe; a slower host counts as down.
-const Timeout = 8 * time.Second
+// Timeout bounds one probe end to end; a slower host counts as down. pipeGrace of it goes to
+// waiting out descendants of a killed ssh that still hold its pipes.
+const (
+	Timeout   = 8 * time.Second
+	pipeGrace = 500 * time.Millisecond
+)
 
 // Stats = one host's measurements.
 type Stats struct {
@@ -56,10 +60,12 @@ func Parse(out string) (Stats, error) {
 
 // Probe measures the host at address. The error carries ssh's last stderr line.
 func Probe(ctx context.Context, address string) (Stats, error) {
-	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	ctx, cancel := context.WithTimeout(ctx, Timeout-pipeGrace)
 	defer cancel()
 	//nolint:gosec // G204: address = trusted pool file entry, after "--"; Script is a constant
 	cmd := exec.CommandContext(ctx, "ssh", remote.SSHArgs(address, Script)...)
+	// Descendants of a killed ssh can keep its pipes open; WaitDelay caps the wait past the deadline.
+	cmd.WaitDelay = pipeGrace
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

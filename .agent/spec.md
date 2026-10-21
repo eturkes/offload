@@ -20,7 +20,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - A git-worktree checkout runs in local slots only (`--pool` → error).
 - Remote runs from one sync root serialize per (host, workdir) on a controller lock; local runs never lock.
 - Killing offload (any signal, incl. SIGKILL) kills the command's session, local or remote: the command runs under a watcher that kills its process group at stdin EOF.
-- Pool = TOML `[[host]]` tables (`name`, `address` = any ssh destination, `slots`). SSH = BatchMode + accept-new host keys.
+- Pool = TOML `[[host]]` tables (`name`, `address` = `[user@]host` or an ssh_config alias — ports + IPv6 via an alias, `slots`). SSH = BatchMode + accept-new host keys.
 - Idle task: each pool host may run one designated indefinite task, declared in `machines/<host>/`, in a systemd slice at idle CPU weight ⇒ offload work preempts it at once; offload code unaffected. nixbox's idle task = trading, user `eturkes`: deployed paused (units + guards installed, nothing enabled, hold kept), Luna set up (pinned Codex); the owner activates + assigns workloads through ChatGPT (Codexify). The intraday trial expired during the migration pause; Luna v1 is source-stopped (a reviewed v2 successor precedes any start).
 - Pool hosts = dedicated machines; LAN-only (nftables: port 22 from 192.168.40.0/24 alone), key-only SSH, no passwords on any account. nixbox accounts: `offload` (offload runs + deploys; wheel, passwordless sudo) + `eturkes` (unprivileged; trading, its idle task, Codexify; home `/home/eturkes` ⇒ trading's tracked absolute paths hold).
 - Trading lives on nixbox at `/home/eturkes/Projects/trading`, every file incl. key files (owner ruling over trading's never-copy rule); ChatGPT iterates on it through Codexify on nixbox (single project). Controller copy deleted after a checksum-verified copy (confirm immediately before).
@@ -33,8 +33,8 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - [x] 0886be2 nixbox: `eturkes` user + idle slice + trading/Codexify deps → deploy
 - [x] 47a8417 trading → nixbox: copy every file, checksum-verify, rebuild env on nixbox, trading gates there
 - [ ] Codexify + Codex CLI on nixbox for trading; owner steps = tunnel auth, ChatGPT connector, Codex login
-- [ ] trading on nixbox: deployed paused + Luna set up (owner activates via ChatGPT); nixbox state documented + committed in trading (trading 04a1a31)
-- [ ] controller trading copy deleted (confirm immediately before)
+- [x] 97f8ffe trading on nixbox: deployed paused + Luna set up (owner activates via ChatGPT); nixbox state documented + committed in trading (trading 04a1a31)
+- [ ] controller trading copy deleted (owner confirmed immediately before; nixbox = live copy, controller project snapshots keep older copies)
 - [x] c9539b5 foundation: Go module, LICENSE + NOTICE, entry point, one test, gate (`.agent/gate`), CI + Dependabot, gate rule
 - [x] e7cb43a contract (`.agent/contract.md`, consultant-reviewed) + pool file + probe
 - [x] d4d4828 slots: heavy interop + pool slots

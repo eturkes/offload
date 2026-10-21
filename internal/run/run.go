@@ -79,7 +79,7 @@ func (r Remote) Run(ctx context.Context) (int, error) {
 	}
 	// 125/255 = the command's own status, or the remote script / ssh failing: the status record
 	// written after the command ran tells them apart (X6).
-	out, err := exec.Command("ssh", remote.SSHArgs(r.Address, "cat "+remote.Quote(r.Meta+"/status"))...).Output() //nolint:gosec // G204: trusted pool address + quoted path
+	out, err := remote.Command(ctx, "ssh", remote.SSHArgs(r.Address, "cat "+remote.Quote(r.Meta+"/status"))...).Output()
 	if err == nil && strings.TrimSpace(string(out)) == nonce+" "+strconv.Itoa(rc) {
 		return rc, nil
 	}

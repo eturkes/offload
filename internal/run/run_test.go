@@ -301,8 +301,9 @@ func TestRemoteLockSerializes(t *testing.T) { // Y11
 	time.Sleep(200 * time.Millisecond)
 	t0 := time.Now()
 	rc, stderr := h.run("nosync", "N5", 0, nil, "true", false)
+	waited := time.Since(t0) // before joining the holder: its own 2 s must not count
 	_ = holder.Wait()
-	if rc != 0 || time.Since(t0) < 1500*time.Millisecond {
-		t.Fatalf("rc %d after %s (%s); want a wait for the lock", rc, time.Since(t0), stderr)
+	if rc != 0 || waited < 1500*time.Millisecond {
+		t.Fatalf("rc %d after %s (%s); want a wait for the lock", rc, waited, stderr)
 	}
 }

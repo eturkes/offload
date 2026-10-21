@@ -45,7 +45,7 @@ slots = 2
 
 - `name` identifies the host in messages. Use letters, digits, `.`, `_` and `-`.
 - `address` is `[user@]host` or a host alias from your `~/.ssh/config`. To use a port or an IPv6 address, define an alias.
-- `slots` is the number of runs the host takes at the same time. The default is 2.
+- `slots` is the number of runs the host takes at the same time. The default is 2. When offload is killed, its host slot becomes free at once, but its command can need up to 10 seconds more to stop.
 
 To use a different file, set `OFFLOAD_CONFIG` to its path.
 `pool.example.toml` contains this example.
@@ -90,7 +90,7 @@ The command then runs in the same subdirectory on the host.
 - Files that you deleted here are also deleted on the host. Ignored files on the host are never deleted.
 
 After the command stops, files that git does not ignore come back.
-A file that you changed here during the run is not replaced.
+A regular file that is newer here than on the host stays as it is here. A symbolic link, or a path whose type changed, takes the version from the host.
 Nothing is deleted here.
 Ignored outputs come back only with `--get`.
 

@@ -3,8 +3,16 @@
 # every process of that session (TERM, KILL after 10 s) when our stdin (offload's pipe) hits EOF or
 # CMD's leader exits. Returns CMD's status. Fds 3-9 the caller opened (locks) stay held by the
 # watcher until teardown ends.
+# alive SID EOF: a process of session SID remains, or (EOF path) the leader is still our child —
+# EOF can arrive before it has called setsid(), when no session SID exists yet. The parent check
+# keeps a reaped leader's reused pid out.
+alive() {
+  pgrep -s "$1" >/dev/null && return 0
+  [ -n "$2" ] && [ "$(ps -o ppid= -p "$1" 2>/dev/null | tr -d ' ')" = "$BASHPID" ]
+}
+
 offload_watch() {
-  local p c who rc deadline
+  local p c who rc deadline eof
   # Explicit <&0: without it a non-interactive bash gives & jobs /dev/null as stdin (instant EOF).
   cat <&0 >/dev/null &
   c=$!
@@ -18,19 +26,22 @@ offload_watch() {
   p=$!
   wait -n -p who "$p" "$c" 2>/dev/null
   rc=$?
-  [ "$who" = "$c" ] || kill "$c" 2>/dev/null
+  eof=
+  if [ "$who" = "$c" ]; then eof=1; else kill "$c" 2>/dev/null; fi
   # Leader gone (stragglers) or offload gone (everything): end the session. bash reaps the leader
-  # on SIGCHLD, so a dead leader never lingers as a zombie pgrep would count.
+  # on SIGCHLD, so a dead leader never lingers as a zombie.
   pkill -TERM -s "$p" 2>/dev/null
+  [ -z "$eof" ] || kill -TERM "$p" 2>/dev/null
   deadline=$((${EPOCHREALTIME/./} + 10000000)) # µs: KILL 10 s after TERM, however slow pgrep runs
-  while pgrep -s "$p" >/dev/null && ((${EPOCHREALTIME/./} < deadline)); do
+  while alive "$p" "$eof" && ((${EPOCHREALTIME/./} < deadline)); do
     sleep 0.1
   done
-  if pgrep -s "$p" >/dev/null; then
+  while alive "$p" "$eof"; do
     pkill -KILL -s "$p" 2>/dev/null
-    while pgrep -s "$p" >/dev/null; do sleep 0.1; done
-  fi
-  if [ "$who" = "$c" ]; then
+    [ -z "$eof" ] || kill -KILL "$p" 2>/dev/null
+    sleep 0.1
+  done
+  if [ -n "$eof" ]; then
     wait "$p" 2>/dev/null
     rc=$?
   fi
