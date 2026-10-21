@@ -29,6 +29,12 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - Attacker check: attach a scratch LUKS image with `systemd-cryptsetup attach <name> <loop> <keyfile> tpm2-measure-pcr=yes`, then `sudo env LD_LIBRARY_PATH=/run/current-system/sw/lib/cryptsetup cryptsetup open --test-passphrase --token-only --token-id <tpm2 token> <luks dev>` → refused (`TPM policy does not match`). The plugin path is needed: NixOS cryptsetup does not find systemd's token plugin.
 - `/boot/EFI/nixos/kernel-*.efi` shows unsigned in `sbctl verify` by design: the signed lanzaboote stub checks it by hash.
 
+## Firmware
+
+- fwupd capsules boot under our Secure Boot: lanzaboote's `fwupd-efi.service` signs `fwupdx64.efi` with our db key into `/run/fwupd-efi` (`sbverify --cert /var/lib/sbctl/keys/db/db.pem` → OK), `DisableShimForSecureBoot=true`. Firmware lacks capsule-on-disk (`OsIndicationsSupported` = 0x03) ⇒ this signed app is the only path.
+- BIOS + dbx updates move PCR 7 ⇒ the bound token refuses at the next boot. A BIOS update may also reset custom Secure Boot keys (Dell keeps active + default stores apart; no source confirms custom keys survive) ⇒ owner within reach of the console.
+- Update: `machines/nixbox/tpm-bind --open` → on the box `sudo fwupdmgr update -y --no-reboot-check && sudo reboot` → box answers SSH → `fwupdmgr get-updates` empty → `machines/nixbox/tpm-bind` (re-seal to the new PCR 7, wipes the open token) → reboot once more, unattended.
+
 ## Idle task
 
 - `user-1001.slice` (`eturkes`) = `CPUWeight=idle` (cgroup `cpu.idle` yields to siblings only ⇒ set on the user slice, sibling of `offload`'s). IO weight unenforced (NVMe scheduler `none`).
