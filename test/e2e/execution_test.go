@@ -203,6 +203,24 @@ func readPIDIfAny(path string) int {
 	return pid
 }
 
+func TestX8RemoteProcessShowsScriptPath(t *testing.T) {
+	s := newSandbox(t, true)
+	excludes := filepath.Join(s.base, "global-excludes")
+	s.write(excludes, "# excludes-marker-7f3a\n*.tmp\n")
+	s.git("config", "--global", "core.excludesFile", excludes)
+	r := s.run("run", "--pool", "--", "bash", "-c", `tr '\0' ' ' < /proc/$PPID/cmdline`)
+	r.requireCode(t, 0)
+	requireContains(t, r.stdout, "bash offload/.meta/", "/run-", ".bash offload/project-", " git ")
+	for _, leak := range []string{"offload_watch", "excludes-marker-7f3a", "prune_one"} {
+		if strings.Contains(r.stdout, leak) {
+			t.Errorf("remote argv shows %q: %q", leak, r.stdout)
+		}
+	}
+	if len(r.stdout) > 400 {
+		t.Errorf("remote argv is %d bytes: %q", len(r.stdout), r.stdout)
+	}
+}
+
 func TestX2ArgvAndEnvironment(t *testing.T) {
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {

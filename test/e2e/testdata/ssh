@@ -43,7 +43,7 @@ if [[ -f $home/.transport-fail ]]; then
     printf 'ssh: simulated connection reset\n' >&2
     exit 255
 fi
-if [[ -f $home/.run-fail && $command == *offload_watch* ]]; then
+if [[ -f $home/.run-fail && $command == *sha256sum* ]]; then # run phase = boot (run.go)
     printf 'ssh: simulated connection reset during the run\n' >&2
     exit 255
 fi

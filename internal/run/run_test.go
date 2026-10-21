@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/eturkes/offload/internal/remote"
 )
 
 func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
@@ -372,12 +374,23 @@ func (h host) write(p, body string) {
 
 func (h host) exists(p string) bool { _, err := os.Lstat(h.path(p)); return err == nil }
 
-// run executes the remote script with stdin = offload's pipe: the framed list, then held open until
-// the script exits (as offload does); eof = close right after the list (offload died mid-list).
-func (h host) run(mode, nonce string, count int, stdin []byte, cmd string, eof bool) (int, string) {
+// run executes the ssh command line (boot → run script) with stdin = offload's pipe: the run script,
+// the framed list, then held open until the script exits (as offload does); eof = close right after
+// the list (offload died mid-list).
+func (h host) run(mode, nonce string, count int, list []byte, cmd string, eof bool) (int, string) {
 	h.t.Helper()
-	c := exec.Command("bash", "-c", watchScript+remoteScript, "offload", "offload/w", "offload/.meta/w", ".",
-		mode, nonce, strconv.Itoa(count), "", cmd)
+	return h.boot(boot, append([]byte(runScript), list...), mode, nonce, count, cmd, eof)
+}
+
+// boot runs script (a boot variant) as the remote login shell would, with the given stdin.
+func (h host) boot(script string, stdin []byte, mode, nonce string, count int, cmd string, eof bool) (int, string) {
+	h.t.Helper()
+	line := remote.Join([]string{
+		"bash", "-c", script, "offload", strconv.Itoa(len(runScript)), runSum,
+		"offload/w", "offload/.meta/w", ".", mode, nonce, strconv.Itoa(count), cmd,
+	})
+	c := exec.Command("bash", "-c", line)
+	c.Dir = h.home
 	c.Env = append(os.Environ(), "HOME="+h.home)
 	in, err := c.StdinPipe()
 	if err != nil {
@@ -403,8 +416,9 @@ func (h host) run(mode, nonce string, count int, stdin []byte, cmd string, eof b
 	return 0, stderr.String()
 }
 
+// frame = NONCE, an empty EXCLUDES record, then paths — git mode's list after the run script.
 func frame(nonce string, paths ...string) []byte {
-	return []byte(nonce + "\x00" + strings.Join(append(paths, ""), "\x00"))
+	return []byte(nonce + "\x00\x00" + strings.Join(append(paths, ""), "\x00"))
 }
 
 func (h host) gitWorkdir() {
@@ -415,6 +429,51 @@ func (h host) gitWorkdir() {
 	}
 	if out, err := exec.Command("git", "-C", w, "init", "-q").CombinedOutput(); err != nil {
 		h.t.Fatalf("%v %s", err, out)
+	}
+}
+
+func (h host) runFile() string { return h.path("offload/.meta/w/run-" + runSum[:16] + ".bash") }
+
+func TestBootRefusesShortOrCorruptScript(t *testing.T) { // X8: nothing runs from a bad copy
+	corrupt := []byte(runScript)
+	corrupt[len(corrupt)/2] ^= 1
+	for name, stdin := range map[string][]byte{
+		"short": []byte(runScript[:len(runScript)-40]), "corrupt": corrupt, "empty": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newHost(t)
+			rc, stderr := h.boot(boot, stdin, "nosync", "N", 0, "touch ran", true)
+			if rc != 125 || !strings.Contains(stderr, "cannot install the run script") || h.exists("offload/w/ran") || h.exists("offload/.meta/w/run-"+runSum[:16]+".bash") {
+				t.Fatalf("rc %d stderr %q ran %v", rc, stderr, h.exists("offload/w/ran"))
+			}
+			if left, _ := filepath.Glob(h.path("offload/.meta/w/run-*")); len(left) != 0 {
+				t.Errorf("temp files left: %v", left)
+			}
+		})
+	}
+}
+
+func TestBootReplacesWrongScriptFile(t *testing.T) { // X8: the verified copy wins over whatever sits there
+	h := newHost(t)
+	h.write("offload/.meta/w/run-"+runSum[:16]+".bash", "touch stale-ran; exit 99\n")
+	rc, stderr := h.run("nosync", "N", 0, nil, "exit 7", false)
+	b, _ := os.ReadFile(h.runFile())
+	if rc != 7 || h.exists("offload/w/stale-ran") || string(b) != runScript {
+		t.Fatalf("rc %d stderr %q stale ran %v", rc, stderr, h.exists("offload/w/stale-ran"))
+	}
+}
+
+func TestBootFailureNeverRunsAStaleScript(t *testing.T) { // X8: install failure → 125, old file untouched + unrun
+	h := newHost(t)
+	h.write("offload/.meta/w/run-"+runSum[:16]+".bash", "touch stale-ran\n")
+	h.write("offload/w/keep", "")
+	if err := os.Chmod(h.path("offload/.meta/w"), 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(h.path("offload/.meta/w"), 0o700) })
+	rc, stderr := h.run("nosync", "N", 0, nil, "touch ran", false)
+	if rc != 125 || h.exists("stale-ran") || h.exists("offload/w/stale-ran") || h.exists("offload/w/ran") {
+		t.Fatalf("rc %d stderr %q", rc, stderr)
 	}
 }
 
