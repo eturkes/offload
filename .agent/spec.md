@@ -29,6 +29,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
+- [ ] MAINTAIN request: fund every `.agent/deferred.md` row in rank order; owner parts → owed on the row; one owner question once agent-side work ends, then fund its answers. Resume = first row without an `Owed` note or closing commit
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase

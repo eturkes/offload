@@ -41,11 +41,9 @@ grep -q 'luks.devices."cryptroot"' "$here/hardware-configuration.nix" || { echo 
 scp -q $o "$here"/*.nix "root@$ip:/mnt/etc/nixos/"
 ssh $o "root@$ip" "set -eu
   chmod 600 /mnt/etc/nixos/wifi.nix
-  nixos-install --no-root-passwd
-  # A reused disk keeps a Linux Boot Manager entry naming the old ESP; firmware then falls through to USB.
-  nix-shell -p efibootmgr --run 'for b in \$(efibootmgr | sed -n \"s/^Boot\\([0-9A-F]*\\)\\* Linux Boot Manager.*/\\1/p\"); do efibootmgr -q -b \$b -B; done
-    efibootmgr -q -c -d $disk -p 1 -L \"Linux Boot Manager\" -l \"\\\\EFI\\\\systemd\\\\systemd-bootx64.efi\"'
-  systemd-cryptenroll --unlock-key-file=/run/setup.key --tpm2-device=auto --tpm2-pcrs= $luks"
+  nixos-install --no-root-passwd"
+ssh $o "root@$ip" sh -s -- "$disk" < "$here/efi-entry"
+ssh $o "root@$ip" "systemd-cryptenroll --unlock-key-file=/run/setup.key --tpm2-device=auto --tpm2-pcrs= $luks"
 # Recovery key: straight from the box into an owner-only file, never through logs.
 mkdir -p "$(dirname "$rk")"
 (umask 077; ssh $o "root@$ip" "systemd-cryptenroll --unlock-key-file=/run/setup.key --recovery-key $luks 2>&1" \
