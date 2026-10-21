@@ -77,7 +77,11 @@ offload_watch() {
       fi
     done
   fi
-  if [ -n "$__rt" ] && __mark=$(mktemp 2>/dev/null); then __unit=offload-$BASHPID-$SRANDOM.scope; fi
+  # The mark lives as long as CMD; a SIGKILLed watcher leaves it ⇒ the manager's runtime dir, which
+  # systemd clears with the user's session.
+  if [ -n "$__rt" ] && __mark=$(mktemp -p "$__rt" offload-mark.XXXXXX 2>/dev/null); then
+    __unit=offload-$BASHPID-$SRANDOM.scope
+  fi
   offload_launch "$__unit" "$__rt" "$__mark" "$@"
   offload_wait
   # Leader gone with an empty mark: the scope never started, so CMD never ran ⇒ start it plainly.

@@ -337,6 +337,22 @@ func TestWatcherTermBeforeSetsidRunsNothing(t *testing.T) { // X1: TERM to the w
 	}
 }
 
+func TestScopeMarkLivesInRuntimeDirUntilTeardown(t *testing.T) { // X1: never /tmp; removed after the run
+	requireScope(t)
+	out := filepath.Join(t.TempDir(), "mark")
+	// The mark holds CMD's cgroup line ⇒ CMD finds its own among other runs' marks.
+	cmd := `grep -lxF "$(cat /proc/self/cgroup)" /run/user/$UID/offload-mark.* > "$1"`
+	rc, err := Local(context.Background(), []string{"bash", "-c", cmd, "_", out}, nil)
+	b, _ := os.ReadFile(out)
+	mark := strings.TrimSpace(string(b))
+	if err != nil || rc != 0 || !strings.HasPrefix(mark, "/run/user/") || strings.Contains(mark, "\n") {
+		t.Fatalf("rc %d err %v: own mark under /run/user during the run = %q", rc, err, mark)
+	}
+	if exists(mark) {
+		t.Errorf("mark %s outlived its run", mark)
+	}
+}
+
 func TestScopeKillsTermIgnoringDaemonAfterGrace(t *testing.T) { // X1: KILL at 10 s (S5 lock: e2e local-kill-escalation)
 	requireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
