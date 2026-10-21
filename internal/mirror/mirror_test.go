@@ -218,3 +218,20 @@ func TestGlobalExcludes(t *testing.T) {
 		t.Fatalf("configured: %q %v", got, err)
 	}
 }
+
+func TestRootsThatCopyEverythingStayLocal(t *testing.T) { // Y1: never mirror / or $HOME to a host
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	for _, cwd := range []string{"/", home} {
+		tr, err := Inspect(context.Background(), cwd)
+		if err != nil || tr.LocalOnly == "" {
+			t.Errorf("Inspect(%q) = %+v, %v; want LocalOnly", cwd, tr, err)
+		}
+	}
+	for _, root := range []string{"", "relative", "/"} {
+		err := UploadPlain(context.Background(), Tree{Root: root, Sub: "."}, "nohost")
+		if err == nil || !strings.Contains(err.Error(), "refusing to sync") {
+			t.Errorf("UploadPlain(root %q): %v; want a refusal before rsync", root, err)
+		}
+	}
+}

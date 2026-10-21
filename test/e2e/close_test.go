@@ -77,3 +77,15 @@ func TestS4SameTreeRunsSerializeAtController(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestY1HomeDirectoryNeverGoesToAHost(t *testing.T) {
+	s := newSandbox(t, false)
+	s.cwd = filepath.Join(s.base, "home")
+	r := s.run("run", "--pool", "--", "true")
+	r.requireCode(t, 125)
+	requireContains(t, r.stderr, "home directory")
+	if calls, _ := filepath.Glob(filepath.Join(s.hosts, "alpha", ".ssh-call-*")); len(calls) != 0 {
+		t.Fatalf("contacted the host %d times", len(calls))
+	}
+	s.run("run", "--", "true").requireCode(t, 0) // without --pool: a local slot
+}

@@ -44,7 +44,7 @@ func Inspect(ctx context.Context, cwd string) (Tree, error) {
 				return Tree{}, fmt.Errorf("git does not recognize the repository at %s: %w", d, err)
 			}
 			if d == filepath.Dir(d) {
-				return Tree{Root: cwd, Sub: "."}, nil
+				return Tree{Root: cwd, Sub: ".", LocalOnly: copiesEverything(cwd)}, nil
 			}
 		}
 	}
@@ -56,8 +56,31 @@ func Inspect(ctx context.Context, cwd string) (Tree, error) {
 	if t.Sub == "" {
 		t.Sub = "."
 	}
+	if t.LocalOnly = copiesEverything(t.Root); t.LocalOnly != "" {
+		return t, nil
+	}
 	t.LocalOnly, err = localOnly(ctx, t.Root, f[1], f[2])
 	return t, err
+}
+
+// copiesEverything = why syncing root would ship far more than a project (Y1): `/` or the home
+// directory (keys, credentials) never go to a host.
+func copiesEverything(root string) string {
+	if home, err := os.UserHomeDir(); err == nil && filepath.Clean(home) == filepath.Clean(root) {
+		return "it is your home directory; syncing it would copy everything in it"
+	}
+	if root == "/" {
+		return "it is the filesystem root"
+	}
+	return ""
+}
+
+// check = the root every transfer starts from: absolute and not `/`, whatever produced it.
+func (t Tree) check() error {
+	if !filepath.IsAbs(t.Root) || filepath.Clean(t.Root) == "/" {
+		return fmt.Errorf("refusing to sync root %q", t.Root)
+	}
+	return nil
 }
 
 func localOnly(ctx context.Context, root, gitDir, commonDir string) (string, error) {
@@ -260,6 +283,9 @@ func base(meta string) []string {
 // the host keeps a directory of ignored files makes rsync fail (125) instead of deleting them.
 // `.git` lock files never cross; stale remote ones go.
 func UploadGit(ctx context.Context, t Tree, address string, list []string) error {
+	if err := t.check(); err != nil {
+		return err
+	}
 	var in bytes.Buffer
 	for _, p := range list {
 		in.WriteString(p)
@@ -277,6 +303,9 @@ func UploadGit(ctx context.Context, t Tree, address string, list []string) error
 
 // UploadPlain mirrors a non-git tree under rsync's .gitignore filter (Y7).
 func UploadPlain(ctx context.Context, t Tree, address string) error {
+	if err := t.check(); err != nil {
+		return err
+	}
 	args := append(base(t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
 		t.Root+"/", address+":"+t.Workdir()+"/")
 	return rsync(ctx, nil, args...)
@@ -284,6 +313,9 @@ func UploadPlain(ctx context.Context, t Tree, address string) error {
 
 // DownloadGit fetches the remote run's output list (Y6).
 func DownloadGit(ctx context.Context, t Tree, address string) error {
+	if err := t.check(); err != nil {
+		return err
+	}
 	args := append(base(t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
 		"--ignore-missing-args", address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
@@ -291,6 +323,9 @@ func DownloadGit(ctx context.Context, t Tree, address string) error {
 
 // DownloadPlain fetches a non-git tree's outputs under the .gitignore filter (Y7).
 func DownloadPlain(ctx context.Context, t Tree, address string) error {
+	if err := t.check(); err != nil {
+		return err
+	}
 	args := append(base(t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
 		address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
@@ -300,6 +335,9 @@ func DownloadPlain(ctx context.Context, t Tree, address string) error {
 // A path without the slash lands in its parent directory, so fetching a directory twice never nests
 // it inside itself.
 func Get(ctx context.Context, t Tree, address, rel string) error {
+	if err := t.check(); err != nil {
+		return err
+	}
 	dst := filepath.Join(t.Root, rel) + "/"
 	if !strings.HasSuffix(rel, "/") {
 		dst = filepath.Join(t.Root, filepath.Dir(rel)) + "/"
