@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+original=("$@")
+while (($#)); do
+    case "$1" in
+        -o|-l|-p|-i|-F|-J|-S|-e) shift 2 ;;
+        -o*|-l*|-p*|-i*|-F*|-J*|-S*|-T|-t|-tt|-n|-q|-v|-vv|-vvv|-x|-C) shift ;;
+        --) shift; break ;;
+        -*) printf 'fake ssh: unsupported option %s\n' "$1" >&2; exit 254 ;;
+        *) break ;;
+    esac
+done
+(($#)) || exit 254
+host=${1##*@}
+shift
+home=${OFFLOAD_FAKE_HOSTS:?}/$host
+if [[ ! -d $home ]]; then
+    printf 'ssh: connect to host %s port 22: Connection refused\n' "$host" >&2
+    exit 255
+fi
+printf '%s\0' "${original[@]}" > "$home/.ssh-call-$$"
+command=$*
+case "$command" in
+    *loadavg*|*nproc*)
+        if [[ -f $home/.probe ]]; then
+            /usr/bin/cat "$home/.probe"
+            exit 0
+        fi
+        ;;
+esac
+if [[ -f $home/.transport-fail ]]; then
+    printf 'ssh: simulated connection reset\n' >&2
+    exit 255
+fi
+if [[ -f $home/.upload-fail && $command == *rsync* && $command != *--sender* ]]; then
+    printf 'rsync: injected upload failure\n' >&2
+    exit 23
+fi
+if [[ -f $home/.download-fail && $command == *rsync* && $command == *--sender* ]]; then
+    printf 'rsync: injected download failure\n' >&2
+    exit 23
+fi
+export HOME=$home
+export XDG_CONFIG_HOME=$home/.config
+export GIT_CONFIG_GLOBAL=$home/.gitconfig
+cd "$HOME"
+exec bash -c "$command"
