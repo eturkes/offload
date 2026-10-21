@@ -1,0 +1,7 @@
+#!/bin/sh
+# deploy [nixos-rebuild action] — push machines/nixbox to the installed box + rebuild (default: switch).
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
+rsync -q --chmod=F600 --rsync-path="sudo rsync" "$here"/*.nix "offload@$ip:/etc/nixos/"
+ssh "offload@$ip" "sudo nixos-rebuild ${1:-switch}"
