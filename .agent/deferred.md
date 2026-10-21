@@ -1,6 +1,6 @@
 # Deferred
 
-- `machines/nixbox/install` EFI-entry rewrite (stale `Linux Boot Manager` → USB fall-through) landed untested; nested quoting is fragile. Accept: next reinstall boots the disk with no manual `efibootmgr`.
+- `machines/nixbox/install` EFI-entry rewrite (stale `Linux Boot Manager` → USB fall-through) = `machines/nixbox/efi-entry`, checked against a fake `efibootmgr` + a live dry run alone. Accept: next reinstall boots the disk with no manual `efibootmgr`. Owed (owner): a reinstall (wipes the disk; box on the installer stick).
 - nixbox BIOS 1.5.4 (old) → firmware updates via `fwupd`. A capsule may change PCR 7 → TPM refuses → recovery key at console. Accept: `fwupdmgr get-updates` empty + box reboots unattended after.
 - LUKS header/root-swap attack (attacker-crafted volume boots, asks TPM for the real key under unchanged PCR 7). Accept: TPM policy also binds the volume (systemd `tpm2-measure-pcr=yes` + PCR 15 policy or `systemd-pcrlock`), and a swapped-header boot fails to unseal.
 - nixbox on Wi-Fi only → rsync of large inputs is link-bound. Accept: USB-C Ethernet adapter added to `network.nix` + measured throughput recorded.

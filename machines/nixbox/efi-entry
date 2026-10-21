@@ -1,0 +1,17 @@
+#!/bin/sh
+# efi-entry <disk> — on the box, as root, after nixos-install: leave exactly one `Linux Boot Manager`
+# entry, pointing at <disk>'s ESP (partition 1). A reused disk keeps entries naming the old ESP;
+# firmware skips them and falls through to USB. Fed by `install` (`sh -s -- <disk>` on stdin).
+# EFIBOOTMGR = the tool (default: nixpkgs' efibootmgr); DRY_RUN=1 prints the changes instead.
+set -eu
+disk=${1:?usage: efi-entry /dev/<disk>}
+efi=${EFIBOOTMGR:-$(nix-build '<nixpkgs>' -A efibootmgr --no-out-link)/bin/efibootmgr}
+run() {
+  if [ -n "${DRY_RUN:-}" ]; then echo "$*"; else "$@"; fi
+}
+# Active (`*`) and inactive (` `) entries alike; the label ends at a tab (device path) or the line end.
+stale=$("$efi" | sed -n 's/^Boot\([0-9A-F]\{4\}\)[* ] Linux Boot Manager\(\t.*\)\{0,1\}$/\1/p')
+for b in $stale; do
+  run "$efi" -q -b "$b" -B
+done
+run "$efi" -q -c -d "$disk" -p 1 -L 'Linux Boot Manager' -l '\EFI\systemd\systemd-bootx64.efi'
