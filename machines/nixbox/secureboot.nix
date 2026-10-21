@@ -10,6 +10,10 @@ in
 {
   imports = [ lanzaboote.nixosModules.lanzaboote ];
   boot.loader.systemd-boot.enable = lib.mkForce false;
-  boot.lanzaboote = { enable = true; pkiBundle = "/var/lib/sbctl"; configurationLimit = 10; };
+  boot.lanzaboote = {
+    enable = true;
+    pkiBundle = "/var/lib/sbctl";
+    configurationLimit = 10;
+  };
   environment.systemPackages = [ pkgs.sbctl ];
 }

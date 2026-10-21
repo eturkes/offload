@@ -1,0 +1,7 @@
+# Gate
+
+- Full gate = `.agent/gate` (CI runs the same command, `.github/workflows/gate.yml`): fmt (`golangci-lint fmt --diff`: gofumpt + gci) · lint (`golangci-lint run`, `.golangci.yml`) · tidy (`go mod tidy -diff`) · test (`gotestsum -- -race -shuffle=on -count=1 ./...`) · build (`CGO_ENABLED=0 go build -trimpath`) · vuln (`govulncheck -test`) · secrets (Betterleaks over HEAD history) · actions (actionlint) · zizmor (`--offline`) · shell (shellcheck `-S warning` over tracked sh/bash-shebang files) · nix (`nixfmt --check` over tracked `*.nix`) · spec-lint. Prints rc + seconds per step, then the 10 slowest tests; rc 0 only when every step passes.
+- Fast gate (iteration) = `.agent/gate fast [pkg…]`: fmt + lint + cached tests of those packages (default `./...`) + spec-lint. A unit closes on the full gate.
+- Tools = `.agent/tool <name>`: pinned versions, release assets sha256-checked, go-installed ones checked by the Go sumdb, cached in gitignored `.tools/`. Bump a pin = version + digest from the release page in `.agent/tool`, then a full gate. Go = `go.mod` `go 1.27.3` (local toolchain auto-fetches); CI pins setup-go to the same + `GOTOOLCHAIN=local`.
+- Suppressions name the rule + reason inline (`//nolint:<linter> // why`; `nolintlint` reds a bare or unused one).
+- Separate CI: CodeQL (`.github/workflows/codeql.yml`, Go, manual build). Dependabot (`.github/dependabot.yml`) = gomod + github-actions weekly; it never bumps `go.mod`'s `go` line or `.agent/tool` pins → those move by hand.

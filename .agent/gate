@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# gate — the repo's check chain (`.claude/rules/gate.md`): each step's rc + wall-clock, then the 10
+# slowest tests; rc 0 only when every step passes.
+#   .agent/gate                 full gate (CI runs exactly this)
+#   .agent/gate fast [pkg…]     iteration: fmt + lint + cached tests of pkg… (default ./...) + spec-lint
+set -u
+cd "$(dirname "$0")/.." || exit 2
+names=() rcs=() secs=()
+step() { # step <name> <cmd…>
+  local name=$1 t0=$EPOCHREALTIME rc
+  shift
+  printf '== %s: %s\n' "$name" "$*"
+  "$@"
+  rc=$?
+  names+=("$name") rcs+=("$rc") secs+=("$(awk -v a="$t0" -v b="$EPOCHREALTIME" 'BEGIN{printf "%.1f", b - a}')")
+}
+shell_scripts() { # tracked files with a sh/bash shebang
+  git ls-files -z | xargs -0 awk 'FNR == 1 && /^#!.*[/ ](ba)?sh([ \t]|$)/ { print FILENAME } { nextfile }'
+}
+tests=.tools/test.json
+mkdir -p .tools
+step fmt .agent/tool golangci-lint fmt --diff
+if [ "${1:-}" = fast ]; then
+  shift
+  pkgs=("${@:-./...}")
+  step lint .agent/tool golangci-lint run "${pkgs[@]}"
+  step test .agent/tool gotestsum --format pkgname-and-test-fails --jsonfile "$tests" -- "${pkgs[@]}"
+else
+  step lint .agent/tool golangci-lint run ./...
+  step tidy go mod tidy -diff
+  # -race needs cgo; the shipped binary is built static below.
+  step test .agent/tool gotestsum --format pkgname-and-test-fails --jsonfile "$tests" -- \
+    -race -shuffle=on -count=1 ./...
+  step build env CGO_ENABLED=0 go build -trimpath -o /dev/null ./cmd/offload
+  step vuln .agent/tool govulncheck -test ./...
+  step secrets .agent/tool betterleaks git . --log-opts=HEAD --redact=100 --validation=false \
+    --no-banner --log-level warn
+  step actions .agent/tool actionlint
+  step zizmor uvx zizmor==1.31.1 --offline --quiet .github/workflows
+  mapfile -t scripts < <(shell_scripts)
+  step shell .agent/tool shellcheck -S warning "${scripts[@]}"
+  mapfile -t nix < <(git ls-files '*.nix')
+  step nix .agent/tool nixfmt --check "${nix[@]}"
+fi
+step spec-lint .agent/spec-lint
+printf '\n%-10s %4s %9s\n' step rc seconds
+fail=0
+for i in "${!names[@]}"; do
+  printf '%-10s %4s %9s\n' "${names[$i]}" "${rcs[$i]}" "${secs[$i]}"
+  [ "${rcs[$i]}" -eq 0 ] || fail=1
+done
+if [ -s "$tests" ]; then
+  printf '\nslowest tests:\n'
+  .agent/tool gotestsum tool slowest --jsonfile "$tests" --num 10
+fi
+exit "$fail"

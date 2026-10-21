@@ -5,7 +5,12 @@ let
   host = import ./host.nix;
 in
 {
-  imports = [ ./hardware-configuration.nix ./network.nix ./secureboot.nix ./idle.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ./network.nix
+    ./secureboot.nix
+    ./idle.nix
+  ];
 
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
@@ -14,7 +19,10 @@ in
   boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" ];
   # consoleblank: panel off after 60 s → less heat under a shut lid.
   # intel_iommu: DMA isolation against Thunderbolt-port attacks on the unlocked RAM.
-  boot.kernelParams = [ "consoleblank=60" "intel_iommu=on" ];
+  boot.kernelParams = [
+    "consoleblank=60"
+    "intel_iommu=on"
+  ];
 
   # iwlwifi firmware = the box's only network link; microcode rides the same switch.
   hardware.enableRedistributableFirmware = true;
@@ -30,7 +38,11 @@ in
   services.openssh = {
     enable = true;
     openFirewall = false;
-    settings = { PasswordAuthentication = false; KbdInteractiveAuthentication = false; PermitRootLogin = "no"; };
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+    };
   };
 
   users.users.offload = {
@@ -44,14 +56,20 @@ in
   # Compute posture: full clocks, thermald to hold them without hitting the trip point.
   powerManagement.cpuFreqGovernor = "performance";
   services.thermald.enable = true;
-  services.earlyoom = { enable = true; freeMemThreshold = 3; };
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 3;
+  };
   zramSwap.enable = true;
   services.fstrim.enable = true;
 
   # Always on AC → cap charge at 80 % to spare the battery.
   systemd.services.battery-charge-limit = {
     wantedBy = [ "multi-user.target" ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
     script = ''
       b=/sys/class/power_supply/BAT0
       echo 75 > $b/charge_control_start_threshold
@@ -60,31 +78,75 @@ in
   };
 
   # Headless compute box: never suspend, lid shut is fine.
-  services.logind.settings.Login = { HandleLidSwitch = "ignore"; HandleLidSwitchExternalPower = "ignore"; HandleLidSwitchDocked = "ignore"; };
-  systemd.targets = lib.genAttrs [ "sleep" "suspend" "hibernate" "hybrid-sleep" ] (_: { enable = false; });
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
+  systemd.targets = lib.genAttrs [ "sleep" "suspend" "hibernate" "hybrid-sleep" ] (_: {
+    enable = false;
+  });
 
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
     trusted-users = [ "offload" ];
     auto-optimise-store = true;
   };
-  nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
   system.autoUpgrade.enable = true;
 
   # Prebuilt toolchains (uv pythons, pip wheels, rustup) expect an FHS loader.
   programs.nix-ld = {
     enable = true;
-    libraries = with pkgs; [ stdenv.cc.cc.lib zlib zstd bzip2 xz openssl libffi curl glib libxml2 ];
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib
+      zlib
+      zstd
+      bzip2
+      xz
+      openssl
+      libffi
+      curl
+      glib
+      libxml2
+    ];
   };
   # Nix-built python bypasses nix-ld → wheels miss libstdc++; uv's standalone builds go through it.
   environment.variables.UV_PYTHON_PREFERENCE = "only-managed";
   virtualisation.podman.enable = true;
   environment.systemPackages = with pkgs; [
-    rsync git gcc gnumake cmake pkg-config python3 uv tmux htop btop nvme-cli lm_sensors
+    rsync
+    git
+    gcc
+    gnumake
+    cmake
+    pkg-config
+    python3
+    uv
+    tmux
+    htop
+    btop
+    nvme-cli
+    lm_sensors
     # Project bootstraps fetch pinned tools themselves (gitleaks, rustup, Verus, `just tools`).
-    curl jq unzip xz just file
+    curl
+    jq
+    unzip
+    xz
+    just
+    file
     # Trading (contracts build + tests) + Codexify's tool checks.
-    nodejs pnpm ripgrep gh
+    nodejs
+    pnpm
+    ripgrep
+    gh
   ];
 
   system.stateVersion = host.stateVersion;
