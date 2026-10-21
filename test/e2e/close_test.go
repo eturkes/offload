@@ -24,6 +24,12 @@ func TestX6TransportFailureDuringRunIs125(t *testing.T) {
 	requireContains(t, r.stderr, "simulated connection reset during the run")
 }
 
+func TestX6TransportFailureDuringNoSyncRunIs125(t *testing.T) { // no download to fail afterwards
+	s := newSandbox(t, true)
+	s.write(filepath.Join(s.hosts, "alpha", ".run-fail"), "")
+	s.run("run", "--no-sync", "--", "true").requireCode(t, 125)
+}
+
 func TestR2StatusShowsProbeNumbers(t *testing.T) {
 	s := newSandbox(t, false, host{name: "alpha", cpus: 12, load: 3, gpus: 2, slots: 3})
 	r := s.run("status")

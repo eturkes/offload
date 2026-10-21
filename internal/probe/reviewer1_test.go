@@ -58,7 +58,7 @@ func TestReviewR1ProbeDeadlineWithInheritedOutput(t *testing.T) {
 		if err == nil {
 			t.Error("R1: stalled probe must report down")
 		}
-	case <-time.After(Timeout + time.Second):
-		t.Errorf("R1: Probe still blocked after %s; killed ssh's descendant holds stdout/stderr open", Timeout+time.Second)
+	case <-time.After(8*time.Second + 500*time.Millisecond): // contract R1: ≤ 8 s end to end (+ scheduling slack)
+		t.Errorf("R1: Probe still blocked after 8.5 s; killed ssh's descendant holds stdout/stderr open")
 	}
 }
