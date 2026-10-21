@@ -29,7 +29,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] nixbox: `eturkes` user + idle slice + trading/Codexify deps → deploy
+- [x] 0886be2 nixbox: `eturkes` user + idle slice + trading/Codexify deps → deploy
 - [ ] trading → nixbox: copy every file, checksum-verify, rebuild env on nixbox, trading gates there
 - [ ] Codexify + Codex CLI on nixbox for trading; owner steps = tunnel auth, ChatGPT connector, Codex login
 - [ ] trading on nixbox: intraday paper + Luna as the idle task; owner approval recorded + committed in trading

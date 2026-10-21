@@ -1,0 +1,35 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - gosec
+    - govet
+    - ineffassign
+    - nilerr
+    - nolintlint
+    - revive
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      # Diagnostics to stdout/stderr: a failed write has no better channel to report on.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # struct packing: no hot structs in a CLI
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections: [standard, default, localmodule]

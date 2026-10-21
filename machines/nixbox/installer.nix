@@ -4,7 +4,10 @@ let
   host = import ./host.nix;
 in
 {
-  imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix" ./network.nix ];
+  imports = [
+    "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
+    ./network.nix
+  ];
 
   systemd.services.sshd.wantedBy = lib.mkForce [ "multi-user.target" ];
   users.users.nixos.openssh.authorizedKeys.keys = host.authorizedKeys;
