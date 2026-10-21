@@ -6,3 +6,4 @@
 - nixbox on Wi-Fi only → rsync of large inputs is link-bound. Accept: USB-C Ethernet adapter added to `network.nix` + measured throughput recorded.
 - Pool hosts have no admission control: concurrent `offload run`s from several sessions all stack on the least-loaded host. Accept: per-host slots (like `heavy`) or load-aware wait, shown by `offload status`.
 - Sync honors per-dir `.gitignore` alone (not `.git/info/exclude`, global excludes, or a `.git` file of a git worktree). Accept: upload set = `git ls-files -co --exclude-standard` + `.git` resolved for worktrees.
+- `.gitignore`d project caches never travel ⇒ a project's first remote run is cold (cement `.agent/gate`: D28 verdict cache absent → every range revision replayed, ~5 min each; run stopped after 26 min). Accept: opt-in upload of named ignored paths (`--put PATH`), cement's gate on nixbox replays ≤ its local count.

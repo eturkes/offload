@@ -11,7 +11,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 - Prototype stack = Python single file under `uv run --script`, stdlib only; shells out to `ssh` + `rsync`.
 - `run` model = pick least-loaded reachable host (score = 1-min loadavg / nproc; `--gpu` filters to NVIDIA hosts) → rsync cwd up as a mirror (`.git` included, deletions propagate, `.gitignore`d paths never cross) → `bash -lc` the command over ssh, live output, rc passed through → rsync back (`--update`, no delete, `.git` + ignored paths excluded; `--get PATH` fetches an ignored output).
-- User = agents alone (owner never calls it). Trigger = agent's own call: `heavy --status` shows every local slot held → `offload run` instead of waiting; rule lives in the global agent `CLAUDE.md` beside `heavy`.
+- User = agents alone (owner never calls it). Trigger = `heavy` contention (every local slot held) → work moves to the pool. Prototype form = agent's own call (`heavy --status` → `offload run`), rule in the global agent `CLAUDE.md` beside `heavy`. Final form (agent rule vs tool-decided) = open, decided in IMPLEMENT (`Tasks`).
 - Runs from one cwd serialize on a local lock (waiting message); killing `offload` (any signal, incl. SIGKILL) kills the remote command's session.
 - Remote workdir = `~/offload/<dirname>-<sha1(abs cwd)[:8]>`, persistent across runs ⇒ incremental syncs.
 - Pool = TOML `[[host]]` tables (`name`, `address` = any ssh destination). SSH = BatchMode + accept-new host keys.
@@ -22,12 +22,10 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [x] b989704 Prototype CLI `status` + `run`
-- [x] 0738ff6 nixbox: find on LAN, key SSH, install NixOS, static IP, `offload` user, LUKS + TPM + Secure Boot
-- [x] b989704 Drive CLI against nixbox
-- [ ] Round 1: `heavy` contended → agents offload to nixbox (safe sync both ways, run lock, remote kill, `.git` up, nixbox bootstrap tools, global rule, live sessions told + one real gate offloaded)
+- [ ] Trigger form, decided first: agent rule (prototype) vs tool-decided vs hybrid `offload heavy -- <cmd>` (agent opts a command in = offloadable; tool runs it in a free local `heavy` slot, else on the pool, else keeps waiting on both; stderr names where it ran; timing-recorded runs stay on plain `heavy`). MAIN's ITERATE recommendation = hybrid: offloadability needs the agent's judgment, contention timing needs the tool (an agent blocked inside `heavy` never sees contention arise).
+- [ ] Ship as a real installable command: `~/.local/bin/offload` currently symlinks into `prototype/` → repoint at the IMPLEMENT entry point before the prototype retires; global `CLAUDE.md` rule re-derived from what ships (its nixbox specs + "both slots" = prototype-time facts).
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
 
-ITERATE — whole product
+IMPLEMENT — whole product
