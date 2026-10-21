@@ -197,6 +197,19 @@ func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
 	}
 }
 
+func TestX1NestedRunEndsWithOuterRun(t *testing.T) { // X1 + X3: TERM to an inner watcher = EOF
+	s := newSandbox(t, false)
+	pidFile := filepath.Join(s.base, "inner.pid")
+	p := s.start("run", "--local", "--", binaryPath, "run", "--local", "--",
+		"bash", "-c", `echo $$ > "$1"; exec sleep 300`, "_", pidFile)
+	p.await("inner command", func() bool { return readPIDIfAny(pidFile) > 1 })
+	pid := readPID(t, pidFile)
+	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+	p.signal(syscall.SIGKILL)
+	p.wait(2 * time.Second)
+	requirePIDsGone(t, []int{pid}, 5*time.Second)
+}
+
 func readPIDIfAny(path string) int {
 	data, _ := os.ReadFile(path)
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(data)))

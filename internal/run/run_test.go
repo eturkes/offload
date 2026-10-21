@@ -299,6 +299,44 @@ func TestWatcherKeepsCallerVariables(t *testing.T) { // X2: watcher locals never
 	}
 }
 
+func TestWatcherTermBeforeSetsidRunsNothing(t *testing.T) { // X1: TERM to the watcher = EOF, even before setsid
+	sid, err := exec.LookPath("setsid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir() // a slow setsid widens the window before the leader has a session of its own
+	if err = os.WriteFile(filepath.Join(bin, "setsid"), []byte("#!/bin/sh\nsleep 1\nexec "+sid+" \"$@\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	ran := filepath.Join(t.TempDir(), "ran")
+	c := exec.Command("bash", "-c", watchScript+localScript, "offload", "touch", ran)
+	in, err := c.StdinPipe() // held open: only the signal may end the watcher
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = in.Close() }()
+	if err = c.Start(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if err = c.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() { _ = c.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(15 * time.Second):
+		_ = c.Process.Kill()
+		t.Fatal("watcher ignored TERM")
+	}
+	time.Sleep(1500 * time.Millisecond)
+	if exists(ran) {
+		t.Fatal("CMD ran after its watcher was TERMed before setsid")
+	}
+}
+
 func TestScopeKillsTermIgnoringDaemonAfterGrace(t *testing.T) { // X1: KILL at 10 s (S5 lock: e2e local-kill-escalation)
 	requireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
