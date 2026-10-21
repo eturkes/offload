@@ -3,15 +3,14 @@
 # unless their sha256 matches the pin; go-installed tools are verified by the Go checksum database.
 # Pins cover Linux x86_64 alone (controller + CI). Bump = new version + digest from the release page.
 #   .agent/tool <name> [args…]
-#   names: golangci-lint betterleaks actionlint shellcheck nixfmt govulncheck gotestsum mutago
+#   .agent/tool --pins          `<name> <version> <source>` per pin (source = github:<owner>/<repo> |
+#                               go:<module>), read by `.agent/pins`
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-name=${1:?usage: .agent/tool <name> [args...]}
-shift
-[ "$(uname -sm)" = "Linux x86_64" ] || { echo "tool: pins cover Linux x86_64 alone" >&2; exit 2; }
-
+names="golangci-lint betterleaks actionlint shellcheck nixfmt govulncheck gotestsum mutago"
 gh=https://github.com
-case $name in
+spec() { # spec <name>: sets v + (sum, url, member) | pkg
+case $1 in
   golangci-lint) v=2.15.0 sum=9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
     url=$gh/golangci/golangci-lint/releases/download/v$v/golangci-lint-$v-linux-amd64.tar.gz
     member=golangci-lint-$v-linux-amd64/golangci-lint ;;
@@ -30,8 +29,22 @@ case $name in
   govulncheck) v=1.9.0 pkg=golang.org/x/vuln/cmd/govulncheck ;;
   gotestsum) v=1.13.0 pkg=gotest.tools/gotestsum ;;
   mutago) v=2.10.35 pkg=github.com/quality-gates/mutago/v2/cmd/mutago ;; # mutation credit, not a gate step
-  *) echo "tool: unknown tool $name" >&2; exit 2 ;;
+  *) echo "tool: unknown tool $1" >&2; exit 2 ;;
 esac
+}
+if [ "${1:-}" = --pins ]; then
+  for n in $names; do
+    url='' pkg=''
+    spec "$n"
+    if [ -n "$pkg" ]; then src=go:${pkg%%/cmd/*}; else src=github:$(echo "$url" | cut -d/ -f4,5); fi
+    echo "$n $v $src"
+  done
+  exit 0
+fi
+name=${1:?usage: .agent/tool <name> [args...]}
+shift
+[ "$(uname -sm)" = "Linux x86_64" ] || { echo "tool: pins cover Linux x86_64 alone" >&2; exit 2; }
+spec "$name"
 
 dir=$root/.tools/$name-$v
 bin=$dir/$name

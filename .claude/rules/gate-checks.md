@@ -2,6 +2,7 @@
 paths:
   - ".agent/gate"
   - ".agent/tool"
+  - ".agent/pins"
   - ".golangci.yml"
   - ".github/**"
 ---
@@ -20,3 +21,4 @@ Each step fires on a planted bad input (rerun the seed after editing its check):
 - nix: a tracked `*.nix` file holding `{ a=1; }` on one line → `nixfmt --check` rc 1.
 - spec-lint: a history line appended under `## Phase` → rc 1.
 - `.agent/tool`: a pin with a wrong sha256 → refuses the asset, rc 2.
+- `.agent/pins` (weekly `pins.yml`, not a gate step): a pin behind its latest release → `behind`, rc 1; a workflow `go-version` ≠ `go.mod` → rc 1; an unknown source repo → `lookup failed`, rc 2.
