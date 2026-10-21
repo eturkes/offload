@@ -1,0 +1,22 @@
+#!/bin/sh
+# tpm-bind [--open] — from the controller: re-seal nixbox's TPM2 LUKS token, unlocking with the
+# recovery key (ssh stdin, never argv or logs). Default = PCR 7 (Secure Boot policy, current value) +
+# PCR 15 = 0: the initrd measures the volume key into PCR 15 right after unlocking (crypttab
+# `tpm2-measure-pcr=yes`) ⇒ after any unlock — ours, or a swapped header's — the token refuses; every
+# other tpm2 slot is wiped. --open = add a PCR 15 = 0 token beside it, for a firmware update that
+# moves PCR 7 (README `Firmware`); the next default run wipes it.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+rk=${RECOVERY_KEY:-$HOME/.local/share/offload/nixbox-recovery-key}
+ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
+zero=0000000000000000000000000000000000000000000000000000000000000000
+case ${1-} in
+  '') pcrs=7+15:sha256=$zero wipe=--wipe-slot=tpm2 ;;
+  --open) pcrs=15:sha256=$zero wipe= ;;
+  *) echo "usage: tpm-bind [--open]" >&2; exit 2 ;;
+esac
+[ -s "$rk" ] || { echo "tpm-bind: no recovery key at $rk" >&2; exit 2; }
+tr -d '\n' < "$rk" | ssh "offload@$ip" "set -eu
+  dev=\$(sudo cryptsetup status cryptroot | sed -n 's/^ *device: *//p')
+  sudo systemd-cryptenroll --unlock-key-file=/dev/stdin $wipe --tpm2-device=auto --tpm2-pcrs=$pcrs \"\$dev\"
+  sudo systemd-cryptenroll \"\$dev\""
