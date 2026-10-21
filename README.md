@@ -132,7 +132,8 @@ offload puts the command in its own systemd scope when these conditions are true
 Then a process that the command started also stops when it starts its own session, for example a daemon.
 If offload cannot start the scope, it tells you on stderr and runs the command without a scope.
 Without a scope, a process that starts its own session is not stopped.
-A process that another systemd unit takes over is never stopped, for example the command of an offload run that the command itself starts.
+A process that another systemd unit takes over is not stopped.
+An offload run that the command starts stops together with its own command.
 
 ## See the pool
 

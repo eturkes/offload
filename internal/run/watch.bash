@@ -51,11 +51,22 @@ offload_launch() {
   __p=$!
 }
 
+# offload_wait: wait for the leader __p or the pipe reader __c; __who = which ended, __rc = its status.
+# A wait cut short by TERM/HUP leaves __who unset ⇒ counts as the reader's EOF.
+offload_wait() {
+  wait -n -p __who "$__p" "$__c" 2>/dev/null
+  __rc=$?
+  [ -n "${__who:-}" ] || __who=$__c
+}
+
 offload_watch() {
   local __p __c __who __rc __deadline __eof __d __rt='' __unit='' __mark=''
   # Explicit <&0: without it a non-interactive bash gives & jobs /dev/null as stdin (instant EOF).
   cat <&0 >/dev/null &
   __c=$!
+  # TERM/HUP = EOF: a watcher dying on them left CMD running (a nested run, ended by its outer
+  # run's teardown).
+  trap 'kill "$__c" 2>/dev/null' TERM HUP
   # The user manager's socket: under our XDG_RUNTIME_DIR, else systemd's default place (offload may
   # run with another runtime dir, or none). cgroup v2 alone: alive() reads the scope's cgroup.events.
   if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
@@ -68,16 +79,14 @@ offload_watch() {
   fi
   if [ -n "$__rt" ] && __mark=$(mktemp 2>/dev/null); then __unit=offload-$BASHPID-$SRANDOM.scope; fi
   offload_launch "$__unit" "$__rt" "$__mark" "$@"
-  wait -n -p __who "$__p" "$__c" 2>/dev/null
-  __rc=$?
+  offload_wait
   # Leader gone with an empty mark: the scope never started, so CMD never ran ⇒ start it plainly.
   if [ -n "$__unit" ] && [ "$__who" = "$__p" ] && [ ! -s "$__mark" ]; then
     printf 'offload: %s: no systemd scope; a process that starts its own session can outlive this run\n' \
       "$(uname -n)" >&2
     __unit=
     offload_launch '' '' '' "$@"
-    wait -n -p __who "$__p" "$__c" 2>/dev/null
-    __rc=$?
+    offload_wait
   fi
   __eof=
   if [ "$__who" = "$__c" ]; then __eof=1; else kill "$__c" 2>/dev/null; fi
