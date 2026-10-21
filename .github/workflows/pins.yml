@@ -1,0 +1,30 @@
+name: Pins
+
+on:
+  schedule:
+    - cron: "41 6 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  pins:
+    name: Hand-moved pins vs latest releases
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare each pin with its latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .agent/pins | tee -a "$GITHUB_STEP_SUMMARY"

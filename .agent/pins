@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# pins — every hand-moved version pin vs its latest upstream release (Dependabot moves none of
+# them): `.agent/tool --pins`, Go (`go.mod` `go` line; each workflow's setup-go `go-version` must
+# equal it), uv (setup-uv `version`), zizmor (`.agent/gate`). Prints a markdown table; rc 0 = all
+# current, 1 = a pin behind or a Go copy off `go.mod`, 2 = a lookup failed. Network ⇒ not a gate
+# step; runs weekly in `.github/workflows/pins.yml`. GH_TOKEN, when set, authenticates GitHub calls.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+get() {
+  local auth=()
+  if [[ $1 == https://api.github.com/* && -n ${GH_TOKEN:-} ]]; then
+    auth=(-H "Authorization: Bearer $GH_TOKEN")
+  fi
+  curl -fsSL --retry 3 "${auth[@]}" "$1"
+}
+latest() { # latest <source> → newest stable release, without a leading v/go
+  case $1 in
+    github:*) get "https://api.github.com/repos/${1#github:}/releases/latest" | jq -er .tag_name ;;
+    go:*) get "https://proxy.golang.org/${1#go:}/@latest" | jq -er .Version ;;
+    golang) get 'https://go.dev/dl/?mode=json' | jq -er '[.[] | select(.stable)][0].version' ;;
+    pypi:*) get "https://pypi.org/pypi/${1#pypi:}/json" | jq -er .info.version ;;
+    *) return 1 ;;
+  esac | sed 's/^v//; s/^go//'
+}
+
+gomod=$(sed -n 's/^go //p' go.mod)
+pins=$(.agent/tool --pins)
+pins+=$'\n'"go $gomod golang"
+pins+=$'\n'"uv $(grep -A4 'astral-sh/setup-uv@' .github/workflows/gate.yml | sed -n 's/.*version: "\(.*\)"/\1/p') github:astral-sh/uv"
+pins+=$'\n'"zizmor $(grep -o 'zizmor==[0-9.]*' .agent/gate | cut -d= -f3) pypi:zizmor"
+
+rc=0
+echo '| pin | pinned | latest | state |'
+echo '|-----|--------|--------|-------|'
+while read -r name have src; do
+  if ! want=$(latest "$src") || [ -z "$want" ]; then
+    echo "| $name | $have | ? | lookup failed ($src) |"
+    rc=2
+  elif [ "$have" = "$want" ]; then
+    echo "| $name | $have | $want | current |"
+  else
+    echo "| $name | $have | $want | behind |"
+    [ "$rc" = 2 ] || rc=1
+  fi
+done <<<"$pins"
+while IFS=: read -r file copy; do
+  copy=$(sed -n 's/.*go-version: "\(.*\)"/\1/p' <<<"$copy")
+  if [ "$copy" != "$gomod" ]; then
+    echo "| go ($file) | $copy | $gomod (go.mod) | differs from go.mod |"
+    [ "$rc" = 2 ] || rc=1
+  fi
+done < <(grep -H 'go-version:' .github/workflows/*.yml)
+exit "$rc"
