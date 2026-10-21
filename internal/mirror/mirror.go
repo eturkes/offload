@@ -1,0 +1,322 @@
+// Package mirror decides what crosses between the controller's tree and a host's workdir, and moves
+// it with rsync: git's own file lists in a git work tree, rsync's .gitignore filter elsewhere.
+package mirror
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha1" //nolint:gosec // G505: workdir naming, not security
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/eturkes/offload/internal/remote"
+)
+
+// Tree = the sync root around the invocation cwd.
+type Tree struct {
+	Root string // absolute sync root
+	Sub  string // cwd relative to Root ("." = Root)
+	Git  bool
+	// LocalOnly != "" = why this tree never runs remotely (Y3).
+	LocalOnly string
+}
+
+// Inspect finds the sync root of cwd (Y1) and its remote eligibility (Y3).
+func Inspect(ctx context.Context, cwd string) (Tree, error) {
+	out, err := git(ctx, cwd, "rev-parse", "--path-format=absolute", "--show-toplevel",
+		"--git-dir", "--git-common-dir", "--show-prefix")
+	if err != nil {
+		var ge *gitError
+		if !errors.As(err, &ge) || !strings.Contains(ge.stderr, "not a git repository") {
+			return Tree{}, err
+		}
+		// git also says "not a git repository" for a damaged one: plain mode's --delete mirror
+		// must not run over a tree that has a .git anywhere above it.
+		for d := cwd; ; d = filepath.Dir(d) {
+			if _, statErr := os.Lstat(filepath.Join(d, ".git")); statErr == nil {
+				return Tree{}, fmt.Errorf("git does not recognize the repository at %s: %w", d, err)
+			}
+			if d == filepath.Dir(d) {
+				return Tree{Root: cwd, Sub: "."}, nil
+			}
+		}
+	}
+	f := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
+	if len(f) != 4 {
+		return Tree{}, fmt.Errorf("git rev-parse printed %d lines, want 4", len(f))
+	}
+	t := Tree{Root: f[0], Sub: filepath.Clean(strings.TrimSuffix(f[3], "/")), Git: true}
+	if t.Sub == "" {
+		t.Sub = "."
+	}
+	t.LocalOnly, err = localOnly(ctx, t.Root, f[1], f[2])
+	return t, err
+}
+
+func localOnly(ctx context.Context, root, gitDir, commonDir string) (string, error) {
+	dotgit := filepath.Join(root, ".git")
+	fi, err := os.Lstat(dotgit)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !fi.IsDir()) {
+		return "its .git is not a directory (linked worktree or external git dir)", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if gitDir != commonDir {
+		return "it is a linked worktree", nil
+	}
+	if same, sameErr := sameFile(gitDir, dotgit); sameErr != nil || !same {
+		return "its git dir lies outside the tree", sameErr
+	}
+	if _, statErr := os.Stat(filepath.Join(commonDir, "objects", "info", "alternates")); statErr == nil {
+		return "it borrows objects from another repository (alternates)", nil
+	}
+	staged, err := git(ctx, root, "ls-files", "-z", "--stage")
+	if err != nil {
+		return "", err
+	}
+	for _, e := range bytes.Split(staged, []byte{0}) {
+		if bytes.HasPrefix(e, []byte("160000 ")) {
+			return "it has submodules", nil
+		}
+	}
+	return "", nil
+}
+
+func sameFile(a, b string) (bool, error) {
+	fa, err := os.Stat(a)
+	if err != nil {
+		return false, err
+	}
+	fb, err := os.Stat(b)
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(fa, fb), nil
+}
+
+// ErrLocalOnly = the tree's file list holds a nested repository: remote runs are refused (Y3).
+var ErrLocalOnly = errors.New("untracked nested git repository")
+
+// UploadList = U (Y4): git's non-ignored files that exist + self-ignored .gitignore files in
+// non-ignored directories, as root-relative paths.
+func UploadList(ctx context.Context, root string) ([]string, error) {
+	all, err := git(ctx, root, "ls-files", "-z", "-co", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+	ignored, err := git(ctx, root, "ls-files", "-z", "-o", "-i", "--exclude-standard", "--directory")
+	if err != nil {
+		return nil, err
+	}
+	var list []string
+	realDir := map[string]bool{".": true}
+	for _, p := range splitZ(all) {
+		if strings.HasSuffix(p, "/") {
+			return nil, fmt.Errorf("%w at %s", ErrLocalOnly, p)
+		}
+		if !inTree(root, p, realDir) {
+			continue // reached through a symlink: not part of this tree
+		}
+		fi, err := os.Lstat(filepath.Join(root, p))
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			continue // deleted, not yet staged
+		case err != nil:
+			return nil, err
+		case fi.IsDir():
+			return nil, fmt.Errorf("%w at %s", ErrLocalOnly, p)
+		}
+		list = append(list, p)
+	}
+	for _, p := range splitZ(ignored) {
+		// Ignored directories arrive collapsed ("dir/") ⇒ a bare .gitignore entry sits in a
+		// non-ignored directory, where git still reads it.
+		if filepath.Base(p) == ".gitignore" && !strings.HasSuffix(p, "/") {
+			if fi, err := os.Lstat(filepath.Join(root, p)); err == nil && fi.Mode().IsRegular() {
+				list = append(list, p)
+			}
+		}
+	}
+	return list, nil
+}
+
+// inTree = every ancestor of p below root is a real directory (memoized in realDir).
+func inTree(root, p string, realDir map[string]bool) bool {
+	d := filepath.Dir(p)
+	if ok, seen := realDir[d]; seen {
+		return ok
+	}
+	ok := inTree(root, d, realDir)
+	if ok {
+		fi, err := os.Lstat(filepath.Join(root, d))
+		ok = err == nil && fi.IsDir()
+	}
+	realDir[d] = ok
+	return ok
+}
+
+// GlobalExcludes = the content of the controller's global git excludes file ("" when none).
+func GlobalExcludes(ctx context.Context, root string) (string, error) {
+	out, err := git(ctx, root, "config", "--path", "--get", "core.excludesFile")
+	path := strings.TrimSpace(string(out))
+	if err != nil {
+		var ge *gitError
+		if !errors.As(err, &ge) || ge.code != 1 { // 1 = unset
+			return "", err
+		}
+		path = defaultExcludes()
+	}
+	data, err := os.ReadFile(path) //nolint:gosec // G304: git's own excludes path
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	return string(data), err
+}
+
+func defaultExcludes() string {
+	if d := os.Getenv("XDG_CONFIG_HOME"); d != "" {
+		return filepath.Join(d, "git", "ignore")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "git", "ignore")
+}
+
+var unsafeName = regexp.MustCompile(`[^A-Za-z0-9._-]`)
+
+// Workdir = the remote workdir (Y2), relative to the remote $HOME.
+func (t Tree) Workdir() string { return "offload/" + t.name() }
+
+// Meta = the workdir's control dir (lock, lists, status), relative to the remote $HOME.
+func (t Tree) Meta() string { return "offload/.meta/" + t.name() }
+
+func (t Tree) name() string {
+	sum := sha1.Sum([]byte(t.Root)) //nolint:gosec // G401: naming, not security
+	return unsafeName.ReplaceAllString(filepath.Base(t.Root), "_") + "-" + hex.EncodeToString(sum[:])[:8]
+}
+
+func splitZ(b []byte) []string {
+	var out []string
+	for _, e := range bytes.Split(b, []byte{0}) {
+		if len(e) > 0 {
+			out = append(out, string(e))
+		}
+	}
+	return out
+}
+
+type gitError struct {
+	args   []string
+	code   int
+	stderr string
+}
+
+func (e *gitError) Error() string {
+	return fmt.Sprintf("git %s: %s", strings.Join(e.args, " "), strings.TrimSpace(e.stderr))
+}
+
+func git(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	//nolint:gosec // G204: fixed git subcommands; dir = the invocation tree
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return out, &gitError{args: args, code: ee.ExitCode(), stderr: stderr.String()}
+	}
+	return out, err
+}
+
+// rsyncPath = the remote rsync, run under the workdir's lock (Y11).
+func rsyncPath(meta string) string {
+	return "mkdir -p " + remote.Quote(meta) + " && flock -w 300 " + remote.Quote(meta+"/lock") + " rsync"
+}
+
+func rsync(ctx context.Context, stdin []byte, args ...string) error {
+	cmd := remote.Command(ctx, "rsync", args...)
+	if stdin != nil {
+		cmd.Stdin = bytes.NewReader(stdin)
+	}
+	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("rsync: %w", err)
+	}
+	return nil
+}
+
+func base(meta string) []string {
+	return []string{"-a", "-e", remote.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
+}
+
+// UploadGit sends list + mirrors .git (Y4). `.git` lock files never cross; stale remote ones go.
+func UploadGit(ctx context.Context, t Tree, address string, list []string) error {
+	var in bytes.Buffer
+	for _, p := range list {
+		in.WriteString(p)
+		in.WriteByte(0)
+	}
+	in.WriteString(".git\x00")
+	args := append(base(t.Meta()), "-r", "--mkpath", "--from0", "--files-from=-", "--delete",
+		"--delete-excluded", "--filter=- /.git/*.lock", "--filter=- /.git/**/*.lock",
+		t.Root+"/", address+":"+t.Workdir()+"/")
+	return rsync(ctx, in.Bytes(), args...)
+}
+
+// UploadPlain mirrors a non-git tree under rsync's .gitignore filter (Y7).
+func UploadPlain(ctx context.Context, t Tree, address string) error {
+	args := append(base(t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
+		t.Root+"/", address+":"+t.Workdir()+"/")
+	return rsync(ctx, nil, args...)
+}
+
+// DownloadGit fetches the remote run's output list (Y6).
+func DownloadGit(ctx context.Context, t Tree, address string) error {
+	args := append(base(t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
+		"--ignore-missing-args", address+":"+t.Workdir()+"/", t.Root+"/")
+	return rsync(ctx, nil, args...)
+}
+
+// DownloadPlain fetches a non-git tree's outputs under the .gitignore filter (Y7).
+func DownloadPlain(ctx context.Context, t Tree, address string) error {
+	args := append(base(t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
+		address+":"+t.Workdir()+"/", t.Root+"/")
+	return rsync(ctx, nil, args...)
+}
+
+// Get copies one root-relative path back whatever its ignore status (Y8); a trailing "/" = contents.
+func Get(ctx context.Context, t Tree, address, rel string) error {
+	args := append(base(t.Meta()), "--update", "--mkpath",
+		address+":"+t.Workdir()+"/"+rel, filepath.Join(t.Root, rel)+trailingSlash(rel))
+	return rsync(ctx, nil, args...)
+}
+
+func trailingSlash(p string) string {
+	if strings.HasSuffix(p, "/") {
+		return "/"
+	}
+	return ""
+}
+
+// GetPath resolves a --get argument (invocation-cwd-relative) to a root-relative path, refusing
+// absolute paths, escapes and .git (Y8).
+func (t Tree) GetPath(arg string) (string, error) {
+	if arg == "" || filepath.IsAbs(arg) {
+		return "", fmt.Errorf("--get %q: give a path relative to the current directory", arg)
+	}
+	rel := filepath.Clean(filepath.Join(t.Sub, arg))
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") {
+		return "", fmt.Errorf("--get %q: path leaves the tree at %s", arg, t.Root)
+	}
+	if rel == ".git" || strings.HasPrefix(rel, ".git/") {
+		return "", fmt.Errorf("--get %q: .git never comes back", arg)
+	}
+	return rel + trailingSlash(arg), nil
+}
