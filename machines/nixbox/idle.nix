@@ -2,7 +2,7 @@
 # runs (user `offload`) preempt it at once. cgroup `cpu.idle` yields only to siblings ⇒ the weight sits
 # on user-1001.slice, sibling of offload's user-1000.slice; a slice nested under user-1001 would still
 # split CPU 50/50 with offload. IO weight is unenforced here (NVMe scheduler `none`, no io.cost).
-{ ... }:
+_:
 let
   host = import ./host.nix;
 in

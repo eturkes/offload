@@ -1,0 +1,5 @@
+# repeated_keys off: NixOS modules (nixos-generate-config included) set options as repeated dotted
+# keys; merging them into one attrset trades greppable option paths for style.
+disabled = ["repeated_keys"]
+# Written by nixos-generate-config during `machines/<host>/install`; lint fixes would be overwritten.
+ignore = ["machines/*/hardware-configuration.nix"]

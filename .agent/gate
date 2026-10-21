@@ -18,6 +18,12 @@ shell_scripts() { # tracked files with a sh/bash shebang + embedded *.bash scrip
   git ls-files -z | xargs -0 awk 'FNR == 1 && /^#!.*[/ ](ba)?sh([ \t]|$)/ { print FILENAME } { nextfile }'
   git ls-files '*.bash'
 }
+nixlint() { # nixlint FILE… — statix over the tree (statix.toml), deadnix over FILE…; rc 1 on any finding
+  local rc=0
+  .agent/tool statix check || rc=1
+  .agent/tool deadnix --fail -- "$@" || rc=1
+  return "$rc"
+}
 tests=.tools/test.json
 mkdir -p .tools
 step fmt .agent/tool golangci-lint fmt --diff
@@ -42,6 +48,9 @@ else
   step shell .agent/tool shellcheck -S warning "${scripts[@]}"
   mapfile -t nix < <(git ls-files '*.nix')
   step nix .agent/tool nixfmt --check "${nix[@]}"
+  # hardware-configuration.nix = nixos-generate-config output (rewritten by `install`).
+  mapfile -t nix < <(git ls-files '*.nix' ':!:machines/*/hardware-configuration.nix')
+  step nixlint nixlint "${nix[@]}"
 fi
 step spec-lint .agent/spec-lint
 printf '\n%-10s %4s %9s\n' step rc seconds
