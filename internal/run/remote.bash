@@ -23,9 +23,10 @@ in_tree() {
     if [ "$rest" = "$comp" ]; then rest=; else rest=${rest#*/}; fi
   done
 }
-# Prune = delete a file or symlink inside the workdir; never a directory, never recursive.
+# Prune = delete a file or symlink inside the workdir; never a directory, never recursive. Nonzero
+# only when a deletion it attempted failed.
 prune_one() {
-  if in_tree "$1" && { [ -L "$1" ] || [ -f "$1" ]; }; then rm -f -- "$1"; fi
+  if in_tree "$1" && { [ -L "$1" ] || [ -f "$1" ]; }; then rm -f -- "$1" || return 1; fi
 }
 git_list() { # non-ignored files of the workdir, as git sees them
   git --git-dir=.git --work-tree=. -c core.excludesFile="$meta/excludes" \
@@ -52,17 +53,18 @@ if [ "$mode" = git ]; then
   git_list >"$meta/remote" || fail "git ls-files failed in workdir $1; nothing pruned"
   tail -z -n +2 "$meta/upload" | LC_ALL=C sort -z >"$meta/upload.sorted"
   LC_ALL=C sort -z "$meta/remote" | LC_ALL=C comm -z -23 - "$meta/upload.sorted" >"$meta/prune"
-  while IFS= read -r -d '' f; do prune_one "$f"; done <"$meta/prune"
+  while IFS= read -r -d '' f; do prune_one "$f" || fail "cannot prune $f in workdir $1"; done <"$meta/prune"
 fi
 
 cd "./$sub" || fail "workdir $1 has no directory $sub"
 offload_watch bash -lc "$cmd"
 rc=$?
 
-if [ "$mode" = git ] && cd "$wd"; then
-  git_list | while IFS= read -r -d '' f; do
+# A failed listing leaves no down list ⇒ offload's download fails (125) instead of fetching nothing.
+if [ "$mode" = git ] && cd "$wd" && git_list >"$meta/down.all"; then
+  while IFS= read -r -d '' f; do
     if in_tree "$f" && { [ -e "$f" ] || [ -L "$f" ]; }; then printf '%s\0' "$f"; fi
-  done >"$meta/down"
+  done <"$meta/down.all" >"$meta/down"
 fi
 printf '%s %s\n' "$nonce" "$rc" >"$meta/status"
 exit "$rc"

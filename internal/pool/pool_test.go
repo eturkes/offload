@@ -40,7 +40,7 @@ func TestLoadDefaultsSlots(t *testing.T) { // P2
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(hosts) != 2 || hosts[0].Slots != DefaultSlots || hosts[1].Slots != 5 || hosts[0].Address != "u@10.0.0.1" {
+	if len(hosts) != 2 || hosts[0].Slots != 2 || hosts[1].Slots != 5 || hosts[0].Address != "u@10.0.0.1" {
 		t.Fatalf("hosts = %+v", hosts)
 	}
 }
@@ -62,6 +62,7 @@ func TestLoadRejects(t *testing.T) { // P2
 		"space in address":  {"[[host]]\nname = \"a\"\naddress = \"h x\"\n", "address"},
 		"duplicate address": {"[[host]]\nname = \"a\"\naddress = \"h\"\n[[host]]\nname = \"b\"\naddress = \"h\"\n", "twice"},
 		"negative slots":    {"[[host]]\nname = \"a\"\naddress = \"a\"\nslots = -1\n", "slots"},
+		"zero slots":        {"[[host]]\nname = \"a\"\naddress = \"a\"\nslots = 0\n", "slots"},
 		"bad toml":          {"[[host]\n", "pool.toml"},
 	}
 	for name, c := range cases {

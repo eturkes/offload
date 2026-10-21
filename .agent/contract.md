@@ -1,6 +1,6 @@
 # offload contract — IMPLEMENT units
 
-Predicates = testable; ids (`C3`, `S7`…) are cited by tests + review rows. Tier per unit. `Decisions` (spec) outrank this file; a conflict = a defect here. Amended after consultant-1 (`.scratch/consult-1/verdicts.md` V1–V12; rulings in the commit body).
+Predicates = testable; ids (`C3`, `S7`…) are cited by tests + review rows. Tier per unit. `Decisions` (spec) outrank this file; a conflict = a defect here.
 
 Scope: one controller (this machine) drives the pool; pool hosts are distinct machines; the source tree stays quiescent during an upload (offload takes no snapshot).
 

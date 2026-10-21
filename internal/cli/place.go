@@ -108,7 +108,7 @@ func (p *placer) tryPool(ctx context.Context) (placement, bool, error) {
 			continue
 		}
 		dir := slots.Host(os.Getenv, h.Name, h.Slots)
-		s, ok, err := dir.TryAcquire(poolOwnerText(p.tree.Root, p.opts.argv))
+		s, ok, err := dir.TryAcquire(poolOwnerText(h.Name, p.tree.Root, p.opts.argv))
 		if err != nil {
 			release(nil)
 			return placement{}, false, err
@@ -140,6 +140,7 @@ func (p *placer) tryPool(ctx context.Context) (placement, bool, error) {
 			if ctx.Err() == nil {
 				p.downUntil[c.host.Name] = now.Add(downFor)
 				p.downWhy[c.host.Name] = c.err.Error()
+				delete(p.known, c.host.Name) // a down host's GPUs are unknown again (L4)
 			}
 			continue
 		}
@@ -162,10 +163,10 @@ func (p *placer) tryPool(ctx context.Context) (placement, bool, error) {
 	return placement{}, false, nil
 }
 
-// noGPUAnywhere = every eligible host has answered a probe and none shows a GPU (L4).
+// noGPUAnywhere = every eligible host is up (its last probe answered) and none shows a GPU (L4).
 func (p *placer) noGPUAnywhere() bool {
 	for _, h := range p.hosts {
-		if s, ok := p.known[h.Name]; !ok || s.GPUs > 0 {
+		if s, ok := p.known[h.Name]; !ok || s.GPUs > 0 || p.downWhy[h.Name] != "" {
 			return false
 		}
 	}

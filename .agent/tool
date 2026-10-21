@@ -3,7 +3,7 @@
 # unless their sha256 matches the pin; go-installed tools are verified by the Go checksum database.
 # Pins cover Linux x86_64 alone (controller + CI). Bump = new version + digest from the release page.
 #   .agent/tool <name> [args…]
-#   names: golangci-lint betterleaks actionlint shellcheck nixfmt govulncheck gotestsum
+#   names: golangci-lint betterleaks actionlint shellcheck nixfmt govulncheck gotestsum mutago
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 name=${1:?usage: .agent/tool <name> [args...]}
@@ -29,6 +29,7 @@ case $name in
     member= ;;
   govulncheck) v=1.9.0 pkg=golang.org/x/vuln/cmd/govulncheck ;;
   gotestsum) v=1.13.0 pkg=gotest.tools/gotestsum ;;
+  mutago) v=2.10.35 pkg=github.com/quality-gates/mutago/v2/cmd/mutago ;; # mutation credit, not a gate step
   *) echo "tool: unknown tool $name" >&2; exit 2 ;;
 esac
 

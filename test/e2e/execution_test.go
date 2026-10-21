@@ -227,11 +227,35 @@ func TestX6Remote255AndTransport(t *testing.T) {
 	})
 }
 
+// x5 = the options offload passes on every connection; the fake ssh refuses a call without them.
+var x5 = []string{
+	"-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
+	"-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4",
+}
+
 func TestHarnessFakeSSH(t *testing.T) {
 	s := newSandbox(t, false)
 	ssh := filepath.Join(s.base, "bin", "ssh")
+	t.Run("missing-x5-option-refused", func(t *testing.T) {
+		cmd := exec.Command(ssh, "-o", "BatchMode=yes", "alpha", "true")
+		cmd.Env = s.env
+		out, err := cmd.CombinedOutput()
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) || exit.ExitCode() != 254 {
+			t.Fatalf("call without X5 options: exit=%v %s", err, out)
+		}
+	})
+	t.Run("null-stdin", func(t *testing.T) {
+		cmd := exec.Command(ssh, append(append([]string{}, x5...), "-n", "alpha", "cat")...)
+		cmd.Env = s.env
+		cmd.Stdin = strings.NewReader("must not arrive")
+		out, err := cmd.CombinedOutput()
+		if err != nil || len(out) != 0 {
+			t.Fatalf("-n forwarded stdin: %q %v", out, err)
+		}
+	})
 	t.Run("options-and-stdin", func(t *testing.T) {
-		cmd := exec.Command(ssh, "-o", "BatchMode=yes", "-oStrictHostKeyChecking=accept-new", "-T", "-l", "agent", "--", "alpha", "printf '%s\\n' \"$HOME\"; cat")
+		cmd := exec.Command(ssh, append(append([]string{}, x5...), "-T", "-l", "agent", "--", "alpha", "printf '%s\\n' \"$HOME\"; cat")...)
 		cmd.Env = s.env
 		cmd.Stdin = strings.NewReader("stdin-through-EOF\x00")
 		out, err := cmd.CombinedOutput()
@@ -242,7 +266,7 @@ func TestHarnessFakeSSH(t *testing.T) {
 		}
 	})
 	t.Run("down-host", func(t *testing.T) {
-		cmd := exec.Command(ssh, "missing", "true")
+		cmd := exec.Command(ssh, append(append([]string{}, x5...), "missing", "true")...)
 		cmd.Env = s.env
 		out, err := cmd.CombinedOutput()
 		var exit *exec.ExitError
@@ -253,7 +277,7 @@ func TestHarnessFakeSSH(t *testing.T) {
 	})
 	t.Run("real-rsync", func(t *testing.T) {
 		s.write("payload", "binary\x00payload\xff")
-		cmd := exec.Command("rsync", "-a", "-e", ssh+" -o BatchMode=yes -T", filepath.Join(s.root, "payload"), "agent@alpha:received")
+		cmd := exec.Command("rsync", "-a", "-e", ssh+" "+strings.Join(x5, " ")+" -T", filepath.Join(s.root, "payload"), "agent@alpha:received")
 		cmd.Env = s.env
 		out, err := cmd.CombinedOutput()
 		if err != nil {

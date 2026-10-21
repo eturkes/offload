@@ -2,16 +2,26 @@
 set -euo pipefail
 
 original=("$@")
+nullstdin=
 while (($#)); do
     case "$1" in
         -o|-l|-p|-i|-F|-J|-S|-e) shift 2 ;;
-        -o*|-l*|-p*|-i*|-F*|-J*|-S*|-T|-t|-tt|-n|-q|-v|-vv|-vvv|-x|-C) shift ;;
+        -n) nullstdin=1; shift ;; # as OpenSSH: stdin from /dev/null
+        -o*|-l*|-p*|-i*|-F*|-J*|-S*|-T|-t|-tt|-q|-v|-vv|-vvv|-x|-C) shift ;;
         --) shift; break ;;
         -*) printf 'fake ssh: unsupported option %s\n' "$1" >&2; exit 254 ;;
         *) break ;;
     esac
 done
 (($#)) || exit 254
+# Contract X5: every connection carries these options; a call without one fails like a misconfigured ssh.
+args=" ${original[*]} "
+for opt in BatchMode=yes StrictHostKeyChecking=accept-new ConnectTimeout=5 ServerAliveInterval=15 ServerAliveCountMax=4; do
+    if [[ $args != *" -o $opt "* ]]; then
+        printf 'fake ssh: connection without -o %s\n' "$opt" >&2
+        exit 254
+    fi
+done
 host=${1##*@}
 shift
 home=${OFFLOAD_FAKE_HOSTS:?}/$host
@@ -33,6 +43,10 @@ if [[ -f $home/.transport-fail ]]; then
     printf 'ssh: simulated connection reset\n' >&2
     exit 255
 fi
+if [[ -f $home/.run-fail && $command == *offload_watch* ]]; then
+    printf 'ssh: simulated connection reset during the run\n' >&2
+    exit 255
+fi
 if [[ -f $home/.upload-fail && $command == *rsync* && $command != *--sender* ]]; then
     printf 'rsync: injected upload failure\n' >&2
     exit 23
@@ -45,4 +59,5 @@ export HOME=$home
 export XDG_CONFIG_HOME=$home/.config
 export GIT_CONFIG_GLOBAL=$home/.gitconfig
 cd "$HOME"
+if [[ -n $nullstdin ]]; then exec bash -c "$command" </dev/null; fi
 exec bash -c "$command"

@@ -131,9 +131,17 @@ func signals() (context.Context, func() int) {
 
 func runCommand(o options, stderr io.Writer) int {
 	ctx, signalStatus := signals()
+	// C3: a signal outranks the failure it caused (a killed git or rsync).
+	fail := func(err error) int {
+		if ctx.Err() != nil {
+			return signalStatus()
+		}
+		fmt.Fprintf(stderr, "offload: %v\n", err)
+		return ExitFailure
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fail(stderr, err)
+		return fail(err)
 	}
 
 	var hosts []pool.Host
@@ -159,13 +167,13 @@ func runCommand(o options, stderr io.Writer) int {
 	t := mirror.Tree{Root: cwd, Sub: "."}
 	if len(hosts) > 0 {
 		if t, err = mirror.Inspect(ctx, cwd); err != nil {
-			return fail(stderr, err)
+			return fail(err)
 		}
 		if t.Git && t.LocalOnly == "" { // nested repos surface in the file list (Y3, before remote work)
 			if _, err = mirror.UploadList(ctx, t.Root); errors.Is(err, mirror.ErrLocalOnly) {
 				t.LocalOnly = err.Error()
 			} else if err != nil {
-				return fail(stderr, err)
+				return fail(err)
 			}
 		}
 		if t.LocalOnly != "" {
@@ -200,7 +208,7 @@ func runCommand(o options, stderr io.Writer) int {
 	case ctx.Err() != nil:
 		return signalStatus()
 	case err != nil:
-		return fail(stderr, err)
+		return fail(err)
 	}
 	defer pl.release()
 
@@ -211,7 +219,7 @@ func runCommand(o options, stderr io.Writer) int {
 			return signalStatus()
 		}
 		if runErr != nil {
-			return fail(stderr, runErr)
+			return fail(runErr)
 		}
 		return rc
 	}
@@ -222,7 +230,7 @@ func runCommand(o options, stderr io.Writer) int {
 		return signalStatus()
 	}
 	if err != nil {
-		return fail(stderr, err)
+		return fail(err)
 	}
 	return rc
 }
@@ -299,14 +307,10 @@ func filterHost(hosts []pool.Host, name string) []pool.Host {
 	return nil
 }
 
-func fail(stderr io.Writer, err error) int {
-	fmt.Fprintf(stderr, "offload: %v\n", err)
-	return ExitFailure
-}
-
 // ownerText = the slot owner suffix: " <word>…" shell-quoted (S3).
 func ownerText(argv []string) string { return " " + remote.Join(argv) }
 
-func poolOwnerText(root string, argv []string) string {
-	return " " + remote.Quote(root) + ":" + ownerText(argv)
+// poolOwnerText = " <host>: <root> <word>…" (S4).
+func poolOwnerText(host, root string, argv []string) string {
+	return " " + host + ": " + remote.Quote(root) + ownerText(argv)
 }
