@@ -29,7 +29,6 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] Codexify on nixbox (binary 2.3.3 + Codex CLI 0.163.0 installed for `eturkes`): owner steps = `ssh -t eturkes@192.168.40.240 codexify quickstart` (access root /home/eturkes/Projects/trading; tunnel + runtime key + ChatGPT connector, service install) and `ssh -t eturkes@192.168.40.240 codex login --device-auth` (Luna's prerequisite); then `codexify doctor` healthy
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
