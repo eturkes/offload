@@ -242,6 +242,9 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Targ
 	case o.noSync:
 	case t.Git:
 		r.Mode = "git"
+		if t.Worktree != "" {
+			r.Mode = "worktree:" + t.Worktree
+		}
 		list, err := mirror.UploadList(ctx, t.Root)
 		if err != nil {
 			return 0, err
@@ -263,10 +266,10 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Targ
 	if err != nil || ctx.Err() != nil {
 		return rc, err
 	}
-	switch r.Mode {
-	case "git":
+	switch {
+	case t.Git && !o.noSync:
 		err = mirror.DownloadGit(ctx, t, target)
-	case "plain":
+	case r.Mode == "plain":
 		err = mirror.DownloadPlain(ctx, t, target)
 	}
 	for _, g := range gets {

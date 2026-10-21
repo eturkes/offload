@@ -138,8 +138,17 @@ func TestInspect(t *testing.T) { // Y1 + Y3
 
 	wt := filepath.Join(t.TempDir(), "wt")
 	run(t, root, "git", "worktree", "add", "-q", wt)
-	if tr, err = Inspect(ctx, wt); err != nil || !strings.Contains(tr.LocalOnly, "not a directory") {
-		t.Fatalf("worktree: %+v %v", tr, err)
+	common := filepath.Join(rootReal, ".git")
+	if tr, err = Inspect(ctx, wt); err != nil || tr.LocalOnly != "" || tr.Worktree != "wt" || tr.CommonDir != common || !tr.Git {
+		t.Fatalf("worktree: %+v %v; want eligible, id wt, common dir %s", tr, err, common)
+	}
+	odd := filepath.Join(t.TempDir(), "w[1]") // git's id = "w-1]": rsync filters + remote paths take [A-Za-z0-9._-] alone
+	run(t, root, "git", "worktree", "add", "-q", "-b", "odd", odd)
+	if tr, err = Inspect(ctx, odd); err != nil || !strings.Contains(tr.LocalOnly, "worktree id") || tr.Worktree != "" {
+		t.Fatalf("odd worktree id: %+v %v", tr, err)
+	}
+	if tr, err = Inspect(ctx, root); err != nil || tr.Worktree != "" || tr.LocalOnly != "" {
+		t.Fatalf("main worktree: %+v %v", tr, err)
 	}
 
 	sep := t.TempDir()

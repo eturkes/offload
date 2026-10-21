@@ -47,12 +47,12 @@ func TestY2WorkdirIdentity(t *testing.T) {
 }
 
 func TestY3UnsupportedGitLayouts(t *testing.T) {
-	for _, layout := range []string{"worktree", "submodule", "nested", "external-git-dir", "alternates"} {
+	for _, layout := range []string{"worktree-odd-id", "submodule", "nested", "external-git-dir", "alternates"} {
 		t.Run(layout, func(t *testing.T) {
 			s := newSandbox(t, true)
 			switch layout {
-			case "worktree":
-				linked := filepath.Join(s.base, "linked")
+			case "worktree-odd-id": // id = the worktree dir's basename; `[` would act as an rsync filter glob
+				linked := filepath.Join(s.base, "linked[1]")
 				s.git("worktree", "add", "-qb", "linked", linked)
 				s.root, s.cwd = linked, linked
 			case "submodule":
@@ -226,6 +226,69 @@ func TestY4SameSecondRewriteCrosses(t *testing.T) { // Y4: rsync's quick check a
 	if r.stdout != "bbbb\n" {
 		t.Fatalf("host ran on %q, want the rewrite", r.stdout)
 	}
+}
+
+// gitState = what a history-reading command sees in a checkout: branch, HEAD, history depth,
+// staged + unstaged changes.
+const gitState = `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD; git rev-list --count HEAD
+git diff --cached --name-only; git status --porcelain`
+
+func TestY4LinkedWorktreeRunsRemotely(t *testing.T) {
+	s := newSandbox(t, true)
+	s.write("main-only", "x\n")
+	s.git("add", "main-only")
+	s.git("commit", "-qm", "main moves on")
+	linked := filepath.Join(s.base, "linked")
+	s.git("worktree", "add", "-qb", "feat", linked, "HEAD~1")
+	s.git("worktree", "add", "-qb", "other", filepath.Join(s.base, "other")) // its admin dir stays home
+	main := s.root
+	s.root, s.cwd = linked, linked
+	s.write("feature", "f\n")
+	s.git("add", "feature")
+	s.git("commit", "-qm", "feature commit")
+	s.write("staged", "s\n")
+	s.git("add", "staged")
+	s.write("tracked", "edited, unstaged\n")
+	want := s.shell(gitState)
+	r := s.run("run", "--pool", "--", "bash", "-c", gitState)
+	r.requireCode(t, 0)
+	if r.stdout != want {
+		t.Fatalf("host sees another checkout:\ngot  %q\nwant %q", r.stdout, want)
+	}
+	remote := s.workdir("alpha")
+	if b, err := os.ReadFile(filepath.Join(remote, ".git")); err != nil || !strings.HasPrefix(string(b), "gitdir: ") {
+		t.Fatalf("remote .git = %q, %v; want a gitfile", b, err)
+	}
+	admins, err := os.ReadDir(filepath.Join(filepath.Dir(remote), ".meta", filepath.Base(remote), "repo", "worktrees"))
+	if err != nil || len(admins) != 1 || admins[0].Name() != "linked" {
+		t.Fatalf("host worktree admin dirs = %v, %v; want [linked]", admins, err)
+	}
+	s.git("commit", "-qm", "second feature commit") // the next run follows the worktree's HEAD
+	want = s.shell(gitState)
+	r = s.run("run", "--pool", "--", "bash", "-c", gitState)
+	r.requireCode(t, 0)
+	if r.stdout != want {
+		t.Fatalf("second run:\ngot  %q\nwant %q", r.stdout, want)
+	}
+	s.root, s.cwd = main, main // the main worktree of the same repo keeps its own remote checkout
+	want = s.shell(gitState)
+	r = s.run("run", "--pool", "--", "bash", "-c", gitState)
+	r.requireCode(t, 0)
+	if r.stdout != want {
+		t.Fatalf("main worktree:\ngot  %q\nwant %q", r.stdout, want)
+	}
+}
+
+func TestY4WorktreeRefusesAHostGitDirectory(t *testing.T) {
+	s := newSandbox(t, true)
+	linked := filepath.Join(s.base, "linked")
+	s.git("worktree", "add", "-qb", "feat", linked)
+	s.root, s.cwd = linked, linked
+	must(t, os.MkdirAll(filepath.Join(s.workdir("alpha"), ".git"), 0o700)) // a main-repo copy on the host
+	r := s.run("run", "--pool", "--", "touch", "must-not-run")
+	r.requireCode(t, 125)
+	requireContains(t, r.stderr, "holds a .git directory")
+	assertAbsent(t, filepath.Join(s.workdir("alpha"), "must-not-run"))
 }
 
 func TestY4GitMetadataMirrorDeletes(t *testing.T) {
