@@ -26,6 +26,12 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
+  exclusions:
+    rules:
+      # Tests spawn processes + read temp files on purpose; gosec's taint findings there are noise.
+      - path: _test\.go
+        linters:
+          - gosec
 formatters:
   enable:
     - gci

@@ -34,11 +34,11 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - [ ] Codexify + Codex CLI on nixbox for trading; owner steps = tunnel auth, ChatGPT connector, Codex login
 - [ ] trading on nixbox: intraday paper + Luna as the idle task; owner approval recorded + committed in trading
 - [ ] controller trading copy deleted (confirm immediately before)
-- [ ] foundation: Go module, LICENSE + NOTICE, entry point, one test, gate (`.agent/gate`: fmt, lint, vet, test, govulncheck, secret scan, workflow lint, shellcheck, spec-lint), CI + Dependabot, gate rule
-- [ ] config + probe + `offload status`
-- [ ] slots: heavy interop + pool slots + waiting
+- [x] c9539b5 foundation: Go module, LICENSE + NOTICE, entry point, one test, gate (`.agent/gate`), CI + Dependabot, gate rule
+- [ ] contract (`.agent/contract.md`, consultant-reviewed) + pool file + probe
+- [ ] slots: heavy interop + pool slots
 - [ ] sync engine: git-exact up/down, remote deletion pass, non-git fallback, repo root, worktree detection
-- [ ] run: local + remote supervision (EOF watcher, signals, rc), hybrid loop, `--get`
+- [ ] run: watcher (session kill, remote lock), local + remote execution, placement loop, CLI + `offload status`, `--get`
 - [ ] ship: installed binary at `~/.local/bin/offload`, global `CLAUDE.md` rule re-derived (agents repo), README
 - [ ] close: review ledger closed, prototype retired (`prototype-whole-product` tag), Phase MAINTAIN
 - Deferred queue → `.agent/deferred.md`
