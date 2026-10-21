@@ -4,8 +4,8 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Artifacts
 
-- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote}`); contract `.agent/contract.md`. Install: `CGO_ENABLED=0 go build -trimpath -o ~/.local/bin/offload.new ./cmd/offload && mv ~/.local/bin/offload.new ~/.local/bin/offload` (installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides); example `pool.example.toml`. User docs `README.md`.
-- `machines/nixbox/` = NixOS config of pool host `nixbox` (`offload@192.168.40.240`); runbook `machines/nixbox/README.md`. Deploy: `machines/nixbox/deploy`; reinstall: `machines/nixbox/install /dev/nvme0n1` (box on installer ISO from `installer.nix`).
+- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote}`); contract `.agent/contract.md`. Install: `CGO_ENABLED=0 go build -trimpath -o ~/.local/bin/offload.new ./cmd/offload && mv ~/.local/bin/offload.new ~/.local/bin/offload` (installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides; live: nixbox `multiplex = true`); example `pool.example.toml`. Pin freshness: `.agent/pins` (weekly `pins.yml`). User docs `README.md`.
+- `machines/nixbox/` = NixOS config of pool host `nixbox` (`offload@192.168.40.240`); runbook `machines/nixbox/README.md`. Deploy: `machines/nixbox/deploy`; reinstall: `machines/nixbox/install /dev/nvme0n1` (box on installer ISO from `installer.nix`); TPM re-seal: `machines/nixbox/tpm-bind`; firmware: README `Firmware`.
 
 ## Decisions
 
@@ -29,7 +29,6 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] MAINTAIN request: fund every `.agent/deferred.md` row in rank order; owner parts → owed on the row; one owner question once agent-side work ends, then fund its answers. Resume = first row without an `Owed` note or closing commit
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
