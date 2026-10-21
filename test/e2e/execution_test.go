@@ -181,6 +181,7 @@ while [ ! -s "$1" ]; do sleep 0.01; done
 }
 
 func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
+	requireScope(t) // a refusal needs a manager to ask: without one the watcher never tries
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)
