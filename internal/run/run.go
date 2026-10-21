@@ -68,7 +68,7 @@ type Remote struct {
 	Workdir  string // relative to the remote $HOME
 	Meta     string
 	Sub      string // cwd relative to the workdir root
-	Mode     string // git | plain | nosync
+	Mode     string // git | worktree:<id> | plain | nosync
 	Paths    []string
 	Excludes string
 	Argv     []string
@@ -83,7 +83,7 @@ func (r Remote) command(nonce string) (string, []byte) {
 	}
 	var b bytes.Buffer
 	b.WriteString(runScript)
-	if r.Mode == "git" {
+	if r.Mode == "git" || strings.HasPrefix(r.Mode, "worktree:") {
 		for _, rec := range append([]string{nonce, r.Excludes}, r.Paths...) {
 			b.WriteString(rec)
 			b.WriteByte(0)

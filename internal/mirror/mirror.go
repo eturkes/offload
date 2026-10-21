@@ -24,6 +24,9 @@ type Tree struct {
 	Root string // absolute sync root
 	Sub  string // cwd relative to Root ("." = Root)
 	Git  bool
+	// Worktree = a linked worktree's id (its git dir = CommonDir/worktrees/<id>); "" = main worktree.
+	Worktree  string
+	CommonDir string
 	// LocalOnly != "" = why this tree never runs remotely (Y3).
 	LocalOnly string
 }
@@ -60,6 +63,9 @@ func Inspect(ctx context.Context, cwd string) (Tree, error) {
 		return t, nil
 	}
 	t.LocalOnly, err = localOnly(ctx, t.Root, f[1], f[2])
+	if t.LocalOnly == "" && err == nil && f[1] != f[2] {
+		t.Worktree, t.CommonDir = filepath.Base(f[1]), f[2]
+	}
 	return t, err
 }
 
@@ -83,20 +89,31 @@ func (t Tree) check() error {
 	return nil
 }
 
+// worktreeID = git's linked-worktree ids that rsync filter rules + remote paths take verbatim.
+var worktreeID = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
 func localOnly(ctx context.Context, root, gitDir, commonDir string) (string, error) {
 	dotgit := filepath.Join(root, ".git")
 	fi, err := os.Lstat(dotgit)
-	if errors.Is(err, fs.ErrNotExist) || (err == nil && !fi.IsDir()) {
-		return "its .git is not a directory (linked worktree or external git dir)", nil
-	}
-	if err != nil {
+	switch {
+	case gitDir != commonDir: // linked worktree: its .git is a gitfile into commonDir/worktrees/<id>
+		if filepath.Dir(gitDir) != filepath.Join(commonDir, "worktrees") {
+			return "its git dir lies outside the common dir's worktrees/", nil
+		}
+		if id := filepath.Base(gitDir); !worktreeID.MatchString(id) || id == "." || id == ".." {
+			return fmt.Sprintf("its worktree id %q holds characters outside [A-Za-z0-9._-]", id), nil
+		}
+		if cfi, cerr := os.Stat(commonDir); cerr != nil || !cfi.IsDir() {
+			return "its common git dir is not a directory", cerr
+		}
+	case errors.Is(err, fs.ErrNotExist) || (err == nil && !fi.IsDir()):
+		return "its .git is not a directory (external git dir)", nil
+	case err != nil:
 		return "", err
-	}
-	if gitDir != commonDir {
-		return "it is a linked worktree", nil
-	}
-	if same, sameErr := sameFile(gitDir, dotgit); sameErr != nil || !same {
-		return "its git dir lies outside the tree", sameErr
+	default:
+		if same, sameErr := sameFile(gitDir, dotgit); sameErr != nil || !same {
+			return "its git dir lies outside the tree", sameErr
+		}
 	}
 	if _, statErr := os.Stat(filepath.Join(commonDir, "objects", "info", "alternates")); statErr == nil {
 		return "it borrows objects from another repository (alternates)", nil
@@ -282,7 +299,7 @@ func base(target remote.Target, meta string) []string {
 	return []string{"-a", "--modify-window=-1", "-e", target.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
 }
 
-// UploadGit sends list, then mirrors .git (Y4). The list goes without --delete: a local file where
+// UploadGit sends list, then mirrors .git — a linked worktree's common dir to <meta>/repo (Y4). The list goes without --delete: a local file where
 // the host keeps a directory of ignored files makes rsync fail (125) instead of deleting them.
 // `.git` lock files never cross; stale remote ones go.
 func UploadGit(ctx context.Context, t Tree, target remote.Target, list []string) error {
@@ -300,7 +317,14 @@ func UploadGit(ctx context.Context, t Tree, target remote.Target, list []string)
 		return err
 	}
 	dotgit := append(base(target, t.Meta()), "--mkpath", "--delete", "--delete-excluded",
-		"--filter=- /*.lock", "--filter=- /**/*.lock", t.Root+"/.git/", target.Address+":"+t.Workdir()+"/.git/")
+		"--filter=- /*.lock", "--filter=- /**/*.lock")
+	if t.Worktree == "" {
+		dotgit = append(dotgit, t.Root+"/.git/", target.Address+":"+t.Workdir()+"/.git/")
+	} else { // gitdir + commondir name controller paths: the run script writes the host's (Y4)
+		wt := "/worktrees/" + t.Worktree + "/"
+		dotgit = append(dotgit, "--filter=+ /worktrees/", "--filter=- "+wt+"gitdir", "--filter=- "+wt+"commondir",
+			"--filter=+ "+wt+"***", "--filter=- /worktrees/*", t.CommonDir+"/", target.Address+":"+t.Meta()+"/repo/")
+	}
 	return rsync(ctx, nil, dotgit...)
 }
 

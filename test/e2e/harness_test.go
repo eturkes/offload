@@ -186,6 +186,16 @@ func (s *sandbox) git(args ...string) []byte {
 	return out
 }
 
+// shell = stdout of bash -c script in the sandbox cwd + environment (a local oracle).
+func (s *sandbox) shell(script string) string {
+	s.t.Helper()
+	cmd := exec.Command("bash", "-c", script)
+	cmd.Dir, cmd.Env = s.cwd, s.env
+	out, err := cmd.Output()
+	must(s.t, err)
+	return string(out)
+}
+
 func (s *sandbox) workdir(name string) string {
 	digest := sha1.Sum([]byte(s.root))
 	return filepath.Join(s.hosts, name, "offload", fmt.Sprintf("%s-%x", filepath.Base(s.root), digest[:4]))

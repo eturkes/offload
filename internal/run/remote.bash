@@ -1,8 +1,9 @@
 # shellcheck shell=bash
 # remote run (after watch.bash; installed + exec'd by run.go's boot): lock the workdir, prune it (git
 # mode), run CMD under offload_watch, list its outputs, record the status.
-# Args: WORKDIR META SUBDIR MODE NONCE COUNT CMD — paths relative to $HOME; MODE = git | plain |
-# nosync. Git mode reads NONCE, EXCLUDES (the controller's global git excludes) + COUNT paths
+# Args: WORKDIR META SUBDIR MODE NONCE COUNT CMD — paths relative to $HOME; MODE = git |
+# worktree:<id> (git mode for a linked worktree: .git = gitfile into META/repo) | plain | nosync.
+# Git modes read NONCE, EXCLUDES (the controller's global git excludes) + COUNT paths
 # (NUL-terminated) from stdin first; the rest of stdin is offload's pipe (EOF = offload gone).
 # Variables are `__…`, as in watch.bash: CMD inherits this shell's exports.
 set -u
@@ -35,15 +36,23 @@ git_list() { # non-ignored files of the workdir, as git sees them
 }
 
 cd || fail "no home directory"
-__wd=$HOME/$1 __meta=$HOME/$2 __sub=$3 __mode=$4 __nonce=$5 __count=$6 __cmd=$7
+__wd=$HOME/$1 __meta=$HOME/$2 __sub=$3 __mode=$4 __nonce=$5 __count=$6 __cmd=$7 __wt=
+case $__mode in worktree:*) __wt=${__mode#worktree:} __mode=git ;; esac
 mkdir -p "$__wd" "$__meta" || fail "cannot create workdir $1"
 exec 9>"$__meta/lock"
 flock -w 300 9 || fail "workdir $1 still busy after 300 s"
 cd "$__wd" || fail "cannot enter workdir $1"
 rm -f "$__meta/status" "$__meta/down"
 
+if [ -n "$__wt" ]; then # the worktree's admin dir, linked as git would on the controller (Y4)
+  __adm=$__meta/repo/worktrees/$__wt
+  [ -d "$__adm" ] || fail "workdir $1 has no worktree $__wt (upload incomplete)"
+  if [ -d .git ] && [ ! -L .git ]; then fail "workdir $1 holds a .git directory; remove ~/$1 on this host"; fi
+  { printf '../..\n' >"$__adm/commondir" && printf '%s\n' "$__wd/.git" >"$__adm/gitdir" &&
+    rm -f .git && printf 'gitdir: %s\n' "$__adm" >.git; } || fail "cannot link worktree $__wt into workdir $1"
+fi
 if [ "$__mode" = git ]; then
-  [ -d .git ] || fail "workdir $1 has no .git (upload incomplete)"
+  [ -e .git ] || fail "workdir $1 has no .git (upload incomplete)"
   head -z -n "$((__count + 2))" >"$__meta/upload"
   __n=$(tr -cd '\0' <"$__meta/upload" | wc -c)
   __first=$(head -z -n 1 "$__meta/upload" | tr -d '\0')

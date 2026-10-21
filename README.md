@@ -99,7 +99,8 @@ Ignored outputs come back only with `--get`.
 
 In a directory that is not a git repository, offload copies the directory with rsync and applies the `.gitignore` files that rsync can read.
 
-These repositories run on the local slots only: git worktrees, repositories with submodules, repositories that contain another repository, and repositories with an external git directory.
+A linked git worktree also runs on a pool host. The host sees the branch, the commits and the staged changes of that worktree.
+These repositories run on the local slots only: repositories with submodules, repositories that contain another repository, and repositories with an external git directory.
 offload never copies the filesystem root or your home directory to a host. A run started there uses the local slots only.
 
 Do not change the files while offload copies them. offload does not take a snapshot.
