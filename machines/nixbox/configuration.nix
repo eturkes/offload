@@ -42,6 +42,10 @@ in
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
+      # A vanished offload controller → its session closes within ~1 min → the run's watcher sees
+      # stdin EOF and tears the command down (offload contract X5).
+      ClientAliveInterval = 15;
+      ClientAliveCountMax = 4;
     };
   };
 
