@@ -34,7 +34,7 @@ case $1 in
   deadnix) v=1.3.2 git=$gh/astro/deadnix rev=ba988ddf46f1e57abe3dfacbfbd17fec5a7276d9 track=gittag:$gh/astro/deadnix ;;
   govulncheck) v=1.9.0 pkg=golang.org/x/vuln/cmd/govulncheck ;;
   gotestsum) v=1.13.0 pkg=gotest.tools/gotestsum ;;
-  mutago) v=2.10.35 pkg=github.com/quality-gates/mutago/v2/cmd/mutago ;; # mutation credit, not a gate step
+  mutago) v=2.10.37 pkg=github.com/quality-gates/mutago/v2/cmd/mutago ;; # mutation credit, not a gate step
   *) echo "tool: unknown tool $1" >&2; exit 2 ;;
 esac
 }
