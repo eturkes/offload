@@ -3,7 +3,11 @@ package remote
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -19,15 +23,46 @@ var SSHOptions = []string{
 	"-o", "ServerAliveCountMax=4",
 }
 
-// SSHArgs = ssh argv (without "ssh") running script on address.
-func SSHArgs(address, script string) []string {
-	args := append([]string{}, SSHOptions...)
-	return append(args, "-T", "--", address, script)
+// Target = one pool host as ssh + rsync reach it: its address + options beyond SSHOptions.
+type Target struct {
+	Address string
+	Opts    []string
 }
 
-// RsyncShell = rsync's -e value: ssh with SSHOptions.
-func RsyncShell() string {
-	return "ssh " + strings.Join(SSHOptions, " ")
+// SSHArgs = ssh argv (without "ssh") running script on the target.
+func (t Target) SSHArgs(script string) []string {
+	args := append(append([]string{}, SSHOptions...), t.Opts...)
+	return append(args, "-T", "--", t.Address, script)
+}
+
+// RsyncShell = rsync's -e value: ssh with SSHOptions + the target's options. rsync splits it on
+// whitespace, so option values never hold any (Multiplex checks its path).
+func (t Target) RsyncShell() string {
+	return "ssh " + strings.Join(append(append(append([]string{}, SSHOptions...), t.Opts...), "-T"), " ")
+}
+
+// controlDir = characters ssh's -o + rsync's -e parsers both take unquoted, `%` (a token) excluded.
+var controlDir = regexp.MustCompile(`^[A-Za-z0-9/._-]+$`)
+
+// maxControlDir: a socket path holds ≤ 107 bytes, and OpenSSH binds `<dir>/<%C: 40 hex>` through a
+// temporary `.<16 chars>` sibling first ⇒ dir ≤ 107 - 1 - 40 - 17.
+const maxControlDir = 49
+
+// Multiplex = the ssh options sharing one master connection per host (ControlPersist 60 s idle),
+// sockets in $XDG_RUNTIME_DIR/offload/ssh (created 0700). An error = why it stays off.
+func Multiplex(getenv func(string) string) ([]string, error) {
+	rt := getenv("XDG_RUNTIME_DIR")
+	if rt == "" {
+		return nil, fmt.Errorf("XDG_RUNTIME_DIR is unset")
+	}
+	dir := filepath.Join(rt, "offload", "ssh")
+	if !controlDir.MatchString(dir) || len(dir) > maxControlDir {
+		return nil, fmt.Errorf("socket directory %q is not a short plain path", dir)
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	return []string{"-o", "ControlMaster=auto", "-o", "ControlPath=" + dir + "/%C", "-o", "ControlPersist=60"}, nil
 }
 
 // Quote = s as one POSIX shell word.

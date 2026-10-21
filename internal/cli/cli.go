@@ -202,7 +202,7 @@ func runCommand(o options, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "offload: %v\n", err)
 		return ExitUsage
 	}
-	p := placer{opts: o, heavy: heavy, hosts: hosts, tree: t, stderr: stderr}
+	p := placer{opts: o, heavy: heavy, hosts: hosts, targets: targets(hosts, stderr), tree: t, stderr: stderr}
 	pl, err := p.place(ctx)
 	switch {
 	case ctx.Err() != nil:
@@ -225,7 +225,7 @@ func runCommand(o options, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stderr, "offload: %s slot %d/%d (%d CPUs, %.0f%% busy) → ~/%s\n", pl.host.Name,
 		pl.slot.Index, pl.slot.Total, pl.stats.CPUs, 100*pl.stats.Busy(), t.Workdir())
-	rc, err := remoteRun(ctx, o, t, pl.host.Address, gets, stderr)
+	rc, err := remoteRun(ctx, o, t, p.targets[pl.host.Name], gets, stderr)
 	if ctx.Err() != nil {
 		return signalStatus()
 	}
@@ -236,8 +236,8 @@ func runCommand(o options, stderr io.Writer) int {
 }
 
 // remoteRun = upload → run → download → --get (Y4–Y10).
-func remoteRun(ctx context.Context, o options, t mirror.Tree, address string, gets []string, stderr io.Writer) (int, error) {
-	r := run.Remote{Address: address, Workdir: t.Workdir(), Meta: t.Meta(), Sub: t.Sub, Argv: o.argv, Mode: "nosync"}
+func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Target, gets []string, stderr io.Writer) (int, error) {
+	r := run.Remote{Target: target, Workdir: t.Workdir(), Meta: t.Meta(), Sub: t.Sub, Argv: o.argv, Mode: "nosync"}
 	switch {
 	case o.noSync:
 	case t.Git:
@@ -249,13 +249,13 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, address string, ge
 		if r.Excludes, err = mirror.GlobalExcludes(ctx, t.Root); err != nil {
 			return 0, err
 		}
-		if err := mirror.UploadGit(ctx, t, address, list); err != nil {
+		if err := mirror.UploadGit(ctx, t, target, list); err != nil {
 			return 0, err
 		}
 		r.Paths = list
 	default:
 		r.Mode = "plain"
-		if err := mirror.UploadPlain(ctx, t, address); err != nil {
+		if err := mirror.UploadPlain(ctx, t, target); err != nil {
 			return 0, err
 		}
 	}
@@ -265,15 +265,15 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, address string, ge
 	}
 	switch r.Mode {
 	case "git":
-		err = mirror.DownloadGit(ctx, t, address)
+		err = mirror.DownloadGit(ctx, t, target)
 	case "plain":
-		err = mirror.DownloadPlain(ctx, t, address)
+		err = mirror.DownloadPlain(ctx, t, target)
 	}
 	for _, g := range gets {
 		if err != nil {
 			break
 		}
-		err = mirror.Get(ctx, t, address, g)
+		err = mirror.Get(ctx, t, target, g)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "offload: the command exited %d, but its outputs did not all come back\n", rc)
@@ -296,6 +296,29 @@ func checkLocalCommand(name string, stderr io.Writer) (int, bool) {
 	}
 	fmt.Fprintf(stderr, "offload: %s: %v\n", path, err)
 	return 126, false
+}
+
+// targets resolves each host's transport once (X5): multiplexed hosts share one socket directory; when
+// it cannot be set up they connect plainly, said once on stderr.
+func targets(hosts []pool.Host, stderr io.Writer) map[string]remote.Target {
+	out := make(map[string]remote.Target, len(hosts))
+	var mux []string
+	var resolved bool
+	for _, h := range hosts {
+		t := remote.Target{Address: h.Address}
+		if h.Multiplex {
+			if !resolved {
+				var err error
+				if mux, err = remote.Multiplex(os.Getenv); err != nil {
+					fmt.Fprintf(stderr, "offload: connection multiplexing off: %v\n", err)
+				}
+				resolved = true
+			}
+			t.Opts = mux
+		}
+		out[h.Name] = t
+	}
+	return out
 }
 
 func filterHost(hosts []pool.Host, name string) []pool.Host {

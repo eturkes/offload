@@ -275,14 +275,14 @@ func rsync(ctx context.Context, stdin []byte, args ...string) error {
 	return nil
 }
 
-func base(meta string) []string {
-	return []string{"-a", "-e", remote.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
+func base(target remote.Target, meta string) []string {
+	return []string{"-a", "-e", target.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
 }
 
 // UploadGit sends list, then mirrors .git (Y4). The list goes without --delete: a local file where
 // the host keeps a directory of ignored files makes rsync fail (125) instead of deleting them.
 // `.git` lock files never cross; stale remote ones go.
-func UploadGit(ctx context.Context, t Tree, address string, list []string) error {
+func UploadGit(ctx context.Context, t Tree, target remote.Target, list []string) error {
 	if err := t.check(); err != nil {
 		return err
 	}
@@ -291,50 +291,50 @@ func UploadGit(ctx context.Context, t Tree, address string, list []string) error
 		in.WriteString(p)
 		in.WriteByte(0)
 	}
-	files := append(base(t.Meta()), "--mkpath", "--from0", "--files-from=-",
-		t.Root+"/", address+":"+t.Workdir()+"/")
+	files := append(base(target, t.Meta()), "--mkpath", "--from0", "--files-from=-",
+		t.Root+"/", target.Address+":"+t.Workdir()+"/")
 	if err := rsync(ctx, in.Bytes(), files...); err != nil {
 		return err
 	}
-	dotgit := append(base(t.Meta()), "--mkpath", "--delete", "--delete-excluded",
-		"--filter=- /*.lock", "--filter=- /**/*.lock", t.Root+"/.git/", address+":"+t.Workdir()+"/.git/")
+	dotgit := append(base(target, t.Meta()), "--mkpath", "--delete", "--delete-excluded",
+		"--filter=- /*.lock", "--filter=- /**/*.lock", t.Root+"/.git/", target.Address+":"+t.Workdir()+"/.git/")
 	return rsync(ctx, nil, dotgit...)
 }
 
 // UploadPlain mirrors a non-git tree under rsync's .gitignore filter (Y7).
-func UploadPlain(ctx context.Context, t Tree, address string) error {
+func UploadPlain(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
-		t.Root+"/", address+":"+t.Workdir()+"/")
+	args := append(base(target, t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
+		t.Root+"/", target.Address+":"+t.Workdir()+"/")
 	return rsync(ctx, nil, args...)
 }
 
 // DownloadGit fetches the remote run's output list (Y6).
-func DownloadGit(ctx context.Context, t Tree, address string) error {
+func DownloadGit(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
-		"--ignore-missing-args", address+":"+t.Workdir()+"/", t.Root+"/")
+	args := append(base(target, t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
+		"--ignore-missing-args", target.Address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
 }
 
 // DownloadPlain fetches a non-git tree's outputs under the .gitignore filter (Y7).
-func DownloadPlain(ctx context.Context, t Tree, address string) error {
+func DownloadPlain(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
-		address+":"+t.Workdir()+"/", t.Root+"/")
+	args := append(base(target, t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
+		target.Address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
 }
 
 // Get copies one root-relative path back whatever its ignore status (Y8); a trailing "/" = contents.
 // A path without the slash lands in its parent directory, so fetching a directory twice never nests
 // it inside itself.
-func Get(ctx context.Context, t Tree, address, rel string) error {
+func Get(ctx context.Context, t Tree, target remote.Target, rel string) error {
 	if err := t.check(); err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func Get(ctx context.Context, t Tree, address, rel string) error {
 	if !strings.HasSuffix(rel, "/") {
 		dst = filepath.Join(t.Root, filepath.Dir(rel)) + "/"
 	}
-	args := append(base(t.Meta()), "--update", "--mkpath", address+":"+t.Workdir()+"/"+rel, dst)
+	args := append(base(target, t.Meta()), "--update", "--mkpath", target.Address+":"+t.Workdir()+"/"+rel, dst)
 	return rsync(ctx, nil, args...)
 }
 

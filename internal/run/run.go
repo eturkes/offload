@@ -43,7 +43,7 @@ func Local(ctx context.Context, argv []string, lock *os.File) (int, error) {
 
 // Remote = one remote run (Y5, X1, X6).
 type Remote struct {
-	Address  string
+	Target   remote.Target
 	Workdir  string // relative to the remote $HOME
 	Meta     string
 	Sub      string // cwd relative to the workdir root
@@ -71,7 +71,7 @@ func (r Remote) Run(ctx context.Context) (int, error) {
 		}
 		preamble = b.Bytes()
 	}
-	cmd := remote.Command(context.Background(), "ssh", remote.SSHArgs(r.Address, remote.Join(words))...)
+	cmd := remote.Command(context.Background(), "ssh", r.Target.SSHArgs(remote.Join(words))...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	rc, err := supervise(ctx, cmd, preamble)
 	if err != nil || ctx.Err() != nil || (rc != 125 && rc != 255) {
@@ -79,7 +79,7 @@ func (r Remote) Run(ctx context.Context) (int, error) {
 	}
 	// 125/255 = the command's own status, or the remote script / ssh failing: the status record
 	// written after the command ran tells them apart (X6).
-	out, err := remote.Command(ctx, "ssh", remote.SSHArgs(r.Address, "cat "+remote.Quote(r.Meta+"/status"))...).Output()
+	out, err := remote.Command(ctx, "ssh", r.Target.SSHArgs("cat "+remote.Quote(r.Meta+"/status"))...).Output()
 	if err == nil && strings.TrimSpace(string(out)) == nonce+" "+strconv.Itoa(rc) {
 		return rc, nil
 	}

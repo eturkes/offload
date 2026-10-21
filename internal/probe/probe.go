@@ -58,12 +58,12 @@ func Parse(out string) (Stats, error) {
 	return s, nil
 }
 
-// Probe measures the host at address. The error carries ssh's last stderr line.
-func Probe(ctx context.Context, address string) (Stats, error) {
+// Probe measures the host at t. The error carries ssh's last stderr line.
+func Probe(ctx context.Context, t remote.Target) (Stats, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout-pipeGrace)
 	defer cancel()
 	//nolint:gosec // G204: address = trusted pool file entry, after "--"; Script is a constant
-	cmd := exec.CommandContext(ctx, "ssh", remote.SSHArgs(address, Script)...)
+	cmd := exec.CommandContext(ctx, "ssh", t.SSHArgs(Script)...)
 	// Descendants of a killed ssh can keep its pipes open; WaitDelay caps the wait past the deadline.
 	cmd.WaitDelay = pipeGrace
 	var stderr strings.Builder
