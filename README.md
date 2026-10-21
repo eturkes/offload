@@ -20,6 +20,7 @@ On each pool host:
 
 - `bash`, `rsync`, `git`, GNU coreutils, util-linux (`setsid`, `flock`) and procps.
 - An SSH server. Set `ClientAliveInterval 15` and `ClientAliveCountMax 4`, so that a run stops within about one minute when the controller disappears.
+- Optional: a systemd user manager for the user that offload logs in as. Run `loginctl enable-linger <user>` to keep it running without a login. Then a stopped run also stops the daemons that its command started.
 
 ## Install
 
@@ -119,7 +120,17 @@ When the command itself exits with 2 or 125, offload also exits with that value.
 Stop offload in any way, also with `kill -9`.
 The command and every process that it started in its session stop, on this machine or on the host.
 offload sends TERM first and KILL 10 seconds later.
-A process that starts its own session is not stopped.
+
+offload puts the command in its own systemd scope when these conditions are true:
+
+- A systemd user manager runs for your user, with systemd 254 or later.
+- The system uses cgroup v2.
+- The user manager starts the scope.
+
+Then a process that the command started also stops when it starts its own session, for example a daemon.
+If offload cannot start the scope, it tells you on stderr and runs the command without a scope.
+Without a scope, a process that starts its own session is not stopped.
+A process that another systemd unit takes over is never stopped, for example the command of an offload run that the command itself starts.
 
 ## See the pool
 

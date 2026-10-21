@@ -49,11 +49,19 @@ func TestCommandOutlivesOpenStdin(t *testing.T) { // X1: only EOF or the leader'
 	}
 }
 
-func TestLocalArgvIsNotShellParsed(t *testing.T) { // X2
-	out := filepath.Join(t.TempDir(), "out")
-	rc, err := Local(context.Background(), []string{"sh", "-c", `printf '%s' "$1" > "$2"`, "_", "$HOME `x` 'q'", out}, nil)
-	if b, _ := os.ReadFile(out); err != nil || rc != 0 || string(b) != "$HOME `x` 'q'" {
-		t.Fatalf("rc %d err %v out %q", rc, err, b)
+func TestLocalArgvIsNotShellParsed(t *testing.T) { // X2, scope + plain paths
+	for _, scoped := range []bool{true, false} {
+		t.Run(strconv.FormatBool(scoped), func(t *testing.T) {
+			if !scoped {
+				failingSystemdRun(t)
+			}
+			out := filepath.Join(t.TempDir(), "out")
+			word := "$HOME `x` 'q' $$ ${HOME} %h" // ${…} + $$: systemd-run's default expansion (scope path)
+			rc, err := Local(context.Background(), []string{"sh", "-c", `printf '%s' "$1" > "$2"`, "_", word, out}, nil)
+			if b, _ := os.ReadFile(out); err != nil || rc != 0 || string(b) != word {
+				t.Fatalf("rc %d err %v out %q", rc, err, b)
+			}
+		})
 	}
 }
 
@@ -112,6 +120,230 @@ func TestLockReachesWatcherNotCommand(t *testing.T) { // S3 + S5
 		t.Fatalf("rc %d err %v; command fds:\n%s", rc, err, b)
 	}
 }
+
+// requireScope skips where no user systemd manager starts a scope; OFFLOAD_REQUIRE_SCOPE=1 (CI with a
+// lingering user manager) turns that absence into a failure, so the scope tests never skip silently.
+func requireScope(t *testing.T) {
+	t.Helper()
+	if scopeWorks() {
+		return
+	}
+	if os.Getenv("OFFLOAD_REQUIRE_SCOPE") != "" {
+		t.Fatal("OFFLOAD_REQUIRE_SCOPE is set, but systemd-run --user --scope fails")
+	}
+	t.Skip("no user systemd manager: scope teardown is untestable here")
+}
+
+// scopeWorks finds the user manager the way the watcher does ($XDG_RUNTIME_DIR, else /run/user/<uid>)
+// and starts a scope there.
+func scopeWorks() bool {
+	for _, d := range []string{os.Getenv("XDG_RUNTIME_DIR"), "/run/user/" + strconv.Itoa(os.Getuid())} {
+		if fi, err := os.Stat(filepath.Join(d, "systemd", "private")); d == "" || err != nil || fi.Mode()&os.ModeSocket == 0 {
+			continue
+		}
+		c := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")
+		c.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+d)
+		return c.Run() == nil
+	}
+	return false
+}
+
+// ownCgroup = the test process's cgroup line: a command left out of a new scope shares it, also when
+// the suite itself runs inside an offload scope.
+func ownCgroup(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// inNewScope = cg names an offload scope other than the one the test may already run in.
+func inNewScope(t *testing.T, cg string) bool {
+	t.Helper()
+	return strings.Contains(cg, "/offload-") && !strings.HasSuffix(cg, ownCgroup(t))
+}
+
+// failingSystemdRun puts a systemd-run that fails noisily first on PATH: a manager that refuses.
+func failingSystemdRun(t *testing.T) {
+	bin := t.TempDir()
+	stub := "#!/bin/sh\necho 'systemd-run: refused' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(bin, "systemd-run"), []byte(stub), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+}
+
+// daemon = a command that double-forks a setsid daemon (own session: out of pkill -s reach), writes
+// the daemon's pid to the file in $1, then exits 5.
+const daemon = `setsid -f bash -c 'echo $$ > "$0"; exec sleep 300' "$1"
+while [ ! -s "$1" ]; do sleep 0.01; done
+exit 5`
+
+func requireGone(t *testing.T, pid int) {
+	t.Helper()
+	if pid <= 0 {
+		t.Fatalf("bad pid %d", pid)
+	}
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if !alive(pid) {
+			return
+		}
+	}
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+	t.Errorf("pid %d outlived the run", pid)
+}
+
+func TestScopeEndsEscapedDaemonWithLeader(t *testing.T) { // X1
+	requireScope(t)
+	pids := filepath.Join(t.TempDir(), "pids")
+	t0 := time.Now()
+	rc, err := Local(context.Background(), []string{"bash", "-c", daemon, "_", pids}, nil)
+	if err != nil || rc != 5 || time.Since(t0) > 5*time.Second {
+		t.Fatalf("rc %d err %v after %s; want 5 at once (TERM reaches the scope)", rc, err, time.Since(t0))
+	}
+	requireGone(t, readPids(t, pids, 1)[0])
+}
+
+func TestScopeEndsEscapedDaemonOnCancel(t *testing.T) { // X1 + X3
+	requireScope(t)
+	pids := filepath.Join(t.TempDir(), "pids")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan int)
+	go func() {
+		rc, _ := Local(ctx, []string{"bash", "-c", strings.Replace(daemon, "exit 5", "sleep 300", 1), "_", pids}, nil)
+		done <- rc
+	}()
+	p := readPids(t, pids, 1)
+	cancel()
+	select {
+	case rc := <-done:
+		if rc != 143 {
+			t.Errorf("rc %d; want 143 (leader ended by TERM)", rc)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("watcher did not finish")
+	}
+	requireGone(t, p[0])
+}
+
+func TestRefusedScopeRunsCommandWithoutScope(t *testing.T) { // X1 fallback: CMD starts once, unscoped
+	failingSystemdRun(t)
+	dir := t.TempDir()
+	rc, err := Local(context.Background(), []string{"bash", "-c", `echo run >> "$1/runs"; cat /proc/self/cgroup > "$1/cgroup"; exit 6`, "_", dir}, nil)
+	runs, _ := os.ReadFile(filepath.Join(dir, "runs"))
+	cg, _ := os.ReadFile(filepath.Join(dir, "cgroup"))
+	if err != nil || rc != 6 || string(runs) != "run\n" || string(cg) != ownCgroup(t) {
+		t.Fatalf("rc %d err %v runs %q cgroup %q", rc, err, runs, cg)
+	}
+}
+
+func TestScopeHoldsCommand(t *testing.T) { // X1: CMD itself sits in the offload scope
+	requireScope(t)
+	out := filepath.Join(t.TempDir(), "cgroup")
+	rc, err := Local(context.Background(), []string{"bash", "-c", `cat /proc/self/cgroup > "$1"`, "_", out}, nil)
+	cg, _ := os.ReadFile(out)
+	if err != nil || rc != 0 || !inNewScope(t, string(cg)) {
+		t.Fatalf("rc %d err %v cgroup %q (test's own: %q)", rc, err, cg, ownCgroup(t))
+	}
+}
+
+func TestScopeKeepsCommandEnvironment(t *testing.T) { // X1 + X2: XDG_RUNTIME_DIR + INVOCATION_ID as CMD had them
+	requireScope(t)
+	for _, set := range []bool{true, false} {
+		out := filepath.Join(t.TempDir(), "out")
+		want := "unset unset"
+		if set {
+			dir := filepath.Join(t.TempDir(), "elsewhere") // no manager socket here
+			t.Setenv("XDG_RUNTIME_DIR", dir)
+			t.Setenv("INVOCATION_ID", "callers-id")
+			want = dir + " callers-id"
+		} else {
+			for _, k := range []string{"XDG_RUNTIME_DIR", "INVOCATION_ID"} {
+				t.Setenv(k, "")
+				if err := os.Unsetenv(k); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		rc, err := Local(context.Background(), []string{"bash", "-c", `echo "${XDG_RUNTIME_DIR-unset} ${INVOCATION_ID-unset}" > "$1"; cat /proc/self/cgroup >> "$1"`, "_", out}, nil)
+		b, _ := os.ReadFile(out)
+		if err != nil || rc != 0 || !strings.HasPrefix(string(b), want+"\n") || !inNewScope(t, strings.TrimPrefix(string(b), want+"\n")) {
+			t.Errorf("set=%v rc %d err %v out %q; want %q first, then an offload scope", set, rc, err, b, want)
+		}
+	}
+}
+
+func TestWatcherKeepsCallerVariables(t *testing.T) { // X2: watcher locals never reach CMD's environment
+	names := []string{"p", "c", "d", "who", "rc", "deadline", "eof", "rt", "unit", "mark", "hx", "vx", "hi", "vi", "cg"}
+	for _, scoped := range []bool{true, false} {
+		t.Run(strconv.FormatBool(scoped), func(t *testing.T) {
+			if !scoped {
+				failingSystemdRun(t)
+			}
+			var want strings.Builder
+			for _, n := range names {
+				t.Setenv(n, "caller-"+n)
+				want.WriteString(n + "=caller-" + n + "\n")
+			}
+			out := filepath.Join(t.TempDir(), "env")
+			script := `for n in ` + strings.Join(names, " ") + `; do printf '%s=%s\n' "$n" "$(printenv "$n")"; done > "$1"`
+			rc, err := Local(context.Background(), []string{"bash", "-c", script, "_", out}, nil)
+			if b, _ := os.ReadFile(out); err != nil || rc != 0 || string(b) != want.String() {
+				t.Fatalf("rc %d err %v env:\n%s", rc, err, b)
+			}
+		})
+	}
+}
+
+func TestScopeKillsTermIgnoringDaemonAfterGrace(t *testing.T) { // X1: KILL at 10 s (S5 lock: e2e local-kill-escalation)
+	requireScope(t)
+	pids := filepath.Join(t.TempDir(), "pids")
+	cmd := `setsid -f bash -c 'trap "" TERM; echo $$ > "$0"; while :; do sleep 1; done' "$1"
+while [ ! -s "$1" ]; do sleep 0.01; done`
+	t0 := time.Now()
+	done := make(chan int)
+	go func() {
+		rc, _ := Local(context.Background(), []string{"bash", "-c", cmd, "_", pids}, nil)
+		done <- rc
+	}()
+	daemonPid := readPids(t, pids, 1)[0]
+	select {
+	case rc := <-done:
+		if rc != 0 || time.Since(t0) < 9*time.Second {
+			t.Errorf("rc %d after %s; want 0 after the 10 s grace", rc, time.Since(t0))
+		}
+	case <-time.After(30 * time.Second):
+		_ = syscall.Kill(daemonPid, syscall.SIGKILL)
+		t.Fatal("watcher still waiting 30 s after the leader exited")
+	}
+	requireGone(t, daemonPid)
+}
+
+func TestEOFDuringScopeAdmissionRunsNothing(t *testing.T) { // X1 + X3: offload gone while systemd-run starts
+	requireScope(t)
+	sdRun, err := exec.LookPath("systemd-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	stub := "#!/bin/sh\nsleep 1\nexec " + sdRun + " \"$@\"\n"
+	if err = os.WriteFile(filepath.Join(bin, "systemd-run"), []byte(stub), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	ran := filepath.Join(t.TempDir(), "ran")
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(300*time.Millisecond, cancel)
+	rc, err := Local(ctx, []string{"bash", "-c", `touch "$1"`, "_", ran}, nil)
+	time.Sleep(2 * time.Second)
+	if err != nil || rc != 143 || exists(ran) {
+		t.Fatalf("rc %d err %v; CMD ran = %v (want 143, never ran)", rc, err, exists(ran))
+	}
+}
+
+func exists(path string) bool { _, err := os.Lstat(path); return err == nil }
 
 // remote.bash, driven directly with a temp HOME as the "host".
 type host struct {
