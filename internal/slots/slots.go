@@ -85,7 +85,7 @@ func (d Dir) TryAcquire(owner string) (s *Slot, ok bool, err error) {
 		}
 		s := &Slot{Index: i, Total: d.Total, file: f, owner: f.Name() + ".owner"}
 		line := fmt.Sprintf("%d since %s:%s\n", os.Getpid(), time.Now().Format("15:04:05"), owner)
-		if err := os.WriteFile(s.owner, []byte(line), 0o600); err != nil {
+		if err := writeOwner(s.owner, line); err != nil {
 			s.Release()
 			return nil, false, err
 		}
@@ -99,7 +99,7 @@ func (s *Slot) Release() {
 	if s == nil || s.file == nil {
 		return
 	}
-	_ = os.WriteFile(s.owner, nil, 0o600)
+	_ = writeOwner(s.owner, "")
 	_ = s.file.Close()
 	s.file = nil
 }
@@ -120,12 +120,26 @@ func (d Dir) Holders() []string {
 	return out
 }
 
+// writeOwner never follows a symlink: under the /tmp fallback another user could plant one at a
+// slot path to make offload truncate a file it points at.
+func writeOwner(path, text string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(text)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
+}
+
 // tryLock opens path (created like heavy's `exec {fd}>`) and flocks it non-blocking. held = the
 // lock is now ours; a busy lock closes the file and returns held = false.
 func tryLock(path string) (f *os.File, held bool, err error) {
 	// O_CLOEXEC (Go's default): the command never inherits the lock, so a stray daemon it spawns
 	// cannot keep the slot held.
-	f, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0o600) //nolint:gosec // G304: runtime dir path
+	f, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
 	if err != nil {
 		return nil, false, err
 	}
