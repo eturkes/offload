@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# plant — mutation credit by hand: apply one literal source replacement inside a disposable worktree,
+# run the named tests there, revert, print whether any test failed (killed) or none did (survived).
+#   .agent/plant WORKTREE NAME FILE OLD NEW TEST-REGEX
+# FILE is repo-relative; OLD must occur in FILE. Never point WORKTREE at the primary tree.
+set -u
+wt=$1 name=$2 file=$3 old=$4 new=$5 run=$6
+python3 - "$wt/$file" "$old" "$new" <<'PY' || { echo "$name: plant failed (anchor missing)"; exit 2; }
+import sys
+path, old, new = sys.argv[1:]
+text = open(path).read()
+assert old in text
+open(path, "w").write(text.replace(old, new, 1))
+PY
+out=$(cd "$wt" && go test -count=1 -run "$run" ./... 2>&1)
+rc=$?
+git -C "$wt" checkout -q -- "$file"
+failing=$(printf '%s\n' "$out" | grep -E '^--- FAIL' | head -3 | tr '\n' ' ')
+if [ -n "$failing" ]; then
+  echo "$name: killed by $failing"
+elif [ "$rc" -ne 0 ]; then
+  echo "$name: rc $rc without a failing test (does the mutant compile?)"
+else
+  echo "$name: SURVIVED"
+fi
