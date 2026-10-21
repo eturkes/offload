@@ -81,6 +81,8 @@ in
   virtualisation.podman.enable = true;
   environment.systemPackages = with pkgs; [
     rsync git gcc gnumake cmake pkg-config python3 uv tmux htop btop nvme-cli lm_sensors
+    # Project bootstraps fetch pinned tools themselves (gitleaks, rustup, Verus, `just tools`).
+    curl jq unzip xz just file
   ];
 
   system.stateVersion = host.stateVersion;
