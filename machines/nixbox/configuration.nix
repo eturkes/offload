@@ -5,7 +5,7 @@ let
   host = import ./host.nix;
 in
 {
-  imports = [ ./hardware-configuration.nix ./network.nix ./secureboot.nix ];
+  imports = [ ./hardware-configuration.nix ./network.nix ./secureboot.nix ./idle.nix ];
 
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
@@ -83,6 +83,8 @@ in
     rsync git gcc gnumake cmake pkg-config python3 uv tmux htop btop nvme-cli lm_sensors
     # Project bootstraps fetch pinned tools themselves (gitleaks, rustup, Verus, `just tools`).
     curl jq unzip xz just file
+    # Trading (contracts build + tests) + Codexify's tool checks.
+    nodejs pnpm ripgrep gh
   ];
 
   system.stateVersion = host.stateVersion;

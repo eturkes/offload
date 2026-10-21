@@ -1,6 +1,6 @@
 # nixbox
 
-Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → `192.168.40.240`. Login `offload@192.168.40.240`, key-only; root SSH off; no account has a password.
+Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → `192.168.40.240`. Logins (key-only, controller key): `offload@` = offload runs + deploys (wheel, passwordless sudo); `eturkes@` = trading + Codexify (no sudo). Root SSH off; no account has a password.
 
 ## Files
 
@@ -9,6 +9,7 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - `installer.nix` = headless ISO: Wi-Fi + static IP + sshd with controller key.
 - `wifi.nix` = `{ ssid; psk; }`, gitignored, mode 600 on the box. Regenerate from the controller's NM profile `<redacted>`.
 - `hardware-configuration.nix` = written by `install`.
+- `idle.nix` = idle task: user `eturkes` (uid 1001, unprivileged, lingering) owns trading; its `user-1001.slice` runs at `CPUWeight=idle` ⇒ offload runs (user `offload`) preempt it.
 
 ## Ops
 
@@ -24,3 +25,8 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - TPM slot bound to PCR 7 (Secure Boot policy) ⇒ unattended reboots + upgrades; disabling SB or changing keys ⇒ TPM refuses ⇒ recovery key.
 - Re-bind after key changes: `sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 --unlock-key-file=<(printf %s "$RK") /dev/nvme0n1p2`.
 - `/boot/EFI/nixos/kernel-*.efi` shows unsigned in `sbctl verify` by design: the signed lanzaboote stub checks it by hash.
+
+## Idle task
+
+- `user-1001.slice` (`eturkes`) = `CPUWeight=idle` (cgroup `cpu.idle` yields to siblings only ⇒ set on the user slice, sibling of `offload`'s). IO weight unenforced (NVMe scheduler `none`).
+- Check: 8 CPU burners as `eturkes` → an 8-way CPU job as `offload` takes ≈ its solo time (1877 ms vs 1532–1789 ms solo); the same burners as `offload` → 3847 ms.
