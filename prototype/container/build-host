@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# build-host [CONTAINERFILE] — the ruled distribution: build the gate image on the controller AND on
+# the pool host from the same Containerfile (nothing shipped), install ctr on the host, then compare
+# layer digests. Prints one `build-host:` line (seconds per side, layer count, same|DIFFERENT).
+#   CONTAINERFILE  default: the one beside this script
+#   CTR_IMAGE      tag on both sides (default localhost/cement-gate:proto)
+#   BUILD_HOST     ssh target (default offload@192.168.40.240 = nixbox; hard-coded for the spike)
+set -euo pipefail
+here=$(dirname "$(readlink -f "$0")")
+file=$(readlink -f "${1:-$here/Containerfile}")
+image=${CTR_IMAGE:-localhost/cement-gate:proto}
+host=${BUILD_HOST:-offload@192.168.40.240}
+ssh=(ssh -o BatchMode=yes "$host")
+dir=.local/share/offload-proto
+secs() { awk -v a="$1" -v b="$EPOCHREALTIME" 'BEGIN{printf "%.1f", b - a}'; }
+fmt='{{range .RootFS.Layers}}{{println .}}{{end}}'
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+quiet() { "$@" 2>"$log" >/dev/null || { cat "$log" >&2; return 1; }; }
+
+"${ssh[@]}" "mkdir -p $dir/ctx"
+scp -q "$file" "$host:$dir/ctx/Containerfile"
+scp -q "$here/ctr" "$host:$dir/ctr"
+t0=$EPOCHREALTIME
+quiet podman build -q --timestamp 0 -t "$image" -f "$file" "$(dirname "$file")"
+local_s=$(secs "$t0")
+t0=$EPOCHREALTIME
+quiet "${ssh[@]}" "podman build -q --timestamp 0 -t $image $dir/ctx"
+remote_s=$(secs "$t0")
+here_layers=$(podman image inspect --format "$fmt" "$image")
+there_layers=$("${ssh[@]}" "podman image inspect --format '$fmt' $image")
+printf 'build-host: local %ss, host %ss, %s layers, %s\n' "$local_s" "$remote_s" \
+  "$(wc -l <<<"$here_layers")" "$([ "$here_layers" = "$there_layers" ] && echo same || echo DIFFERENT)"
+[ "$here_layers" = "$there_layers" ]
