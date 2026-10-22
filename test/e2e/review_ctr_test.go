@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -118,5 +119,35 @@ func TestReviewA3SignalCancelsProjectLookup(t *testing.T) {
 				t.Fatal("SIGTERM during the project lookup did not cancel git")
 			}
 		})
+	}
+}
+
+// TestReviewQ1SignalCancelsScopeProbe (reviewer-6 F1): a K8 signal during the systemd scope probe
+// of setup cancels it (a stalled manager must not hold offload).
+func TestReviewQ1SignalCancelsScopeProbe(t *testing.T) {
+	t.Parallel()
+	s := newSandbox(t, false)
+	s.setenv("OFFLOAD_CTR", "1")
+	s.setenv("XDG_CACHE_HOME", filepath.Join(s.base, "cache"))
+	s.write(".devcontainer/Containerfile", "FROM scratch\n")
+	must(t, os.MkdirAll(filepath.Join(s.runtime, "systemd"), 0o700))
+	listener, err := net.Listen("unix", filepath.Join(s.runtime, "systemd", "private"))
+	must(t, err)
+	defer func() { _ = listener.Close() }()
+	ready := filepath.Join(s.base, "probe-ready")
+	s.setenv("REVIEW_PROBE_READY", ready)
+	s.write(filepath.Join(s.base, "bin", "podman"), "#!/bin/sh\n[ \"$1 $2\" = 'image exists' ] && exit 0\nexit 99\n")
+	must(t, os.Chmod(filepath.Join(s.base, "bin", "podman"), 0o755))
+	s.write(filepath.Join(s.base, "bin", "systemd-run"), "#!/bin/sh\necho $$ > \"$REVIEW_PROBE_READY\"\nexec sleep 30\n")
+	must(t, os.Chmod(filepath.Join(s.base, "bin", "systemd-run"), 0o755))
+	p := s.start("ctr", "--", "true")
+	p.await("scope probe", func() bool { return exists(ready) })
+	t.Cleanup(func() { _ = syscall.Kill(readPID(t, ready), syscall.SIGKILL) })
+	p.signal(syscall.SIGTERM)
+	select {
+	case <-p.done:
+		p.wait(time.Second).requireCode(t, 143)
+	case <-time.After(2 * time.Second):
+		t.Fatal("SIGTERM during scope setup did not cancel the systemd-run probe")
 	}
 }
