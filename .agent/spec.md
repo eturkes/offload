@@ -36,8 +36,8 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [x] 6a79f6b Round 2: cement fan-out probe — full gate as parallel CI jobs on a `ci/*` branch (pushed from `.scratch/cement`, owner confirms the push) → 79 s push-to-green (34 jobs, longest 76 s, D28 0 replayed) vs one CI job ≈ 11 min, controller 226–338 s w/o D28
-- [x] 6a79f6b Sync by content: U, D + plain files `--checksum` (cnl-ckc stale crc32fast report) — red-first e2e `*SameStatRewrite*`, contract Y4/Y6/Y7
+- [x] e0c45f8 Round 2: cement fan-out probe — full gate as parallel CI jobs on a `ci/*` branch (pushed from `.scratch/cement`, owner confirms the push) → 79 s push-to-green (34 jobs, longest 76 s, D28 0 replayed) vs one CI job ≈ 11 min, controller 226–338 s w/o D28
+- [x] e0c45f8 Sync by content: U, D + plain files `--checksum` (cnl-ckc stale crc32fast report) — red-first e2e `*SameStatRewrite*`, contract Y4/Y6/Y7
 - [x] 2c5083a Round 1: rerun spike (build, ship, hits, gate ctr both hosts) + probe build-per-host key parity → owner calls: image home, selection mechanism, distribution, cold D28 fill
 - Deferred queue → `.agent/deferred.md`
 
