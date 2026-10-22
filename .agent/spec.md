@@ -32,6 +32,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
+- [ ] Round 1: rerun spike (build, ship, hits, gate ctr both hosts) + probe build-per-host key parity → owner calls: image home, selection mechanism, distribution, cold D28 fill
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
