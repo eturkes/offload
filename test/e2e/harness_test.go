@@ -19,6 +19,7 @@ import (
 
 var (
 	binaryPath string
+	helperPath string // ctrhelper, the e2e image's one program (ctr_test.go)
 	fixtureDir string
 )
 
@@ -34,18 +35,26 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	binaryPath = filepath.Join(tmp, "offload")
-	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/offload")
-	build.Dir = filepath.Clean(filepath.Join(cwd, "../.."))
-	build.Stdout, build.Stderr = os.Stdout, os.Stderr
-	if err := build.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		if removeErr := os.RemoveAll(tmp); removeErr != nil {
-			fmt.Fprintln(os.Stderr, removeErr)
+	binaryPath, helperPath = filepath.Join(tmp, "offload"), filepath.Join(tmp, "ctrhelper")
+	// Static, as installed: the binary is also the init inside `FROM scratch` test images (K11).
+	for out, pkg := range map[string]string{binaryPath: "./cmd/offload", helperPath: "./test/e2e/testdata/ctrhelper"} {
+		build := exec.Command("go", "build", "-o", out, pkg)
+		build.Dir = filepath.Clean(filepath.Join(cwd, "../.."))
+		build.Env = append(os.Environ(), "CGO_ENABLED=0")
+		build.Stdout, build.Stderr = os.Stdout, os.Stderr
+		if err := build.Run(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if removeErr := os.RemoveAll(tmp); removeErr != nil {
+				fmt.Fprintln(os.Stderr, removeErr)
+			}
+			os.Exit(1)
 		}
-		os.Exit(1)
 	}
 	code := m.Run()
+	if err := removeStorage(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		code = 1
+	}
 	if err := os.RemoveAll(tmp); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		code = 1

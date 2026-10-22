@@ -209,6 +209,35 @@ func TestX1NestedRunEndsWithOuterRun(t *testing.T) { // X1 + X3: TERM to an inne
 	p.signal(syscall.SIGKILL)
 	p.wait(2 * time.Second)
 	requirePIDsGone(t, []int{pid}, 5*time.Second)
+	// The inner offload empties its slot's owner file (O_CREAT) after its command is gone: wait for
+	// both slots, so TempDir's cleanup never races that write.
+	s.requireSlotsFree(10 * time.Second)
+}
+
+// requireSlotsFree waits until every heavy slot of the sandbox can be locked: each holder (offload
+// + its watcher) has finished, owner-file writes included.
+func (s *sandbox) requireSlotsFree(timeout time.Duration) {
+	s.t.Helper()
+	deadline := time.Now().Add(timeout)
+	for i := 1; i <= 2; i++ {
+		path := filepath.Join(s.runtime, "heavy", "slot"+strconv.Itoa(i))
+		for {
+			f, err := os.OpenFile(path, os.O_WRONLY, 0)
+			if errors.Is(err, os.ErrNotExist) {
+				break
+			}
+			must(s.t, err)
+			err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+			must(s.t, f.Close())
+			if err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				s.t.Fatalf("slot %d still held after %s", i, timeout)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
 }
 
 func readPIDIfAny(path string) int {

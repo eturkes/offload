@@ -55,4 +55,5 @@ jobs:
         env:
           GOTOOLCHAIN: local
           OFFLOAD_REQUIRE_SCOPE: "1"
+          OFFLOAD_REQUIRE_PODMAN: "1"
         run: .agent/gate
