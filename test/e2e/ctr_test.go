@@ -38,8 +38,14 @@ func requirePodman(t *testing.T) string {
 			return
 		}
 		storageConf = filepath.Join(storageDir, "storage.conf")
-		if storageErr = os.WriteFile(storageConf, fmt.Appendf(nil, "[storage]\ndriver = \"vfs\"\ngraphroot = %q\nrunroot = %q\n",
-			filepath.Join(storageDir, "graph"), filepath.Join(storageDir, "run")), 0o600); storageErr != nil {
+		// Rootless podman 4.x reads rootless_storage_path, ignoring graphroot; 5+ reads graphroot and
+		// fails an ID-mapped layer copy on the deprecation warning when both are set.
+		key := "graphroot"
+		if out, _ := exec.Command("podman", "version", "--format", "{{.Client.Version}}").Output(); strings.HasPrefix(string(out), "4.") {
+			key = "rootless_storage_path"
+		}
+		if storageErr = os.WriteFile(storageConf, fmt.Appendf(nil, "[storage]\ndriver = \"vfs\"\n%s = %q\nrunroot = %q\n",
+			key, filepath.Join(storageDir, "graph"), filepath.Join(storageDir, "run")), 0o600); storageErr != nil {
 			return
 		}
 		// The shared image, built once up front: parallel tests then time their own work alone.
@@ -49,7 +55,8 @@ func requirePodman(t *testing.T) string {
 		}
 		build := exec.Command(binaryPath, "ctr", "--layers")
 		build.Dir = project
-		build.Env = append(os.Environ(), "CONTAINERS_STORAGE_CONF="+storageConf, "XDG_RUNTIME_DIR="+storageDir)
+		build.Env = append(os.Environ(), "CONTAINERS_STORAGE_CONF="+storageConf, "XDG_RUNTIME_DIR="+storageDir,
+			"DBUS_SESSION_BUS_ADDRESS="+busAddress())
 		if out, err := build.CombinedOutput(); err != nil {
 			prebuildErr = fmt.Errorf("offload ctr --layers (shared test image): %w: %s", err, out)
 		}
@@ -64,6 +71,28 @@ func requirePodman(t *testing.T) string {
 		t.Fatal(prebuildErr)
 	}
 	return storageConf
+}
+
+// podmanBus points podman at the real user bus: a sandbox's own XDG_RUNTIME_DIR hides it, and
+// without one podman warns + falls back to cgroupfs on every call (CI sets no bus address).
+func podmanBus(s *sandbox) {
+	if bus := busAddress(); bus != "" {
+		s.setenv("DBUS_SESSION_BUS_ADDRESS", bus)
+	}
+}
+
+func busAddress() string {
+	if bus := os.Getenv("DBUS_SESSION_BUS_ADDRESS"); bus != "" {
+		return bus
+	}
+	path := filepath.Join("/run/user", strconv.Itoa(os.Getuid()), "bus")
+	if rt := os.Getenv("XDG_RUNTIME_DIR"); rt != "" {
+		path = filepath.Join(rt, "bus")
+	}
+	if _, err := os.Stat(path); err != nil {
+		return ""
+	}
+	return "unix:path=" + path
 }
 
 // removeStorage deletes the shared storage; its files belong to subordinate ids ⇒ podman unshare.
@@ -108,6 +137,7 @@ func ctrSandbox(t *testing.T, git bool, extra string) *sandbox {
 	s.setenv("CONTAINERS_STORAGE_CONF", conf)
 	s.setenv("XDG_CACHE_HOME", filepath.Join(s.base, "cache"))
 	s.setenv("OFFLOAD_CTR", "1")
+	podmanBus(s)
 	return s
 }
 
@@ -553,6 +583,7 @@ func TestK10CheckReportsDownHost(t *testing.T) {
 	must(t, err)
 	must(t, os.WriteFile(s.path(".devcontainer/ctrhelper"), helper, 0o755))
 	s.setenv("CONTAINERS_STORAGE_CONF", storageConf)
+	podmanBus(s)
 	r := s.start("ctr", "--check").wait(60 * time.Second)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "gone: failed (down: ")
@@ -749,6 +780,7 @@ func TestK3DefinitionDirMustBeRealDirectory(t *testing.T) {
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.setenv("CONTAINERS_STORAGE_CONF", conf)
+	podmanBus(s)
 	must(t, writeDefinition(filepath.Join(s.base, "elsewhere"), ""))
 	// Tag's walk never enters a symlinked root ⇒ every change behind it would keep the tag.
 	must(t, os.Symlink(filepath.Join(s.base, "elsewhere", ".devcontainer"), s.path(".devcontainer")))
