@@ -195,6 +195,11 @@ func RunArgs(p Project, tag, home string, argv []string) []string {
 // carries every Forwarded signal offload received: before the container starts the first one ends
 // the run (128+n); afterwards each goes to CMD over the control socket.
 func Run(cwd string, argv []string, getenv func(string) string, sigs <-chan os.Signal, stderr io.Writer) int {
+	return run(func(ctx context.Context) (Project, error) { return Find(ctx, cwd) }, argv, getenv, sigs, stderr)
+}
+
+// run = Run with the project lookup injected (tests hand it a fixed Project).
+func run(find func(context.Context) (Project, error), argv []string, getenv func(string) string, sigs <-chan os.Signal, stderr io.Writer) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var mu sync.Mutex
@@ -223,7 +228,7 @@ func Run(cwd string, argv []string, getenv func(string) string, sigs <-chan os.S
 		return exitFailure
 	}
 
-	p, err := Find(ctx, cwd)
+	p, err := find(ctx)
 	var ue UsageError
 	if errors.As(err, &ue) {
 		fmt.Fprintf(stderr, "offload: %v\n", err)

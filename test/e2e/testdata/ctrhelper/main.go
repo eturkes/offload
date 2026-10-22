@@ -54,6 +54,25 @@ func main() {
 		n, err := strconv.Atoi(arg(2))
 		check(err)
 		os.Exit(n)
+	case "forge-status": // fd 3 must not be the init's control socket in CMD (K8).
+		_, _ = syscall.Write(3, []byte("99\n"))
+		os.Exit(7)
+	case "spawn-trap": // spawn-trap FILE EXIT: leave a TERM-reporting child for the init to stop.
+		code, err := strconv.Atoi(arg(3))
+		check(err)
+		_ = startTrap(arg(2))
+		os.Exit(code)
+	case "trap-pair": // trap-pair FILE EXIT: both the leader + its child must receive USR1.
+		code, err := strconv.Atoi(arg(3))
+		check(err)
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGUSR1)
+		child := startTrap(arg(2) + ".child")
+		check(os.WriteFile(arg(2), []byte("ready\n"), 0o644))
+		<-ch
+		check(os.WriteFile(arg(2), []byte("ready\nUSR1\n"), 0o644))
+		check(child.Wait())
+		os.Exit(code)
 	case "cat":
 		_, err := io.Copy(os.Stdout, os.Stdin)
 		check(err)
@@ -65,13 +84,13 @@ func main() {
 		check(err)
 		check(syscall.Kill(os.Getpid(), syscall.Signal(n)))
 		time.Sleep(10 * time.Second)
-	case "trap": // trap FILE SECONDS EXIT: log each HUP/INT/TERM to FILE for SECONDS, then exit EXIT
+	case "trap": // trap FILE SECONDS EXIT: log each K8 signal for SECONDS, then exit EXIT
 		secs, err := strconv.Atoi(arg(3))
 		check(err)
 		code, err := strconv.Atoi(arg(4))
 		check(err)
 		ch := make(chan os.Signal, 16)
-		signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 		f, err := os.Create(arg(2))
 		check(err)
 		fmt.Fprintln(f, "ready")
@@ -119,6 +138,21 @@ func main() {
 	default:
 		fmt.Fprintf(os.Stderr, "ctrhelper: unknown mode %q\n", os.Args[1])
 		os.Exit(64)
+	}
+}
+
+func startTrap(path string) *exec.Cmd {
+	child := exec.Command(os.Args[0], "trap", path, "2", "0")
+	check(child.Start())
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if b, err := os.ReadFile(path); err == nil && strings.HasPrefix(string(b), "ready\n") {
+			return child
+		}
+		if time.Now().After(deadline) {
+			check(fmt.Errorf("child trap did not become ready"))
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
