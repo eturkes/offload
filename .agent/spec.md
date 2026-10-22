@@ -25,10 +25,13 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - Trading lives on nixbox at `/home/eturkes/Projects/trading`, every file incl. key files (owner ruling over trading's never-copy rule); ChatGPT iterates on it through Codexify on nixbox (single project): every chat's workspace = `~` (catalogue entry `.`, alias `trading`; `worktrees.mode` never), whose `~/AGENTS.md` (agents repo `codex/nixbox/`) routes to `Projects/trading`. Controller copy deleted after a checksum-verified copy (confirm immediately before).
 - Pool host OS = NixOS, config declarative in `machines/<host>/`; Wi-Fi secret stays on controller + box (gitignored `wifi.nix`).
 - nixbox disk = LUKS2 root, TPM2 auto-unlock bound to PCR 7 + PCR 15 = 0 (volume key measured into PCR 15 at unlock ⇒ a swapped header cannot unseal it) + Secure Boot with own keys (lanzaboote) ⇒ unattended reboots; recovery key on the controller only.
-- nixbox compute posture = performance governor, thermald, earlyoom, zram, lid/suspend ignored, battery capped 80 % (`charge_types` = Custom); nix-ld + `UV_PYTHON_PREFERENCE=only-managed` so prebuilt wheels run; `/etc/ssl/cert.pem` = the system CA bundle so those pythons' stdlib TLS verifies.
+- nixbox compute posture = performance governor + platform profile, PL1 22 W at boot with the CPU's 98 °C TCC pacing it (thermald off: its Dell DPTF policy held PL1 at 9–12 W; lid shut ⇒ cooling-bound at ~17 W), earlyoom, zram, lid/suspend ignored, battery capped 80 % (`charge_types` = Custom); nix-ld + `UV_PYTHON_PREFERENCE=only-managed` so prebuilt wheels run; `/etc/ssl/cert.pem` = the system CA bundle so those pythons' stdlib TLS verifies.
+- nixbox runs every project gate; a tool missing there → any project's session adds it in `machines/nixbox/`, GUI apps included. Carried: envfs (`/bin`, `/usr/bin` from the caller's PATH), toolchain managers fetching each repo's pin (elan, rustup + default stable, go `GOTOOLCHAIN=auto`), node 26 for `offload` (trading keeps system node 24), clang, shellcheck, swipl 9.2.9, bwrap, nix-ld libs for headless Chromium, a git identity for `offload` alone, Noto fonts as the controller's defaults (UI suites lay out alike), `time.timeZone` UTC (trading's clocks unchanged).
 
 ## Tasks
 
+- [ ] Pool-first placement (owner ruling: keep the controller free; trading's idle load means a load score never prefers nixbox): L1/L2 + `Decisions` + README, red test first; GPU work stays on the controller (`gpu-run`). Install after the row above holds.
+- [ ] Global pool guidance (agents repo `claude/cachyos/CLAUDE.md` + `fable/`): minimal — nixbox first, a tool missing there → add it in `machines/nixbox/`; dGPU = the controller exception.
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase

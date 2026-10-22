@@ -20,6 +20,16 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - Reinstall (wipes disk) → stick in, `sudo efibootmgr --bootnext <USB entry>` + reboot on the box, then `machines/nixbox/install /dev/nvme0n1`.
 - Recovery key (TPM refuses after BIOS reset/key change) = `~/.local/share/offload/nixbox-recovery-key` on the controller; typed at the console LUKS prompt.
 
+## Toolchains
+
+- Offload runs land here first ⇒ every project gate runs here. `configuration.nix` carries: envfs (`/bin`, `/usr/bin` resolve from the caller's PATH, else the system profile; exec, `test -x` + `stat()` see them, coreutils `ls`/`stat` do not), elan, rustup (default stable via `rustup-default.service`), go (`GOTOOLCHAIN=auto`), node 26 for `offload` (system node 24 = trading's), clang, shellcheck, swipl, bwrap, nix-ld libs for headless Chromium, `offload`'s git identity (`~/.config/git/config` → store), Noto fonts as the controller's sans/serif/mono, tz UTC.
+- envfs option change → deploy reloads `usr-bin.mount` but the daemon keeps its old options ⇒ `sudo systemctl stop bin.mount usr-bin.mount && sudo systemctl start usr-bin.mount bin.mount`; leave the old `mount.envfs` lingering in the unit's cgroup (killing it unmounts both).
+- A run fails on a missing tool → add it to `environment.systemPackages` (a library a prebuilt binary loads → `programs.nix-ld.libraries`; a version trading must not see → `users.users.offload.packages`), `machines/nixbox/deploy`, rerun with `offload run --pool`. Missing libs: `ldd <binary> | grep 'not found'` (also lists nix-ld's own set, e.g. glib).
+
+## Power
+
+- `cpu-power-limit.service` = platform profile `performance` + MMIO RAPL PL1 22 W; thermald stays off (its `--adaptive` DPTF policy rewrites PL1 to 9–12 W). Check: `sudo cat /sys/class/powercap/intel-rapl-mmio:0/constraint_0_power_limit_uw` → `22000000`. Sustained 8-thread load, lid shut: ≈ 17 W, 2.6 GHz, 98–99 °C (TCC), fan 7000 RPM.
+
 ## Disk + boot security
 
 - Root = LUKS2 `cryptroot`; slots = `tpm2` + `recovery`, no passphrase.
