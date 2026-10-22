@@ -1,4 +1,4 @@
-// Package cli parses offload's command line, places a run (local heavy slot, else a pool host's
+// Package cli parses offload's command line, places a run (a pool host's slot, else a local heavy
 // slot, else wait) and reports `status`.
 package cli
 
@@ -30,8 +30,11 @@ const usage = `Usage:
   offload run [--local | --pool] [--host NAME] [--gpu] [--no-sync] [--get PATH]... [--] COMMAND [ARG...]
   offload status
 
-run      Run COMMAND in a free local heavy slot, else on the least-loaded pool host
-         with a free slot. When no slot is free, wait for one.
+run      Run COMMAND on the least-loaded pool host with a free slot, else in a free
+         local heavy slot. When no slot is free, wait for one.
+         Files that git ignores stay on each side, and each host keeps its copies
+         between runs. Set up ignored tools in the same command, for example:
+         offload run -- sh -c 'uv sync && uv run pytest'
 status   Show the local heavy slots and each pool host's slots and load.
 
 Run options:

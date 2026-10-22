@@ -1,5 +1,5 @@
-// Command offload runs a heavy command in a free local heavy slot, else on the least-loaded host of
-// an SSH pool with a free slot.
+// Command offload runs a heavy command on the least-loaded host of an SSH pool with a free slot,
+// else in a free local heavy slot.
 package main
 
 import (
