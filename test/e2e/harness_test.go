@@ -106,6 +106,7 @@ func newSandbox(t *testing.T, git bool, hosts ...host) *sandbox {
 		"GIT_AUTHOR_NAME": "e2e", "GIT_AUTHOR_EMAIL": "e2e@example.invalid",
 		"GIT_COMMITTER_NAME": "e2e", "GIT_COMMITTER_EMAIL": "e2e@example.invalid",
 		"LC_ALL": "C", "TERM": "dumb",
+		"OFFLOAD_CTR": "", // the machine's own switch (K2) must not leak in; ctrSandbox turns it on
 	})
 	if len(hosts) == 0 {
 		hosts = []host{{name: "alpha", cpus: 8, load: 2, slots: 2}}

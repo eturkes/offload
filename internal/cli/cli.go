@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/eturkes/offload/internal/pool"
 	"github.com/eturkes/offload/internal/remote"
 	"github.com/eturkes/offload/internal/run"
+	"github.com/eturkes/offload/internal/shell"
 	"github.com/eturkes/offload/internal/slots"
 )
 
@@ -216,7 +216,7 @@ func runCommand(o options, stderr io.Writer) int {
 		}
 	}
 	if !o.pool {
-		if rc, ok := checkLocalCommand(o.argv[0], stderr); !ok {
+		if _, rc, ok := checkLocalCommand(o.argv[0], stderr); !ok {
 			return rc
 		}
 	}
@@ -308,21 +308,18 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Targ
 	return rc, err
 }
 
-// checkLocalCommand mirrors the shell's 127/126 before any slot is taken (X2).
-func checkLocalCommand(name string, stderr io.Writer) (int, bool) {
-	path, err := exec.LookPath(name)
-	if err == nil {
-		return 0, true
+// checkLocalCommand mirrors the shell's 127/126 before any slot is taken (X2); path = what to exec.
+func checkLocalCommand(name string, stderr io.Writer) (path string, rc int, ok bool) {
+	path, rc, err := shell.Look(name)
+	if rc == 0 {
+		return path, 0, true
 	}
-	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
+	if rc == shell.NotFound {
 		fmt.Fprintf(stderr, "offload: %s: command not found\n", name)
-		return 127, false
+	} else {
+		fmt.Fprintf(stderr, "offload: %s: %v\n", path, err)
 	}
-	if path == "" {
-		path = name
-	}
-	fmt.Fprintf(stderr, "offload: %s: %v\n", path, err)
-	return 126, false
+	return "", rc, false
 }
 
 // targets resolves each host's transport once (X5): multiplexed hosts share one socket directory; when

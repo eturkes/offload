@@ -12,9 +12,9 @@ cp "$tmp/offload" "$HOME/.local/bin/offload.new"
 mv "$HOME/.local/bin/offload.new" "$HOME/.local/bin/offload" # one rename: running offloads keep theirs
 echo "here: $(sha256sum "$HOME/.local/bin/offload" | cut -d' ' -f1)"
 if [ $# -eq 0 ]; then
-  pool=${OFFLOAD_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/offload/pool.toml}
-  # shellcheck disable=SC2046 # one word per address
-  set -- $(sed -n 's/^[[:space:]]*address[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$pool")
+  addresses=$(cd "$root" && go run ./tools/pooladdrs) # offload's own pool parser; no whitespace in an address (P2)
+  # shellcheck disable=SC2086 # one word per address
+  set -- $addresses
 fi
 for address; do
   printf '%s: ' "$address"
