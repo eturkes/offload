@@ -35,21 +35,8 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [x] 2efc60d Spikes: container HOME under `--userns=keep-id`; kill guarantee through podman (in-container init on a liveness pipe vs `--cgroups=split`); offload install path on nixbox
-- [x] 2efc60d Contract: `offload ctr` predicates (tier kernel) in `.agent/contract.md` + `consultant` review before code
-- [x] 2efc60d `offload ctr` run path: switch, definition lookup, content-hash tag, build on miss, mounts, exit status, kill guarantee — red-first tests (fake podman + real podman)
-- [x] 2efc60d Layer check across hosts (ruled sync check: equal `RootFS.Layers` digest lists)
-- [x] bbaf2c2 nixbox: offload installed + switch set + deploy; live runs on both hosts
-- [x] b78f436 Agents repo (agents repo commits b78f436 + f40dfde): `CLAUDE.project.md` CI gate line + `CLAUDE.local.md` tier; cachyos `CLAUDE.md` pool line + `offload ctr` usage + switch in settings `env`
-- [x] 2c2744d README + prototype retired (`prototype-pool-run-environment` tag) + deferred rows
-- [ ] Closing review per lens + security (MAIN) + mutation credit → `.agent/review.md`
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
 
-IMPLEMENT — pool run environment + CI gate compute
-> At this point don't you think it might be a good idea to go containerized with our workloads so we can replicate them across machines?
-> Barring that, an advantage of NixOS is the ease at which we can pin multiple versions I thought?
-> Sounds good. I think containerized dev environments are good practice anyway. This also gives us an orthogonal way to test portability.
-> If we already have CI, then why are we running these long gates on my own machines anyway?
-> […] my project gates are very long. It is by far the bottleneck I am facing in development right now.
+MAINTAIN — whole product
