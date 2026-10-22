@@ -1,8 +1,7 @@
 # offload
 
-offload runs a heavy command on another machine when this machine is busy.
-It uses the local slots of the `heavy` command first.
-When every local slot is in use, it runs the command on a free host of an SSH pool on your local network.
+offload runs a heavy command on a host of an SSH pool on your local network, so that this machine stays free for your own work.
+When every pool slot is in use, it runs the command in a local slot of the `heavy` command.
 When no slot is free anywhere, it waits.
 
 The command sees the same project files on the pool host.
@@ -19,6 +18,7 @@ On this machine (the controller):
 On each pool host:
 
 - `bash`, `rsync`, `git`, GNU coreutils, util-linux (`setsid`, `flock`) and procps.
+- The tools that your commands use, for example compilers and toolchain managers. Commands go to the pool first, so a missing tool makes them fail there.
 - An SSH server. Set `ClientAliveInterval 15` and `ClientAliveCountMax 4`, so that a run stops within about one minute when the controller disappears.
 - Optional: a systemd user manager for the user that offload logs in as. Run `loginctl enable-linger <user>` to keep it running without a login. Then a stopped run also stops the daemons that its command started.
 
@@ -63,8 +63,8 @@ offload run -- make -j8
 
 offload puts the command in the first free place:
 
-1. A free local `heavy` slot. offload shares these slots with `heavy`, so `heavy --status` shows its runs.
-2. Otherwise, the pool host with a free slot and the lowest load.
+1. The pool host with a free slot and the lowest load. A host that already runs a command from the same project is not free for that project.
+2. Otherwise, a free local `heavy` slot. offload shares these slots with `heavy`, so `heavy --status` shows its runs.
 3. Otherwise, it shows one waiting message and tries again every 2 seconds.
 
 A line on stderr names the place, for example `offload: nixbox slot 1/2 (8 CPUs, 3% busy) → ~/offload/myproject-1a2b3c4d`.

@@ -34,7 +34,7 @@ Scope: one controller (this machine) drives the pool; pool hosts are distinct ma
 ## Placement loop — tier kernel
 
 - L1 Eligibility: local unless pool-only (`--pool` or implied); pool unless `--local`, missing pool file, or remote-ineligible tree (Y3).
-- L2 Round: try a local slot; else among eligible hosts (`--host` = that one) with a free slot + free workdir lock, probe (≤ 8 s), keep up hosts (with ≥ 1 GPU under `--gpu`), pick the lowest load/nproc (ties → pool-file order), acquire its slot non-blocking (lost race → next round).
+- L2 Round, pool first (the controller stays free for the owner): among eligible hosts (`--host` = that one) with a free slot + free workdir lock, probe (≤ 8 s), keep up hosts (with ≥ 1 GPU under `--gpu`), pick the lowest load/nproc (ties → pool-file order), acquire its slot non-blocking (lost race → next round); else a local slot. A signal during the round → no local slot taken.
 - L3 Nothing acquired → one `offload: waiting …` line naming held/total per place; next round 2 s after the previous ends; a down host is re-probed at most every 30 s. INT/TERM/HUP while waiting → 130/143/129, nothing held.
 - L4 `--gpu` with every eligible host up and none showing a GPU → 125. Hosts down or busy → keep waiting.
 

@@ -33,6 +33,9 @@ printf '%s\0' "${original[@]}" > "$home/.ssh-call-$$"
 command=$*
 case "$command" in
     *loadavg*|*nproc*)
+        if [[ -f $home/.probe-hang ]]; then
+            exec sleep 30
+        fi
         if [[ -f $home/.probe ]]; then
             /usr/bin/cat "$home/.probe"
             exit 0
