@@ -27,6 +27,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - nixbox disk = LUKS2 root, TPM2 auto-unlock bound to PCR 7 + PCR 15 = 0 (volume key measured into PCR 15 at unlock ⇒ a swapped header cannot unseal it) + Secure Boot with own keys (lanzaboote) ⇒ unattended reboots; recovery key on the controller only.
 - nixbox compute posture = performance governor + platform profile, PL1 22 W at boot with the CPU's 98 °C TCC pacing it (thermald off: its Dell DPTF policy held PL1 at 9–12 W; lid shut ⇒ cooling-bound at ~17 W), earlyoom, zram, lid/suspend ignored, battery capped 80 % (`charge_types` = Custom); nix-ld + `UV_PYTHON_PREFERENCE=only-managed` so prebuilt wheels run; `/etc/ssl/cert.pem` = the system CA bundle so those pythons' stdlib TLS verifies.
 - nixbox runs every project gate; a tool missing there → any project's session adds it in `machines/nixbox/`, GUI apps included. Carried: envfs (`/bin`, `/usr/bin` from the caller's PATH), toolchain managers fetching each repo's pin (elan, rustup + default stable, go `GOTOOLCHAIN=auto`), node 26 for `offload` (trading keeps system node 24), clang, shellcheck, swipl 9.2.9, bwrap, nix-ld libs for headless Chromium, a git identity for `offload` alone, Noto fonts as the controller's defaults (UI suites lay out alike), `time.timeZone` UTC (trading's clocks unchanged).
+- Pool run environment (owner): cross-host parity moves from per-tool nixbox additions to a replicated environment; containerized dev environments = good practice + an orthogonal portability test. PROTOTYPE variants: (a) per-project image, the gate command wrapping `podman run` (offload unchanged in the spike; podman rootless on the controller, enabled on nixbox); (b) two-sided Nix pin (Nix on the controller too, one pinned nixpkgs ⇒ same uv ⇒ same Python builds). One check grades both: cement's full gate from its real root on controller + nixbox — D28 `R replayed` = 0 on nixbox (verdicts hit; today none can: uv 0.13.1 vs 0.11.21 ⇒ different Python builds) + wall-clock overhead vs native + upkeep per pin/image bump. Image distribution by digest (registry vs `podman save | ssh podman load`, an offload `--image`?) = decided from the spike.
 
 ## Tasks
 
@@ -34,4 +35,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Phase
 
-MAINTAIN — whole product
+PROTOTYPE — pool run environment
+> At this point don't you think it might be a good idea to go containerized with our workloads so we can replicate them across machines?
+> Barring that, an advantage of NixOS is the ease at which we can pin multiple versions I thought?
+> Sounds good. I think containerized dev environments are good practice anyway. This also gives us an orthogonal way to test portability.
