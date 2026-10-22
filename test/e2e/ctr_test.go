@@ -807,3 +807,37 @@ func TestK7ImagePathNonExecutableIs126(t *testing.T) {
 	r := s.ctr("notexec")
 	r.requireCode(t, 126)
 }
+
+// TestK8UnderSystemdUnitConmonStaysOutOfX1Scope: offload runs inside a systemd unit (INVOCATION_ID
+// set, as on a CI runner service) ⇒ podman would keep conmon in X1's scope, where X1's TERM and
+// KILL reach it (the container dies early or its record leaks); conmon must get its own scope.
+func TestK8UnderSystemdUnitConmonStaysOutOfX1Scope(t *testing.T) {
+	t.Parallel()
+	requireScope(t)
+	s := ctrSandbox(t, false, "")
+	s.setenv("INVOCATION_ID", "0123456789abcdef0123456789abcdef")
+	marker := fmt.Sprintf("k8unit-%d", time.Now().UnixNano())
+	ready := s.path("ready")
+	p := s.start("run", "--local", "--", binaryPath, "ctr", "--", "ctrhelper", "ignore", marker, ready)
+	p.await("container start", func() bool { return exists(ready) })
+	start := time.Now()
+	p.signal(syscall.SIGKILL)
+	markerGone(t, marker, 15*time.Second)
+	if took := time.Since(start); took < 9*time.Second {
+		t.Fatalf("container gone after %s although its command ignores TERM", took)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		r := podman(t, s, "ps", "-a", "--no-trunc", "--format", "{{.ID}} {{.Command}}")
+		if r.code != 0 {
+			t.Fatalf("podman ps: %d %s", r.code, r.stderr)
+		}
+		if !strings.Contains(r.stdout, marker) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("container record left after X1's KILL (conmon killed before --rm): %q", r.stdout)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
