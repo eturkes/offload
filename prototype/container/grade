@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # grade <step> — the spike's fixed check (`.agent/spec.md` Decisions, pool run environment), run
 # against a cement clone (CEMENT, default .scratch/cement; made by `grade clone`). Each step prints
-# its result lines; record them in results.md. nixbox steps call ctr at the path `ship` installs
+# its result lines; record them in results.md. nixbox steps call ctr at the path `build-host` installs
 # (~/.local/share/offload-proto/ctr, out of band, not in machines/nixbox: spike shortcut).
 #   clone             git clone ~/Projects/cement at HEAD + copy its D28 verdict store
 #   hits              d28-hits: native + image, controller + nixbox (no replay)
 #   one               d28-one in the image on the controller (one cold replay, ~5 min, heavy slot)
 #   gate <where> <env>  .agent/gate --omit-d28; where = local (heavy) | nixbox; env = native | ctr
-#   bump              rebuild with one extra apt package, ship both ways (bytes, seconds)
+#   bump              rebuild with one extra apt package on both hosts (build-host: seconds, layers same)
 set -uo pipefail
 here=$(dirname "$(readlink -f "$0")")
 repo=$(git -C "$here" rev-parse --show-toplevel)
@@ -53,12 +53,10 @@ case ${1:-} in
   bump)
     tmp=$(mktemp -d)
     sed 's/gawk procps/gawk procps zstd/' "$here/Containerfile" >"$tmp/Containerfile"
-    t0=$EPOCHREALTIME
-    podman build -q -t localhost/cement-gate:bump -f "$tmp/Containerfile" "$here" >/dev/null || exit
-    echo "bump build: $(secs "$t0")s"
+    CTR_IMAGE=localhost/cement-gate:bump "$here/build-host" "$tmp/Containerfile"
+    rc=$?
     rm -rf "$tmp"
-    CTR_IMAGE=localhost/cement-gate:bump "$here/ship" registry
-    CTR_IMAGE=localhost/cement-gate:bump "$here/ship" save
+    exit "$rc"
     ;;
   *) sed -n '2,11s/^# \{0,1\}//p' "$0"; exit 2 ;;
 esac
