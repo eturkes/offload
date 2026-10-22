@@ -40,7 +40,8 @@ The script builds one static binary and installs it as `~/.local/bin/offload` on
 It shows the SHA-256 checksum that each machine reports. All checksums must be the same.
 To install on specified hosts only, give their SSH addresses as arguments.
 
-The script replaces the binary in one step, so runs that are in progress are not affected.
+The script replaces the binary in one step, so commands that already run are not affected.
+An `offload ctr` that is still preparing its image when the binary changes stops with exit status 125. Run it again.
 Run the script again after each change to offload.
 
 Make sure that `~/.local/bin` is in the `PATH` of each machine, also for login shells on the pool hosts.
@@ -222,6 +223,7 @@ offload sends HUP, INT, QUIT, TERM, USR1 and USR2 to the command when it receive
 The command then decides what to do, and `offload ctr` exits with the status of the command.
 When the command stops, offload sends TERM to the processes that it left. After 10 seconds, it stops them with KILL.
 When offload itself stops, also with `kill -9`, all processes in the container stop at once and the container is removed.
+This does not work while the first process of the container is stopped, for example with SIGSTOP. The container then stays until that process continues.
 
 ### Remove old images
 

@@ -33,8 +33,11 @@ const (
 	homePath = "/.offload/home"
 )
 
-// exitFailure = offload could not do its part (K7).
-const exitFailure = 125
+// Status values offload owns (K3, K7).
+const (
+	ExitUsage   = 2
+	exitFailure = 125
+)
 
 // UsageError = an invocation or setup problem found before any work (rc 2).
 type UsageError struct{ error }
@@ -73,10 +76,13 @@ func Find(ctx context.Context, cwd string) (Project, error) {
 		}
 	}
 	p.Definition = filepath.Join(p.Root, Definition)
-	if fi, lerr := os.Lstat(p.Definition); lerr != nil || !fi.Mode().IsRegular() {
-		return p, UsageError{fmt.Errorf("no image definition at %s (a regular file, not a symlink)", p.Definition)}
-	}
 	p.Context = filepath.Dir(p.Definition)
+	// Lstat both: a symlinked .devcontainer would hash empty (Tag never walks into a symlinked root).
+	dir, derr := os.Lstat(p.Context)
+	def, ferr := os.Lstat(p.Definition)
+	if derr != nil || ferr != nil || !dir.IsDir() || !def.Mode().IsRegular() {
+		return p, UsageError{fmt.Errorf("no image definition at %s (a regular file in a real directory, no symlinks)", p.Definition)}
+	}
 	if p.Binary, err = Executable(); err != nil {
 		return p, err
 	}
@@ -172,7 +178,9 @@ func Home(getenv func(string) string, root string) (string, error) {
 // RunArgs = the podman argv (without "podman") running argv in tag (K6).
 func RunArgs(p Project, tag, home string, argv []string) []string {
 	args := []string{
-		"run", "--rm", "--pull=never", "--pid=private", "--userns=keep-id", "--log-driver=none", "-i", "--preserve-fds=1",
+		// --http-proxy=false: podman otherwise copies the host's proxy variables in (K6: host env stays out).
+		"run", "--rm", "--pull=never", "--pid=private", "--userns=keep-id", "--log-driver=none", "--http-proxy=false",
+		"-i", "--preserve-fds=1",
 		"--entrypoint", initPath, "-v", p.Binary + ":" + initPath + ":ro", "-v", p.Root + ":" + p.Root,
 	}
 	if p.CommonDir != "" {
@@ -183,10 +191,10 @@ func RunArgs(p Project, tag, home string, argv []string) []string {
 	return append(args, argv...)
 }
 
-// Run executes argv in the project's image and returns CMD's status (K5–K8). sigs carries every
-// Forwarded signal offload received: before the container starts the first one ends the run
-// (128+n); afterwards each goes to CMD over the control socket.
-func Run(p Project, argv []string, getenv func(string) string, sigs <-chan os.Signal, stderr io.Writer) int {
+// Run executes argv in the image of the project around cwd and returns CMD's status (K3–K8). sigs
+// carries every Forwarded signal offload received: before the container starts the first one ends
+// the run (128+n); afterwards each goes to CMD over the control socket.
+func Run(cwd string, argv []string, getenv func(string) string, sigs <-chan os.Signal, stderr io.Writer) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var mu sync.Mutex
@@ -215,6 +223,15 @@ func Run(p Project, argv []string, getenv func(string) string, sigs <-chan os.Si
 		return exitFailure
 	}
 
+	p, err := Find(ctx, cwd)
+	var ue UsageError
+	if errors.As(err, &ue) {
+		fmt.Fprintf(stderr, "offload: %v\n", err)
+		return ExitUsage
+	}
+	if err != nil {
+		return fail(err)
+	}
 	tag, err := Ensure(ctx, p, getenv, stderr)
 	if err != nil {
 		return fail(err)
@@ -232,18 +249,20 @@ func Run(p Project, argv []string, getenv func(string) string, sigs <-chan os.Si
 	if err != nil {
 		return fail(err)
 	}
-	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
+	mine, theirs, err := controlPair()
 	if err != nil {
 		return fail(err)
 	}
-	mine, theirs := os.NewFile(uintptr(fds[0]), "control"), os.NewFile(uintptr(fds[1]), "control")
 	defer func() { _ = mine.Close() }()
 
 	cmd := exec.Command("podman", RunArgs(p, tag, home, argv)...) //nolint:gosec // G204: argv = the caller's command, run as given
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, stderr
 	cmd.ExtraFiles = []*os.File{theirs}
-	// Own process group: a terminal's Ctrl-C reaches offload alone, which forwards it once.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// Own session: podman dies on a second TERM (it proxies only the first), and X1 sends it two
+	// (session + scope); a session-wide or terminal signal now reaches offload alone, which forwards
+	// each once. No controlling terminal ⇒ podman also reads a terminal stdin without stalling, as a
+	// background process group of that terminal would (SIGTTIN).
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	mu.Lock()
 	if got != 0 {
 		mu.Unlock()
@@ -267,11 +286,23 @@ func Run(p Project, argv []string, getenv func(string) string, sigs <-chan os.Si
 	if status, ok := readRecord(mine); ok {
 		return status
 	}
-	var ee *exec.ExitError
-	if errors.As(waitErr, &ee) {
-		return fail(fmt.Errorf("the container ended without its command's status (podman exited %d)", ee.ExitCode()))
+	return fail(fmt.Errorf("the container ended without its command's status (podman: %w)", waitErr))
+}
+
+// controlPair = the control socket (K8): mine for offload, theirs for the container (fd 3).
+func controlPair() (mine, theirs *os.File, err error) {
+	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
+	if err != nil {
+		return nil, nil, err
 	}
-	return fail(fmt.Errorf("the container ended without its command's status: %w", waitErr))
+	// Nonblocking ⇒ os.NewFile puts it on Go's poller, the one place SetReadDeadline works: a blocking
+	// fd ignores the deadline, and readRecord would hang while conmon holds the container's end.
+	if err = syscall.SetNonblock(fds[0], true); err != nil {
+		_ = syscall.Close(fds[0])
+		_ = syscall.Close(fds[1])
+		return nil, nil, err
+	}
+	return os.NewFile(uintptr(fds[0]), "control"), os.NewFile(uintptr(fds[1]), "control"), nil
 }
 
 // mountable refuses paths podman's `-v src:dst` cannot carry (K3).

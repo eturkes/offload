@@ -125,9 +125,10 @@ func (d Dir) Holders() []string {
 }
 
 // writeOwner never follows a symlink: under the /tmp fallback another user could plant one at a
-// slot path to make offload truncate a file it points at.
+// slot path to make offload truncate a file it points at. O_NONBLOCK (no effect on regular files)
+// turns a planted FIFO into an open error instead of a hang; every slot open carries both.
 func writeOwner(path, text string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0o600) //nolint:gosec // G304: runtime dir path
 	if err != nil {
 		return err
 	}
@@ -143,7 +144,7 @@ func writeOwner(path, text string) error {
 func tryLock(path string) (f *os.File, held bool, err error) {
 	// O_CLOEXEC (Go's default): the command never inherits the lock, so a stray daemon it spawns
 	// cannot keep the slot held.
-	f, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
+	f, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0o600) //nolint:gosec // G304: runtime dir path
 	if err != nil {
 		return nil, false, err
 	}
@@ -166,7 +167,7 @@ func WaitLock(ctx context.Context, path string) (*os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0o600) //nolint:gosec // G304: runtime dir path
 	if err != nil {
 		return nil, err
 	}

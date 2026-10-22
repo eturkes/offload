@@ -41,7 +41,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - [x] 2efc60d Layer check across hosts (ruled sync check: equal `RootFS.Layers` digest lists)
 - [x] bbaf2c2 nixbox: offload installed + switch set + deploy; live runs on both hosts
 - [x] b78f436 Agents repo (agents repo commits b78f436 + f40dfde): `CLAUDE.project.md` CI gate line + `CLAUDE.local.md` tier; cachyos `CLAUDE.md` pool line + `offload ctr` usage + switch in settings `env`
-- [ ] README + prototype retired (`prototype-pool-run-environment` tag) + deferred rows
+- [x] 2c2744d README + prototype retired (`prototype-pool-run-environment` tag) + deferred rows
 - [ ] Closing review per lens + security (MAIN) + mutation credit → `.agent/review.md`
 - Deferred queue → `.agent/deferred.md`
 

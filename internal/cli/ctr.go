@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -75,47 +76,41 @@ func ctrCommand(args []string, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 	sigs := ctr.Notify() // before any work: a signal during setup ends the run (K5)
-	p, rc, ok := findProject(stderr)
-	if !ok {
-		return rc
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(stderr, "offload: %v\n", err)
+		return ExitFailure
 	}
-	return ctr.Run(p, o.argv, os.Getenv, sigs, stderr)
+	return ctr.Run(cwd, o.argv, os.Getenv, sigs, stderr)
 }
 
 // execNative replaces offload with argv (K2): the switch is off, so the command runs as if typed.
 func execNative(argv []string, stderr io.Writer) int {
-	if rc, ok := checkLocalCommand(argv[0], stderr); !ok {
+	path, rc, ok := checkLocalCommand(argv[0], stderr)
+	if !ok {
 		return rc
 	}
-	path, _ := exec.LookPath(argv[0])
 	err := syscall.Exec(path, argv, os.Environ()) //nolint:gosec // G204: the caller's own command, as given
 	fmt.Fprintf(stderr, "offload: %s: %v\n", argv[0], err)
 	return 126
 }
 
-func findProject(stderr io.Writer) (ctr.Project, int, bool) {
-	cwd, err := os.Getwd()
-	if err == nil {
-		var p ctr.Project
-		if p, err = ctr.Find(context.Background(), cwd); err == nil {
-			return p, 0, true
-		}
-	}
-	fmt.Fprintf(stderr, "offload: %v\n", err)
-	var ue ctr.UsageError
-	if errors.As(err, &ue) {
-		return ctr.Project{}, ExitUsage, false
-	}
-	return ctr.Project{}, ExitFailure, false
-}
-
 // localLayers builds the image on miss + returns its layer digests (K9).
 func localLayers(ctx context.Context, stderr io.Writer) ([]string, int) {
-	p, rc, ok := findProject(stderr)
-	if !ok {
-		return nil, rc
+	cwd, err := os.Getwd()
+	var p ctr.Project
+	if err == nil {
+		p, err = ctr.Find(ctx, cwd)
 	}
-	tag, err := ctr.Ensure(ctx, p, os.Getenv, stderr)
+	var ue ctr.UsageError
+	if errors.As(err, &ue) {
+		fmt.Fprintf(stderr, "offload: %v\n", err)
+		return nil, ExitUsage
+	}
+	var tag string
+	if err == nil {
+		tag, err = ctr.Ensure(ctx, p, os.Getenv, stderr)
+	}
 	var layers []string
 	if err == nil {
 		layers, err = ctr.Layers(ctx, tag)
@@ -145,9 +140,10 @@ func ctrLayers(stdout, stderr io.Writer) int {
 }
 
 // remoteLayers = the command --check runs on a pool host: its installed offload's sha256, then its
-// layer digests, each line framed so a login shell's own output cannot pass for either (K10).
-const remoteLayers = `set -eo pipefail; s=$(sha256sum "$(command -v offload)"); printf 'offload-check %s\n' "${s%% *}"
-offload ctr --layers | sed 's/^/layer /'`
+// layer digests, each line framed with this run's nonce ($1) so nothing a login shell prints can
+// pass for either (K10).
+const remoteLayers = `set -eo pipefail; s=$(sha256sum "$(command -v offload)"); printf 'offload-check %s %s\n' "$1" "${s%% *}"
+offload ctr --layers | sed "s/^/layer $1 /"`
 
 // ctrCheck compares this host's image layers + offload binary with every pool host's (K10).
 func ctrCheck(stdout, stderr io.Writer) int {
@@ -186,7 +182,8 @@ func ctrCheck(stdout, stderr io.Writer) int {
 				return
 			}
 			var out bytes.Buffer
-			cmd := exec.CommandContext(ctx, self, "run", "--host", h.Name, "--", "bash", "-c", remoteLayers) //nolint:gosec // G204: this binary + a constant script
+			nonce := rand.Text()
+			cmd := exec.CommandContext(ctx, self, "run", "--host", h.Name, "--", "bash", "-c", remoteLayers, "_", nonce) //nolint:gosec // G204: this binary + a constant script
 			cmd.Stdout, cmd.Stderr = &out, stderr
 			err := cmd.Run()
 			var ee *exec.ExitError
@@ -198,7 +195,7 @@ func ctrCheck(stdout, stderr io.Writer) int {
 				lines[i] = fmt.Sprintf("%s: failed (%v)", h.Name, err)
 				return
 			}
-			theirSum, there, ok := parseCheck(out.String())
+			theirSum, there, ok := parseCheck(out.String(), nonce)
 			if !ok {
 				lines[i] = fmt.Sprintf("%s: failed (no offload-check line in its output)", h.Name)
 				return
@@ -227,13 +224,13 @@ func ctrCheck(stdout, stderr io.Writer) int {
 	return rc
 }
 
-// parseCheck reads remoteLayers' framed lines; ok = the offload-check line was there.
-func parseCheck(out string) (sum string, layers []string, ok bool) {
+// parseCheck reads remoteLayers' lines framed with nonce; ok = its offload-check line was there.
+func parseCheck(out, nonce string) (sum string, layers []string, ok bool) {
 	sc := bufio.NewScanner(strings.NewReader(out))
 	for sc.Scan() {
-		if v, found := strings.CutPrefix(sc.Text(), "offload-check "); found {
+		if v, found := strings.CutPrefix(sc.Text(), "offload-check "+nonce+" "); found {
 			sum, ok = v, true
-		} else if v, found := strings.CutPrefix(sc.Text(), "layer "); found {
+		} else if v, found := strings.CutPrefix(sc.Text(), "layer "+nonce+" "); found {
 			layers = append(layers, v)
 		}
 	}

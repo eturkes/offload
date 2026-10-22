@@ -2,6 +2,7 @@ package slots
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -227,6 +228,42 @@ func TestSlotFilesNeverFollowSymlinks(t *testing.T) { // security: /tmp fallback
 		}
 		if ok || err == nil {
 			t.Fatalf("%s planted: acquired through a symlink (err %v)", planted, err)
+		}
+	}
+}
+
+func TestSlotFilesNeverBlockOnPlantedFIFO(t *testing.T) { // security: /tmp fallback FIFO plant
+	for _, planted := range []string{"slot1", "slot1.owner", "wait.lock"} {
+		dir := t.TempDir()
+		if err := syscall.Mkfifo(filepath.Join(dir, planted), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() {
+			if planted == "wait.lock" {
+				f, err := WaitLock(context.Background(), filepath.Join(dir, planted))
+				if f != nil {
+					_ = f.Close()
+				}
+				done <- err
+				return
+			}
+			s, ok, err := Dir{Path: dir, Total: 1}.TryAcquire(" x")
+			s.Release()
+			if ok && err == nil {
+				err = errors.New("acquired a FIFO as a slot")
+			} else if err == nil {
+				err = errors.New("no error")
+			}
+			done <- err
+		}()
+		select {
+		case err := <-done:
+			if err == nil || strings.Contains(err.Error(), "acquired") || err.Error() == "no error" {
+				t.Fatalf("%s planted as a FIFO: %v, want an open error", planted, err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("%s planted as a FIFO: open blocked (no reader)", planted)
 		}
 	}
 }

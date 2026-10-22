@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/eturkes/offload/internal/shell"
 )
 
 // Forwarded = the signals `offload ctr` hands to CMD (K8): over the control socket, one byte each.
@@ -86,14 +87,14 @@ func Init(argv []string, stderr io.Writer) int {
 // start forks CMD as its own process group leader; pid 0 = it never ran, status = the shell's
 // 127 (not found) or 126 (not executable).
 func start(argv []string, stderr io.Writer) (pid, status int) {
-	path, err := exec.LookPath(argv[0])
-	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(stderr, "offload: %s: command not found\n", argv[0])
-			return 0, 127
-		}
-		fmt.Fprintf(stderr, "offload: %s: %v\n", argv[0], err)
-		return 0, 126
+	path, status, err := shell.Look(argv[0])
+	if status == shell.NotFound {
+		fmt.Fprintf(stderr, "offload: %s: command not found\n", argv[0])
+		return 0, status
+	}
+	if status != 0 {
+		fmt.Fprintf(stderr, "offload: %s: %v\n", path, err)
+		return 0, status
 	}
 	pid, err = syscall.ForkExec(path, argv, &syscall.ProcAttr{ //nolint:gosec // G204: CMD = the caller's command, as given
 		Env: os.Environ(), Files: []uintptr{0, 1, 2}, Sys: &syscall.SysProcAttr{Setpgid: true},

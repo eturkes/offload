@@ -54,3 +54,14 @@ func TestParseRun(t *testing.T) { // C1 + C2
 		}
 	}
 }
+
+func TestParseCheckTakesOnlyNonceFramedLines(t *testing.T) { // K10
+	out := "layer sha256:banner\noffload-check other 11\noffload-check n1 abc\nlayer n1 sha256:a\nnoise\nlayer n2 sha256:x\nlayer n1 sha256:b\n"
+	sum, layers, ok := parseCheck(out, "n1")
+	if !ok || sum != "abc" || fmt.Sprint(layers) != "[sha256:a sha256:b]" {
+		t.Fatalf("parseCheck = %q %q %v", sum, layers, ok)
+	}
+	if _, _, ok := parseCheck("layer n1 sha256:a\n", "n1"); ok {
+		t.Fatal("no offload-check line, yet ok")
+	}
+}

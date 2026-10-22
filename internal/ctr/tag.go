@@ -20,6 +20,12 @@ const Repo = "localhost/offload-ctr"
 // length-framed. Owners + mtimes never count (COPY sets root; --timestamp 0 fixes times), so every
 // host with the same tree gets the same tag.
 func Tag(dir string) (string, error) {
+	// WalkDir never enters a symlinked root: its whole content would go unhashed.
+	if fi, err := os.Lstat(dir); err != nil {
+		return "", err
+	} else if !fi.IsDir() {
+		return "", fmt.Errorf("build context %s: want a real directory, not a symlink", dir)
+	}
 	type entry struct{ rel, kind, perm, content string }
 	var entries []entry
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {

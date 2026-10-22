@@ -296,9 +296,10 @@ func TestK6MountsHomeAndOwnership(t *testing.T) {
 	if st := fi.Sys().(*syscall.Stat_t); int(st.Uid) != os.Getuid() || s.read("sub/dir/made-here") != "content" {
 		t.Fatalf("file owner %d (want %d), content %q", st.Uid, os.Getuid(), s.read("sub/dir/made-here"))
 	}
-	r = s.ctr("ctrhelper", "env", "HOME", "IMAGE_VAR", "HEAVY_SLOTS")
+	s.setenv("http_proxy", "http://proxy.invalid:3128") // podman passes proxy variables by default
+	r = s.ctr("ctrhelper", "env", "HOME", "IMAGE_VAR", "HEAVY_SLOTS", "http_proxy")
 	r.requireCode(t, 0)
-	if r.stdout != "HOME=/.offload/home\nIMAGE_VAR=from-image\nHEAVY_SLOTS unset\n" {
+	if r.stdout != "HOME=/.offload/home\nIMAGE_VAR=from-image\nHEAVY_SLOTS unset\nhttp_proxy unset\n" {
 		t.Fatalf("env %q: HOME fixed, image ENV applies, host env stays out", r.stdout)
 	}
 	r = s.ctr("ctrhelper", "write", "/.offload/home/kept", "across runs")
@@ -439,8 +440,13 @@ func markerGone(t *testing.T, marker string, timeout time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if exec.Command("pgrep", "-f", "ctrhelper ignore "+marker).Run() != nil {
+		err := exec.Command("pgrep", "-f", "ctrhelper ignore "+marker).Run()
+		var ee *exec.ExitError
+		switch {
+		case errors.As(err, &ee) && ee.ExitCode() == 1: // pgrep: no process matched
 			return
+		case err != nil: // pgrep itself failed: no evidence either way
+			t.Fatalf("pgrep for %s: %v", marker, err)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -460,6 +466,9 @@ func TestK8SigkillEndsContainer(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		r := podman(t, s, "ps", "-a", "--no-trunc", "--format", "{{.ID}} {{.Command}}")
+		if r.code != 0 {
+			t.Fatalf("podman ps: %d %s", r.code, r.stderr)
+		}
 		if !strings.Contains(r.stdout, marker) {
 			break
 		}
@@ -566,7 +575,7 @@ func TestK3DefinitionMustBeRegularFile(t *testing.T) {
 	must(t, os.Symlink(s.path("real-Containerfile"), s.path(".devcontainer/Containerfile")))
 	r := s.run("ctr", "--", "true")
 	r.requireCode(t, 2)
-	requireContains(t, r.stderr, "not a symlink")
+	requireContains(t, r.stderr, "no symlinks")
 }
 
 func TestK3DamagedRepoIs125(t *testing.T) {
@@ -691,10 +700,13 @@ func TestK10CheckIgnoresLoginBannerAndReportsMissingOffload(t *testing.T) {
 	bin, err := os.ReadFile(binaryPath)
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(s.base, "bin", "offload"), bin, 0o755))
-	s.write(filepath.Join(s.hosts, "alpha", ".bash_profile"), "echo login-banner\necho layer sha256:fake\n")
+	// A login shell's own output, even imitating the frame, must not count (nonce-framed lines, K10).
+	s.write(filepath.Join(s.hosts, "alpha", ".bash_profile"), "echo login-banner\necho layer sha256:fake\necho offload-check x 00\n")
 	r := s.start("ctr", "--check").wait(90 * time.Second)
-	r.requireCode(t, 1) // the banner's fake layer line differs, nothing else does
-	requireContains(t, r.stdout, "alpha: different (")
+	r.requireCode(t, 0)
+	if !regexp.MustCompile(`^alpha: same \([0-9]+ layers\)\n$`).MatchString(r.stdout) {
+		t.Fatalf("banner leaked into the comparison: %q", r.stdout)
+	}
 	must(t, os.Remove(filepath.Join(s.hosts, "alpha", ".bash_profile")))
 	must(t, os.Remove(filepath.Join(s.base, "bin", "offload")))
 	s.setenv("PATH", filepath.Join(s.base, "bin")+":"+pathWithout("offload")) // an installed offload (nixbox) must not leak in
@@ -729,4 +741,37 @@ func TestK6RemoteWorktreeLayout(t *testing.T) {
 	repo := filepath.Join(s.hosts, "alpha", "offload", ".meta", fmt.Sprintf("wt-%x", sum[:4]), "repo")
 	r := s.start("run", "--host", "alpha", "--", "offload", "ctr", "--", "ctrhelper", "exists", filepath.Join(repo, "HEAD")).wait(60 * time.Second)
 	r.requireCode(t, 0)
+}
+
+func TestK3DefinitionDirMustBeRealDirectory(t *testing.T) {
+	t.Parallel()
+	conf := requirePodman(t) // a regression would build: keep it in the isolated storage
+	s := newSandbox(t, true)
+	s.setenv("OFFLOAD_CTR", "1")
+	s.setenv("CONTAINERS_STORAGE_CONF", conf)
+	must(t, writeDefinition(filepath.Join(s.base, "elsewhere"), ""))
+	// Tag's walk never enters a symlinked root ⇒ every change behind it would keep the tag.
+	must(t, os.Symlink(filepath.Join(s.base, "elsewhere", ".devcontainer"), s.path(".devcontainer")))
+	r := s.run("ctr", "--", "true")
+	r.requireCode(t, 2)
+	requireContains(t, r.stderr, ".devcontainer")
+}
+
+func TestK2PathNonExecutableIs126(t *testing.T) {
+	t.Parallel()
+	s := newSandbox(t, false)
+	must(t, os.MkdirAll(s.path("pathdir"), 0o700))
+	s.write("pathdir/notexec", "#!/bin/sh\n")
+	s.setenv("PATH", s.path("pathdir")+":"+filepath.Join(s.base, "bin")+":"+os.Getenv("PATH"))
+	r := s.run("ctr", "--", "notexec") // bash: "Permission denied", 126 — found, not missing
+	r.requireCode(t, 126)
+	r = s.run("run", "--local", "--", "notexec") // X2 shares the lookup
+	r.requireCode(t, 126)
+}
+
+func TestK7ImagePathNonExecutableIs126(t *testing.T) {
+	t.Parallel()
+	s := ctrSandbox(t, false, "COPY --chmod=0644 ctrhelper /usr/local/bin/notexec\n")
+	r := s.ctr("notexec")
+	r.requireCode(t, 126)
 }

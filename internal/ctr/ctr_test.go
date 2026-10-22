@@ -104,11 +104,21 @@ func TestK4TagRefusesOtherFileTypes(t *testing.T) {
 	}
 }
 
+func TestK4TagRefusesSymlinkedRoot(t *testing.T) {
+	target := tree(t, map[string]string{"Containerfile": "FROM scratch\n"})
+	link := filepath.Join(t.TempDir(), "ctx")
+	must(t, os.Symlink(target, link))
+	if got, err := Tag(link); err == nil {
+		t.Fatalf("Tag(symlinked root) = %q, want an error (its content would go unhashed)", got)
+	}
+}
+
 func TestK6RunArgs(t *testing.T) {
 	p := Project{Root: "/r", Cwd: "/r/sub", Binary: "/bin/offload", Context: "/r/.devcontainer"}
 	got := RunArgs(p, "localhost/offload-ctr:0123456789abcdef", "/h", []string{"cmd", "a b", "--x"})
 	want := []string{
-		"run", "--rm", "--pull=never", "--pid=private", "--userns=keep-id", "--log-driver=none", "-i", "--preserve-fds=1",
+		"run", "--rm", "--pull=never", "--pid=private", "--userns=keep-id", "--log-driver=none", "--http-proxy=false",
+		"-i", "--preserve-fds=1",
 		"--entrypoint", "/.offload/init", "-v", "/bin/offload:/.offload/init:ro", "-v", "/r:/r",
 		"-v", "/h:/.offload/home", "-e", "HOME=/.offload/home",
 		"--passwd-entry", "$USERNAME:*:$UID:$GID:$NAME:/.offload/home:/bin/sh", "-w", "/r/sub",
@@ -186,4 +196,21 @@ func sendRecord(t *testing.T, in string) (int, bool) {
 	must(t, err)
 	must(t, theirs.Close())
 	return readRecord(mine)
+}
+
+func TestK7MissingRecordWithOpenPeerReturns(t *testing.T) {
+	// podman gone while the container still holds its end: no record, no EOF — the read must end.
+	mine, theirs, err := controlPair()
+	must(t, err)
+	defer func() { _ = mine.Close(); _ = theirs.Close() }()
+	done := make(chan bool, 1)
+	go func() { _, ok := readRecord(mine); done <- ok }()
+	select {
+	case ok := <-done:
+		if ok {
+			t.Fatal("record read from a silent peer")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("readRecord blocked on an open, silent peer")
+	}
 }
