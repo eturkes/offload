@@ -60,17 +60,22 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 - `ship save` sends the whole image each time (`podman save | zstd | ssh podman load`). It needs nothing on the controller except podman.
 - `ship registry` sends only the layers that the host does not have. It needs a registry container on the controller (`ctr-registry`, port 5005 on localhost). nixbox reaches it through an SSH reverse tunnel, so no firewall changes are necessary.
 - Both methods give the same image id on both hosts.
-- A rebuild sends the Python layer (about 43 MB) again even when Python did not change, because the layer is not byte-reproducible.
+- Before Result 4, a rebuild sent the Python layer (about 43 MB) again even when Python did not change, because the layer was not byte-reproducible. The reproducible build fixes this.
 - A change of the Python version in the image makes all D28 verdicts miss. Then one host must replay all 73 revisions once (about 2 to 5 minutes each).
 
-## Result 4: each host can build the image itself
+## Result 4: each host can build the image itself, with identical layers
 
-nixbox built the image from the same `Containerfile`, and nothing was shipped.
+nixbox built the image from the same `Containerfile`, and nothing was shipped. The first build took 25 s.
 
-- The build took 25 s on nixbox.
-- The Python binary is byte-identical on both hosts (the same sha256). The sqlite version is the same (3.53.1). `grade hits` in the nixbox-built image gives 1/73, the same as the shipped image.
-- Only the base layer is identical. The apt layer and the layers above it are different, because `apt-get update` takes the current Debian archive. The apt packages (for example git) can therefore be different on each host after a Debian update. These packages are not part of the D28 key.
-- To make the apt layer the same on all hosts, pin the archive with `snapshot.debian.org`.
+- Without changes to the `Containerfile`, the Python binary was byte-identical on both hosts and `grade hits` gave 1/73. But only the base layer was identical. The apt layer differed because `apt-get update` takes the current Debian archive. The Python layer differed because each `.pyc` file records the time when uv unpacked the stdlib.
+- The `Containerfile` now makes the build reproducible:
+  - The Debian archive is pinned to a `snapshot.debian.org` date.
+  - The apt logs and caches are removed.
+  - The bytecode is compiled with `--invalidation-mode unchecked-hash`, `-f` and `PYTHONHASHSEED=0`.
+  - The image is built with `podman build --timestamp 0`.
+- Result: all 5 layers have the same digest on both hosts, although the hosts use different podman versions (6.1.4 and 5.8.8). The image id is still different, because the history records the local tag of the base image. To compare two hosts, use the layer digests (`podman image inspect --format '{{.RootFS.Layers}}'`).
+- The reproducible image still gives 1/73 hits, and 60 Python starts take 0.74 s.
+- Each fix was necessary. These are the numbers of different files in the Python layer: 1045 with only the snapshot pin and `--timestamp 0`, 59 with `unchecked-hash` added, 22 with `PYTHONHASHSEED=0` added, and 0 with `-f` added.
 
 ## Kill behaviour
 
@@ -82,5 +87,5 @@ nixbox built the image from the same `Containerfile`, and nothing was shipped.
 
 - Where does each project keep its image definition? This spike keeps cement's `Containerfile` in the offload repository. A project repository is the natural place.
 - How does a project select the image? The options are a wrapper in the gate command (this spike) or an `offload run --image` option.
-- How does the image get to each host? `registry` sends less after the first ship. `save` has fewer moving parts. A build on each host (Result 4) sends nothing, but the apt layer can be different on each host unless the archive is pinned.
+- How does the image get to each host? `registry` sends less after the first ship. `save` has fewer moving parts. A build on each host (Result 4) sends nothing, and every host gets identical layers.
 - Is a full cold D28 fill in the image necessary before you decide?
