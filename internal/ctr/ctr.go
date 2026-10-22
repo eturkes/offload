@@ -261,17 +261,12 @@ func run(find func(context.Context) (Project, error), argv []string, getenv func
 	}
 	defer func() { _ = mine.Close() }()
 
-	cmd := exec.Command("podman", RunArgs(p, tag, home, argv)...) //nolint:gosec // G204: argv = the caller's command, run as given
+	cmd := podmanCommand(getenv, RunArgs(p, tag, home, argv))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, stderr
-	// INVOCATION_ID tells podman it runs in a systemd unit, so it keeps conmon in our cgroup — X1's
-	// scope, whose TERM + KILL then reach conmon (the container dies early, its --rm record leaks).
-	// Without it conmon gets a scope of its own.
-	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool { return strings.HasPrefix(kv, "INVOCATION_ID=") })
 	cmd.ExtraFiles = []*os.File{theirs}
-	// Own session: podman dies on a second TERM (it proxies only the first), and X1 sends it two
-	// (session + scope); a session-wide or terminal signal now reaches offload alone, which forwards
-	// each once. No controlling terminal ⇒ podman also reads a terminal stdin without stalling, as a
-	// background process group of that terminal would (SIGTTIN).
+	// Own session: a session-wide or terminal signal reaches offload alone, which forwards each once;
+	// no controlling terminal ⇒ podman reads a terminal stdin without stalling, as a background
+	// process group of that terminal would (SIGTTIN).
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	mu.Lock()
 	if got != 0 {
@@ -297,6 +292,43 @@ func run(find func(context.Context) (Project, error), argv []string, getenv func
 		return status
 	}
 	return fail(fmt.Errorf("the container ended without its command's status (podman: %w)", waitErr))
+}
+
+// podmanCommand = podman with args, in a transient systemd scope of its own where the user's
+// manager starts one (K8): podman dies on TERM (always on a second, at times on a first: 4.9.3,
+// 5.8.8), so no signal aimed at its caller's cgroup — X1's scope TERM + KILL — may reach it.
+// INVOCATION_ID dropped: with it podman keeps conmon in the caller's cgroup.
+func podmanCommand(getenv func(string) string, args []string) *exec.Cmd {
+	env := slices.DeleteFunc(os.Environ(), func(kv string) bool { return strings.HasPrefix(kv, "INVOCATION_ID=") })
+	if rt := scopeManager(getenv); rt != "" {
+		args = append([]string{"--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "podman"}, args...)
+		cmd := exec.Command("systemd-run", args...)  //nolint:gosec // G204: podman + RunArgs
+		cmd.Env = append(env, "XDG_RUNTIME_DIR="+rt) // the manager's; the last duplicate wins
+		return cmd
+	}
+	cmd := exec.Command("podman", args...) //nolint:gosec // G204: RunArgs, the caller's command as given
+	cmd.Env = env
+	return cmd
+}
+
+// scopeManager = the runtime dir whose systemd user manager starts a transient scope (cgroup v2,
+// probed with `true`), else "" (podman then runs in offload's cgroup, which no X1 scope holds).
+func scopeManager(getenv func(string) string) string {
+	if _, err := os.Stat("/sys/fs/cgroup/cgroup.controllers"); err != nil {
+		return ""
+	}
+	for _, d := range []string{getenv("XDG_RUNTIME_DIR"), "/run/user/" + strconv.Itoa(os.Getuid())} {
+		if fi, err := os.Stat(filepath.Join(d, "systemd", "private")); d == "" || err != nil || fi.Mode()&os.ModeSocket == 0 {
+			continue
+		}
+		probe := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")
+		probe.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+d)
+		if probe.Run() == nil {
+			return d
+		}
+		return ""
+	}
+	return ""
 }
 
 // controlPair = the control socket (K8): mine for offload, theirs for the container (fd 3).

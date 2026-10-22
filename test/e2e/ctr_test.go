@@ -105,7 +105,8 @@ func removeStorage() error {
 	if out, err := rm.CombinedOutput(); err != nil {
 		return fmt.Errorf("remove podman test storage: %w: %s", err, out)
 	}
-	return nil
+	// podman re-creates the store's lock files (ours, not subordinate) as it exits.
+	return os.RemoveAll(storageDir)
 }
 
 const testImage = "FROM scratch\nENV IMAGE_VAR=from-image\nCOPY ctrhelper /usr/bin/ctrhelper\n"
@@ -138,6 +139,20 @@ func ctrSandbox(t *testing.T, git bool, extra string) *sandbox {
 	s.setenv("XDG_CACHE_HOME", filepath.Join(s.base, "cache"))
 	s.setenv("OFFLOAD_CTR", "1")
 	podmanBus(s)
+	// Runs before TempDir's removal (LIFO): a container that outlives offload (killed podman, X1)
+	// is cleaned up by conmon, whose crun recreates <runtime>/crun after a too-early RemoveAll.
+	t.Cleanup(func() {
+		for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(100 * time.Millisecond) {
+			r := podman(t, s, "ps", "-a", "--format", "{{.Mounts}}")
+			if r.code == 0 && !strings.Contains(r.stdout, s.root) {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Errorf("a container of %s still exists 10 s after the test: %q %s", s.root, r.stdout, r.stderr)
+				return
+			}
+		}
+	})
 	return s
 }
 
