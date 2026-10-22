@@ -41,6 +41,8 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 | after the bytecode fix | controller | 338 | 330 |
 | after the bytecode fix | nixbox | 282 (85 % busy) | 455 (15 % busy) |
 | after the bytecode fix | nixbox | 275 (23 % busy) | 467 (13 % busy) |
+| ITERATE rerun, both hosts at once | nixbox | 260 (0 % busy) | not run |
+| ITERATE rerun, both hosts at once | controller | 322 | not run |
 
 - Controller: the image adds about 2 % (one pair).
 - nixbox: the image is about 40 % faster than native in all four pairs. The cause is not known. Process start, `/usr/bin/env` through envfs, git commits, CPU-bound Python and SQLite all measure about the same in both environments. See `.agent/deferred.md`.
@@ -61,6 +63,15 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 - A rebuild sends the Python layer (about 43 MB) again even when Python did not change, because the layer is not byte-reproducible.
 - A change of the Python version in the image makes all D28 verdicts miss. Then one host must replay all 73 revisions once (about 2 to 5 minutes each).
 
+## Result 4: each host can build the image itself
+
+nixbox built the image from the same `Containerfile`, and nothing was shipped.
+
+- The build took 25 s on nixbox.
+- The Python binary is byte-identical on both hosts (the same sha256). The sqlite version is the same (3.53.1). `grade hits` in the nixbox-built image gives 1/73, the same as the shipped image.
+- Only the base layer is identical. The apt layer and the layers above it are different, because `apt-get update` takes the current Debian archive. The apt packages (for example git) can therefore be different on each host after a Debian update. These packages are not part of the D28 key.
+- To make the apt layer the same on all hosts, pin the archive with `snapshot.debian.org`.
+
 ## Kill behaviour
 
 - When `offload` is killed with SIGKILL during a run on nixbox, the container stops within 5 seconds. The remote watcher sends TERM, and `podman` forwards it to the container.
@@ -71,5 +82,5 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 
 - Where does each project keep its image definition? This spike keeps cement's `Containerfile` in the offload repository. A project repository is the natural place.
 - How does a project select the image? The options are a wrapper in the gate command (this spike) or an `offload run --image` option.
-- Which ship method? `registry` sends less after the first ship. `save` has fewer moving parts.
+- How does the image get to each host? `registry` sends less after the first ship. `save` has fewer moving parts. A build on each host (Result 4) sends nothing, but the apt layer can be different on each host unless the archive is pinned.
 - Is a full cold D28 fill in the image necessary before you decide?
