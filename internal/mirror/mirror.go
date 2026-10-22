@@ -305,6 +305,14 @@ func base(target remote.Target, meta string) []string {
 	return []string{"-a", "--modify-window=-1", "-e", target.RsyncShell(), "--rsync-path=" + rsyncPath(meta)}
 }
 
+// byContent = the project-file transfers' compare: tools that stamp fixed mtimes (cargo vendor's
+// archive times) rewrite a file with size + mtime unchanged, which the quick check skips. Cost: ~0.5 s
+// per sync on 11k files / 53 MB. `.git` keeps the quick check (git writes fresh mtimes; objects are
+// content-named); --get keeps it (ignored trees can be large).
+func byContent(target remote.Target, meta string) []string {
+	return append(base(target, meta), "--checksum")
+}
+
 // UploadGit sends list, then mirrors .git — a linked worktree's common dir to <meta>/repo (Y4). The list goes without --delete: a local file where
 // the host keeps a directory of ignored files makes rsync fail (125) instead of deleting them.
 // `.git` lock files never cross; stale remote ones go.
@@ -317,7 +325,7 @@ func UploadGit(ctx context.Context, t Tree, target remote.Target, list []string)
 		in.WriteString(p)
 		in.WriteByte(0)
 	}
-	files := append(base(target, t.Meta()), "--mkpath", "--from0", "--files-from=-",
+	files := append(byContent(target, t.Meta()), "--mkpath", "--from0", "--files-from=-",
 		t.Root+"/", target.Address+":"+t.Workdir()+"/")
 	if err := rsync(ctx, in.Bytes(), files...); err != nil {
 		return err
@@ -339,7 +347,7 @@ func UploadPlain(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(target, t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
+	args := append(byContent(target, t.Meta()), "--mkpath", "--delete", "--filter=:- .gitignore",
 		t.Root+"/", target.Address+":"+t.Workdir()+"/")
 	return rsync(ctx, nil, args...)
 }
@@ -349,7 +357,7 @@ func DownloadGit(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(target, t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
+	args := append(byContent(target, t.Meta()), "--from0", "--files-from=:"+t.Meta()+"/down", "--update",
 		"--ignore-missing-args", target.Address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
 }
@@ -359,7 +367,7 @@ func DownloadPlain(ctx context.Context, t Tree, target remote.Target) error {
 	if err := t.check(); err != nil {
 		return err
 	}
-	args := append(base(target, t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
+	args := append(byContent(target, t.Meta()), "--update", "--filter=:- .gitignore", "--exclude=/.git/",
 		target.Address+":"+t.Workdir()+"/", t.Root+"/")
 	return rsync(ctx, nil, args...)
 }

@@ -79,6 +79,23 @@ nixbox built the image from the same `Containerfile`, and nothing was shipped. T
 - The reproducible image still gives 1/73 hits, and 60 Python starts take 0.74 s.
 - Each fix was necessary. These are the numbers of different files in the Python layer: 1045 with only the snapshot pin and `--timestamp 0`, 59 with `unchecked-hash` added, 22 with `PYTHONHASHSEED=0` added, and 0 with `-f` added.
 
+## Result 5: the cement full gate as parallel GitHub CI jobs
+
+The probe pushed the branch `ci/fanout-probe` to cement at `3586dc4` (`main`). The branch had a workflow with 34 parallel jobs: one job for the static checks, one job for D28 alone, and one job for each of the 32 test modules (without D28). The branch was deleted after the run.
+
+| Measurement | Value |
+|-------------|-------|
+| Push to all jobs green | 79 s (run 39779043406, 34/34 green) |
+| Longest job | 76 s (`test_migration_battery` without D28, including about 15 s of setup) |
+| Static checks job | 19 s |
+| D28 job | 13 s. It restored the verdicts from `main`'s cache: `D28: 74 revisions, 0 replayed` |
+| Queue wait | All jobs started 0 to 14 s after the push |
+| The same gate as one CI job (`main`, 2 D28 replays) | about 11 min; the unittest step took 620 s |
+| The same gate on the controller (without D28) | 226 to 338 s |
+
+- A commit that changes the D28 range adds one replay (about 3 minutes on CI). The D28 job is then the longest job. The D28 replays can also run as parallel jobs.
+- The probe did not use the image. The image gives the same environment on CI, on the pool and on the controller.
+
 ## Kill behaviour
 
 - When `offload` is killed with SIGKILL during a run on nixbox, the container stops within 5 seconds. The remote watcher sends TERM, and `podman` forwards it to the container.
