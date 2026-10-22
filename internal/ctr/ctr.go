@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -262,6 +263,10 @@ func run(find func(context.Context) (Project, error), argv []string, getenv func
 
 	cmd := exec.Command("podman", RunArgs(p, tag, home, argv)...) //nolint:gosec // G204: argv = the caller's command, run as given
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, stderr
+	// INVOCATION_ID tells podman it runs in a systemd unit, so it keeps conmon in our cgroup — X1's
+	// scope, whose TERM + KILL then reach conmon (the container dies early, its --rm record leaks).
+	// Without it conmon gets a scope of its own.
+	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool { return strings.HasPrefix(kv, "INVOCATION_ID=") })
 	cmd.ExtraFiles = []*os.File{theirs}
 	// Own session: podman dies on a second TERM (it proxies only the first), and X1 sends it two
 	// (session + scope); a session-wide or terminal signal now reaches offload alone, which forwards
