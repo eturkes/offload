@@ -228,6 +228,51 @@ func TestY4SameSecondRewriteCrosses(t *testing.T) { // Y4: rsync's quick check a
 	}
 }
 
+// sameStatRewrite = tools that stamp fixed mtimes (cargo vendor's archive times, tar --mtime) rewrite
+// a file with its size + mtime unchanged ⇒ only content tells the versions apart (Y4, Y6, Y7).
+func sameStatRewrite(t *testing.T, path, content string) {
+	t.Helper()
+	fi, err := os.Stat(path)
+	must(t, err)
+	must(t, os.WriteFile(path, []byte(content), 0o600))
+	must(t, os.Chtimes(path, fi.ModTime(), fi.ModTime()))
+}
+
+func TestY4SameStatRewriteCrosses(t *testing.T) { // Y4: content decides, not size + mtime
+	s := newSandbox(t, true)
+	s.write("tracked", "aaaa\n")
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	sameStatRewrite(t, s.path("tracked"), "bbbb\n")
+	r := s.run("run", "--pool", "--", "cat", "tracked")
+	r.requireCode(t, 0)
+	if r.stdout != "bbbb\n" {
+		t.Fatalf("host ran on %q, want the rewrite", r.stdout)
+	}
+}
+
+func TestY6SameStatRewriteReturns(t *testing.T) { // Y6: content decides, not size + mtime
+	s := newSandbox(t, true)
+	s.write("tracked", "aaaa\n")
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	s.run("run", "--pool", "--", "bash", "-c",
+		`m=$(stat -c %y tracked); printf 'bbbb\n' >tracked; touch -d "$m" tracked`).requireCode(t, 0)
+	if got := s.read("tracked"); got != "bbbb\n" {
+		t.Fatalf("local holds %q after the download, want the host's rewrite", got)
+	}
+}
+
+func TestY7SameStatRewriteCrosses(t *testing.T) { // Y7: content decides, not size + mtime
+	s := newSandbox(t, false)
+	s.write("file", "aaaa\n")
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	sameStatRewrite(t, s.path("file"), "bbbb\n")
+	r := s.run("run", "--pool", "--", "cat", "file")
+	r.requireCode(t, 0)
+	if r.stdout != "bbbb\n" {
+		t.Fatalf("host ran on %q, want the rewrite", r.stdout)
+	}
+}
+
 // gitState = what a history-reading command sees in a checkout: branch, HEAD, history depth,
 // staged + unstaged changes.
 const gitState = `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD; git rev-list --count HEAD
