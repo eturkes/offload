@@ -25,7 +25,7 @@ The range has 73 revisions.
 - The single image verdict came from `grade one`: one cold D28 replay of `e325bdc` in the image on the controller (1337 tests, 170 s; a second run took 130 s).
 - After `offload` copied the store to nixbox, the same verdict hit there. Natively, nixbox hits none of the 73 controller verdicts.
 - The verdict also hit in a rebuilt image (an extra apt package, and later precompiled bytecode). A rebuild keeps the verdicts while the Python bytes stay the same.
-- Not run (your ruling): a cold fill of all 73 revisions in the image (about 3 to 6 hours), and then a full gate on nixbox that prints `0 replayed`. Result 1 shows that the keys are equal. It does not show a full D28 run in the image. See `.agent/deferred.md`.
+- Not run (your ruling): a cold fill of all 73 revisions in the image (about 3 to 6 hours). Result 1 shows that the keys are equal, and you ruled that this is sufficient. The first full cement gate in the image fills the verdicts anyway. See `.agent/deferred.md`.
 
 ## Result 2: the gate passes in the image on both hosts
 
@@ -43,6 +43,8 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 | after the bytecode fix | nixbox | 275 (23 % busy) | 467 (13 % busy) |
 | ITERATE rerun, both hosts at once | nixbox | 260 (0 % busy) | not run |
 | ITERATE rerun, both hosts at once | controller | 322 | not run |
+| reproducible image, both hosts at once | nixbox | 252 (0 % busy) | not run |
+| reproducible image, both hosts at once | controller | 226 | not run |
 
 - Controller: the image adds about 2 % (one pair).
 - nixbox: the image is about 40 % faster than native in all four pairs. The cause is not known. Process start, `/usr/bin/env` through envfs, git commits, CPU-bound Python and SQLite all measure about the same in both environments. See `.agent/deferred.md`.
@@ -83,9 +85,12 @@ nixbox built the image from the same `Containerfile`, and nothing was shipped. T
 - When `ctr` itself gets TERM, the container stops.
 - When `ctr` itself gets SIGKILL without a TERM first, the container keeps running, because podman's conmon process is outside the killed session. See `.agent/deferred.md`.
 
-## Decisions for ITERATE
+## Decisions made in ITERATE
 
-- Where does each project keep its image definition? This spike keeps cement's `Containerfile` in the offload repository. A project repository is the natural place.
-- How does a project select the image? The options are a wrapper in the gate command (this spike) or an `offload run --image` option.
-- How does the image get to each host? `registry` sends less after the first ship. `save` has fewer moving parts. A build on each host (Result 4) sends nothing, and every host gets identical layers.
-- Is a full cold D28 fill in the image necessary before you decide?
+`.agent/spec.md` `Decisions` records each ruling.
+
+- Each project keeps its image definition in its own repository. Each project decides if it uses an image.
+- A per-machine switch turns the image on. It is on for the controller and the pool hosts, and off for Aeon.
+- The wrapper is an offload subcommand, for example `offload ctr -- <cmd>`.
+- Each host builds the image itself from the reproducible `Containerfile`. Nothing is shipped. The `ship` script stays only as a record of the measurements.
+- A full cold D28 fill is not necessary.
