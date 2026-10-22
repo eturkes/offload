@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""d28-hits — run from a cement root under the interpreter to grade: prints
+`d28-hits: H/N <sys.version>` = D28 range revisions holding a green verdict under this
+interpreter's key, via cement's own `_d28_content_key` + `_d28_verdict` (no replay).
+Spike shortcut: the rev-list range is copied from `test_d28` (drifts if cement changes it)."""
+
+import subprocess
+import sys
+
+sys.path.insert(0, ".")
+from tests import test_migration_battery as m  # noqa: E402
+
+root = m.ROOT
+revisions = subprocess.run(
+    ["git", "rev-list", "--reverse", f"{m.BASELINE}..HEAD", "--",
+     ".agent/decisions/m3u6a1-surgery.py", "tests", "examples",
+     ":(exclude)tests/test_migration_battery.py"],
+    cwd=root, check=True, capture_output=True, text=True,
+).stdout.split()
+hits = sum(m._d28_verdict(root, m._d28_content_key(root, r)) is not None for r in revisions)
+print(f"d28-hits: {hits}/{len(revisions)} {sys.version}")
