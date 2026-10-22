@@ -220,6 +220,10 @@ in
       "L+ /home/offload/.config/git/config - - - - ${gitconfig}"
     ];
   virtualisation.podman.enable = true;
+  # `offload ctr` (pool run environment): tools/install puts the controller's offload binary in
+  # ~/.local/bin; OFFLOAD_CTR=1 = the per-machine switch, so ctr commands run in the project's image.
+  environment.localBinInPath = true;
+  environment.variables.OFFLOAD_CTR = "1";
   environment.systemPackages = with pkgs; [
     rsync
     git
