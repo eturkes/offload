@@ -273,6 +273,17 @@ func TestY7SameStatRewriteCrosses(t *testing.T) { // Y7: content decides, not si
 	}
 }
 
+func TestY7SameStatRewriteReturns(t *testing.T) { // Y7: content decides, not size + mtime
+	s := newSandbox(t, false)
+	s.write("file", "aaaa\n")
+	s.run("run", "--pool", "--", "true").requireCode(t, 0)
+	s.run("run", "--pool", "--", "bash", "-c",
+		`m=$(stat -c %y file); printf 'bbbb\n' >file; touch -d "$m" file`).requireCode(t, 0)
+	if got := s.read("file"); got != "bbbb\n" {
+		t.Fatalf("local holds %q after the download, want the host's rewrite", got)
+	}
+}
+
 // gitState = what a history-reading command sees in a checkout: branch, HEAD, history depth,
 // staged + unstaged changes.
 const gitState = `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD; git rev-list --count HEAD

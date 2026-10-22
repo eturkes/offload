@@ -29,7 +29,7 @@ The range has 73 revisions.
 
 ## Result 2: the gate passes in the image on both hosts
 
-`grade gate <host> <env>` runs `.agent/gate --omit-d28` (every step except D28). All 11 runs exited with 0.
+`grade gate <host> <env>` runs `.agent/gate --omit-d28` (every step except D28). All 18 runs exited with 0.
 The table shows the `unittest` step in seconds, because all the other steps together take 16 seconds or less.
 "Busy" is the host's load at the start of the run.
 
@@ -45,6 +45,8 @@ The table shows the `unittest` step in seconds, because all the other steps toge
 | ITERATE rerun, both hosts at once | controller | 322 | not run |
 | reproducible image, both hosts at once | nixbox | 252 (0 % busy) | not run |
 | reproducible image, both hosts at once | controller | 226 | not run |
+| ITERATE close, both hosts at once | nixbox | 321 | not run |
+| ITERATE close, both hosts at once | controller | 264 | not run |
 
 - Controller: the image adds about 2 % (one pair).
 - nixbox: the image is about 40 % faster than native in all four pairs. The cause is not known. Process start, `/usr/bin/env` through envfs, git commits, CPU-bound Python and SQLite all measure about the same in both environments. See `.agent/deferred.md`.
@@ -109,5 +111,5 @@ The probe pushed the branch `ci/fanout-probe` to cement at `3586dc4` (`main`). T
 - Each project keeps its image definition in its own repository. Each project decides if it uses an image.
 - A per-machine switch turns the image on. It is on for the controller and the pool hosts, and off for Aeon.
 - The wrapper is an offload subcommand, for example `offload ctr -- <cmd>`.
-- Each host builds the image itself from the reproducible `Containerfile`. Nothing is shipped. The `ship` script stays only as a record of the measurements.
+- Each host builds the image itself from the reproducible `Containerfile` (`build-host`). Nothing is shipped. The `ship` script (`save` and `registry`) is retired. Result 3 keeps its measurements.
 - A full cold D28 fill is not necessary.
