@@ -4,7 +4,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Artifacts
 
-- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote}`); contract `.agent/contract.md`. Install: `CGO_ENABLED=0 go build -trimpath -o ~/.local/bin/offload.new ./cmd/offload && mv ~/.local/bin/offload.new ~/.local/bin/offload` (installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides; live: nixbox `multiplex = true`); example `pool.example.toml`. Pin freshness: `.agent/pins` (weekly `pins.yml`). User docs `README.md`.
+- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote,ctr}`); contract `.agent/contract.md`. Install: `tools/install` (one static build → `~/.local/bin/offload` here + on every pool host, sha256 per side; installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>` | `offload ctr [--] <cmd…>` | `offload ctr --layers|--check`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides; live: nixbox `multiplex = true`); example `pool.example.toml`. Pin freshness: `.agent/pins` (weekly `pins.yml`). User docs `README.md`.
 - `prototype/container/` = pool run environment spike (PROTOTYPE law; cement-specific): `Containerfile` (gate image, reproducible: identical layers on every host; build `podman build --timestamp 0 -t localhost/cement-gate:proto prototype/container`), `ctr <cmd…>` (runs it in the image, git root bind-mounted at its own path, venv + uv cache in `~/.cache/ctr/`), `build-host` (ruled distribution: builds the image on the controller + nixbox from the same Containerfile, installs `ctr` at nixbox `~/.local/share/offload-proto/ctr`, compares layer digests), `d28-hits` + `d28-one` (cement D28 key probes), results `results.md`. Run: `prototype/container/grade clone|hits|one|gate <local|nixbox> <native|ctr>|bump` (no args = usage); working state = `.scratch/cement` (clone holding the image verdict) + `.scratch/logs/`.
 - `machines/nixbox/` = NixOS config of pool host `nixbox` (`offload@192.168.40.240`); runbook `machines/nixbox/README.md`. Deploy: `machines/nixbox/deploy`; reinstall: `machines/nixbox/install /dev/nvme0n1` (box on installer ISO from `installer.nix`); TPM re-seal: `machines/nixbox/tpm-bind`; firmware: README `Firmware`.
 
@@ -36,12 +36,12 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] Spikes: container HOME under `--userns=keep-id`; kill guarantee through podman (in-container init on a liveness pipe vs `--cgroups=split`); offload install path on nixbox
-- [ ] Contract: `offload ctr` predicates (tier kernel) in `.agent/contract.md` + `consultant` review before code
-- [ ] `offload ctr` run path: switch, definition lookup, content-hash tag, build on miss, mounts, exit status, kill guarantee — red-first tests (fake podman + real podman)
-- [ ] Layer check across hosts (ruled sync check: equal `RootFS.Layers` digest lists)
+- [x] 2efc60d Spikes: container HOME under `--userns=keep-id`; kill guarantee through podman (in-container init on a liveness pipe vs `--cgroups=split`); offload install path on nixbox
+- [x] 2efc60d Contract: `offload ctr` predicates (tier kernel) in `.agent/contract.md` + `consultant` review before code
+- [x] 2efc60d `offload ctr` run path: switch, definition lookup, content-hash tag, build on miss, mounts, exit status, kill guarantee — red-first tests (fake podman + real podman)
+- [x] 2efc60d Layer check across hosts (ruled sync check: equal `RootFS.Layers` digest lists)
 - [ ] nixbox: offload installed + switch set + deploy; live runs on both hosts
-- [ ] Agents repo: `CLAUDE.project.md` CI gate line + `CLAUDE.local.md` tier; cachyos `CLAUDE.md` pool line + `offload ctr` usage + switch in settings `env`
+- [x] b78f436 Agents repo (agents repo commits b78f436 + f40dfde): `CLAUDE.project.md` CI gate line + `CLAUDE.local.md` tier; cachyos `CLAUDE.md` pool line + `offload ctr` usage + switch in settings `env`
 - [ ] README + prototype retired (`prototype-pool-run-environment` tag) + deferred rows
 - [ ] Closing review per lens + security (MAIN) + mutation credit → `.agent/review.md`
 - Deferred queue → `.agent/deferred.md`

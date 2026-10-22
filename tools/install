@@ -1,0 +1,25 @@
+#!/bin/sh
+# install [ADDRESS…] — build offload once (static: it is also the init inside images, K11) and install
+# that same binary as ~/.local/bin/offload here and on each pool host (default: every `address` in
+# the pool file). Prints the sha256 each side reports; they must match.
+set -eu
+root=$(cd "$(dirname "$0")/.." && pwd)
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+(cd "$root" && CGO_ENABLED=0 go build -trimpath -o "$tmp/offload" ./cmd/offload)
+mkdir -p "$HOME/.local/bin"
+cp "$tmp/offload" "$HOME/.local/bin/offload.new"
+mv "$HOME/.local/bin/offload.new" "$HOME/.local/bin/offload" # one rename: running offloads keep theirs
+echo "here: $(sha256sum "$HOME/.local/bin/offload" | cut -d' ' -f1)"
+if [ $# -eq 0 ]; then
+  pool=${OFFLOAD_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/offload/pool.toml}
+  # shellcheck disable=SC2046 # one word per address
+  set -- $(sed -n 's/^[[:space:]]*address[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$pool")
+fi
+for address; do
+  printf '%s: ' "$address"
+  ssh -o BatchMode=yes -o ConnectTimeout=5 -T -- "$address" \
+    'mkdir -p ~/.local/bin && cat >~/.local/bin/offload.new && chmod 755 ~/.local/bin/offload.new &&
+     mv ~/.local/bin/offload.new ~/.local/bin/offload && sha256sum ~/.local/bin/offload | cut -d" " -f1' \
+    <"$tmp/offload"
+done

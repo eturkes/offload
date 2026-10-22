@@ -697,9 +697,21 @@ func TestK10CheckIgnoresLoginBannerAndReportsMissingOffload(t *testing.T) {
 	requireContains(t, r.stdout, "alpha: different (")
 	must(t, os.Remove(filepath.Join(s.hosts, "alpha", ".bash_profile")))
 	must(t, os.Remove(filepath.Join(s.base, "bin", "offload")))
+	s.setenv("PATH", filepath.Join(s.base, "bin")+":"+pathWithout("offload")) // an installed offload (nixbox) must not leak in
 	r = s.start("ctr", "--check").wait(90 * time.Second)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "alpha: failed (rc ")
+}
+
+// pathWithout = $PATH minus every directory holding name.
+func pathWithout(name string) string {
+	dirs := []string{}
+	for _, d := range filepath.SplitList(os.Getenv("PATH")) {
+		if _, err := os.Stat(filepath.Join(d, name)); err != nil {
+			dirs = append(dirs, d)
+		}
+	}
+	return strings.Join(dirs, string(filepath.ListSeparator))
 }
 
 func TestK6RemoteWorktreeLayout(t *testing.T) {
