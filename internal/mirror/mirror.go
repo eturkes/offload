@@ -31,40 +31,58 @@ type Tree struct {
 	LocalOnly string
 }
 
-// Inspect finds the sync root of cwd (Y1) and its remote eligibility (Y3).
-func Inspect(ctx context.Context, cwd string) (Tree, error) {
+// Location = cwd's sync root as git sees it (Y1).
+type Location struct {
+	Root, Sub         string
+	Git               bool
+	GitDir, CommonDir string // absolute; "" when not git
+}
+
+// Locate finds the sync root of cwd (Y1): the git toplevel, else cwd. A git error other than "not a
+// git repository", or that one with a .git entry in cwd or an ancestor (a damaged repo), is an error.
+func Locate(ctx context.Context, cwd string) (Location, error) {
 	out, err := git(ctx, cwd, "rev-parse", "--path-format=absolute", "--show-toplevel",
 		"--git-dir", "--git-common-dir", "--show-prefix")
 	if err != nil {
 		var ge *gitError
 		if !errors.As(err, &ge) || !strings.Contains(ge.stderr, "not a git repository") {
-			return Tree{}, err
+			return Location{}, err
 		}
 		// git also says "not a git repository" for a damaged one: plain mode's --delete mirror
 		// must not run over a tree that has a .git anywhere above it.
 		for d := cwd; ; d = filepath.Dir(d) {
 			if _, statErr := os.Lstat(filepath.Join(d, ".git")); statErr == nil {
-				return Tree{}, fmt.Errorf("git does not recognize the repository at %s: %w", d, err)
+				return Location{}, fmt.Errorf("git does not recognize the repository at %s: %w", d, err)
 			}
 			if d == filepath.Dir(d) {
-				return Tree{Root: cwd, Sub: ".", LocalOnly: copiesEverything(cwd)}, nil
+				return Location{Root: cwd, Sub: "."}, nil
 			}
 		}
 	}
 	f := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
 	if len(f) != 4 {
-		return Tree{}, fmt.Errorf("git rev-parse printed %d lines, want 4", len(f))
+		return Location{}, fmt.Errorf("git rev-parse printed %d lines, want 4", len(f))
 	}
-	t := Tree{Root: f[0], Sub: filepath.Clean(strings.TrimSuffix(f[3], "/")), Git: true}
-	if t.Sub == "" {
-		t.Sub = "."
+	l := Location{Root: f[0], Sub: filepath.Clean(strings.TrimSuffix(f[3], "/")), Git: true, GitDir: f[1], CommonDir: f[2]}
+	if l.Sub == "" {
+		l.Sub = "."
 	}
-	if t.LocalOnly = copiesEverything(t.Root); t.LocalOnly != "" {
+	return l, nil
+}
+
+// Inspect finds the sync root of cwd (Y1) and its remote eligibility (Y3).
+func Inspect(ctx context.Context, cwd string) (Tree, error) {
+	l, err := Locate(ctx, cwd)
+	if err != nil {
+		return Tree{}, err
+	}
+	t := Tree{Root: l.Root, Sub: l.Sub, Git: l.Git}
+	if t.LocalOnly = copiesEverything(t.Root); t.LocalOnly != "" || !l.Git {
 		return t, nil
 	}
-	t.LocalOnly, err = localOnly(ctx, t.Root, f[1], f[2])
-	if t.LocalOnly == "" && err == nil && f[1] != f[2] {
-		t.Worktree, t.CommonDir = filepath.Base(f[1]), f[2]
+	t.LocalOnly, err = localOnly(ctx, t.Root, l.GitDir, l.CommonDir)
+	if t.LocalOnly == "" && err == nil && l.GitDir != l.CommonDir {
+		t.Worktree, t.CommonDir = filepath.Base(l.GitDir), l.CommonDir
 	}
 	return t, err
 }
@@ -238,14 +256,16 @@ func defaultExcludes() string {
 var unsafeName = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 
 // Workdir = the remote workdir (Y2), relative to the remote $HOME.
-func (t Tree) Workdir() string { return "offload/" + t.name() }
+func (t Tree) Workdir() string { return "offload/" + Name(t.Root) }
 
 // Meta = the workdir's control dir (lock, lists, status), relative to the remote $HOME.
-func (t Tree) Meta() string { return "offload/.meta/" + t.name() }
+func (t Tree) Meta() string { return "offload/.meta/" + Name(t.Root) }
 
-func (t Tree) name() string {
-	sum := sha1.Sum([]byte(t.Root)) //nolint:gosec // G401: naming, not security
-	return unsafeName.ReplaceAllString(filepath.Base(t.Root), "_") + "-" + hex.EncodeToString(sum[:])[:8]
+// Name = root's per-tree directory name (Y2): its basename, chars outside [A-Za-z0-9._-] → _,
+// + the first 8 hex of sha1(root).
+func Name(root string) string {
+	sum := sha1.Sum([]byte(root)) //nolint:gosec // G401: naming, not security
+	return unsafeName.ReplaceAllString(filepath.Base(root), "_") + "-" + hex.EncodeToString(sum[:])[:8]
 }
 
 func splitZ(b []byte) []string {

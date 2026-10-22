@@ -3,6 +3,7 @@
 package slots
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -158,6 +159,34 @@ func tryLock(path string) (f *os.File, held bool, err error) {
 
 // File = the slot's lock fd, for a child that must keep the slot held past offload's own exit.
 func (s *Slot) File() *os.File { return s.file }
+
+// WaitLock flocks path (created with its directory, symlinks never followed), polling every
+// 200 ms while another holder has it, until ctx ends. The file stays open across polls.
+func WaitLock(ctx context.Context, path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: runtime dir path
+	if err != nil {
+		return nil, err
+	}
+	for {
+		err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			return f, nil
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			_ = f.Close()
+			return nil, fmt.Errorf("flock %s: %w", path, err)
+		}
+		select {
+		case <-ctx.Done():
+			_ = f.Close()
+			return nil, ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
 
 // TryLock flocks path non-blocking, creating it and its directory; held = false when busy.
 func TryLock(path string) (f *os.File, held bool, err error) {

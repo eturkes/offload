@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/eturkes/offload/internal/ctr"
 	"github.com/eturkes/offload/internal/mirror"
 	"github.com/eturkes/offload/internal/pool"
 	"github.com/eturkes/offload/internal/remote"
@@ -28,6 +29,8 @@ const (
 
 const usage = `Usage:
   offload run [--local | --pool] [--host NAME] [--gpu] [--no-sync] [--get PATH]... [--] COMMAND [ARG...]
+  offload ctr [--] COMMAND [ARG...]
+  offload ctr --layers | --check
   offload status
 
 run      Run COMMAND on the least-loaded pool host with a free slot, else in a free
@@ -35,6 +38,11 @@ run      Run COMMAND on the least-loaded pool host with a free slot, else in a f
          Files that git ignores stay on each side, and each host keeps its copies
          between runs. Set up ignored tools in the same command, for example:
          offload run -- sh -c 'uv sync && uv run pytest'
+ctr      Run COMMAND in the image of the project, which .devcontainer/Containerfile
+         defines. This happens only on machines that set OFFLOAD_CTR=1. On other
+         machines, COMMAND runs directly. Each machine builds the image when it
+         first needs it and keeps it. To run in the image on a pool host:
+         offload run -- offload ctr -- make test
 status   Show the local heavy slots and each pool host's slots and load.
 
 Run options:
@@ -44,6 +52,11 @@ Run options:
   --gpu        Use pool hosts with an NVIDIA GPU only.
   --no-sync    Do not copy files to or from the host.
   --get PATH   After the run, also copy PATH back, even if git ignores it. Repeat for more paths.
+
+Ctr options:
+  --layers     Build the image if necessary, then show its layer digests.
+  --check      Compare the image layers and the offload binary of this machine
+               with each pool host. Waits for a free slot on each host.
 
 The pool file is $OFFLOAD_CONFIG, else ~/.config/offload/pool.toml.
 `
@@ -84,6 +97,10 @@ func Main(args []string, stdout, stderr io.Writer) int {
 			return usageError(stderr, err.Error())
 		}
 		return runCommand(o, stderr)
+	case "ctr":
+		return ctrCommand(args[1:], stdout, stderr)
+	case "__ctr-init":
+		return ctr.Init(args[1:], stderr)
 	}
 	return usageError(stderr, fmt.Sprintf("unknown command %q", args[0]))
 }
@@ -118,11 +135,15 @@ func parseRun(args []string) (options, error) {
 	return o, nil
 }
 
-// signals cancels the returned context on HUP/INT/TERM and reports which one arrived.
-func signals() (context.Context, func() int) {
+// signals cancels the returned context on the first of sigs (default HUP/INT/TERM) and reports
+// which one arrived.
+func signals(sigs ...os.Signal) (context.Context, func() int) {
+	if len(sigs) == 0 {
+		sigs = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM}
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(ch, sigs...)
 	var got syscall.Signal
 	go func() {
 		s := <-ch
