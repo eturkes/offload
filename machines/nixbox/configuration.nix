@@ -35,6 +35,9 @@ in
   services.fwupd.enable = true;
 
   networking.hostName = "nixbox";
+  # Writes /etc/localtime (absent without it: Lean's zone lookup fails); UTC = glibc's no-file
+  # behavior ⇒ trading's clocks unchanged.
+  time.timeZone = "UTC";
   networking.networkmanager.wifi.powersave = false;
 
   # SSH reachable from the home LAN alone, IPv6 global addresses included.
@@ -59,12 +62,28 @@ in
     extraGroups = [ "wheel" ];
     openssh.authorizedKeys.keys = host.authorizedKeys;
     linger = true; # user services + tmux sessions outlive the ssh connection
+    # Projects pin the controller's node 26 (`node --test <dir>` needs it); trading stays on the
+    # system node.
+    packages = [ pkgs.nodejs_26 ];
   };
   security.sudo.wheelNeedsPassword = false;
 
-  # Compute posture: full clocks, thermald to hold them without hitting the trip point.
+  # Compute posture: full clocks. thermald --adaptive follows Dell's DPTF tables, which held PL1 at
+  # 9–12 W ⇒ off; PL1 = 22 W (the firmware's own PL1 max), the CPU's TCC (98 °C) paces the rest.
+  # Lid shut, fan at max throughout, 8-thread stress-ng: 12 W → 2.3 GHz 84 °C; 15 W → 2.5 GHz 93 °C;
+  # 22 W → 2.6 GHz 99 °C (cooling-bound at ~17 W; 30 W adds nothing).
   powerManagement.cpuFreqGovernor = "performance";
-  services.thermald.enable = true;
+  systemd.services.cpu-power-limit = {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      echo performance > /sys/firmware/acpi/platform_profile
+      echo 22000000 > /sys/class/powercap/intel-rapl-mmio:0/constraint_0_power_limit_uw
+    '';
+  };
   services.earlyoom = {
     enable = true;
     freeMemThreshold = 3;
@@ -127,6 +146,23 @@ in
       curl
       glib
       libxml2
+      # Headless Chromium (Playwright's chrome-headless-shell, as projects' e2e suites fetch it).
+      alsa-lib
+      at-spi2-core
+      dbus
+      expat
+      libgbm
+      nspr
+      nss
+      systemdLibs
+      libx11
+      libxcb
+      libxcomposite
+      libxdamage
+      libxext
+      libxfixes
+      libxrandr
+      libxkbcommon
     ];
   };
   # Nix-built python bypasses nix-ld → wheels miss libstdc++; uv's standalone builds go through it.
@@ -134,6 +170,55 @@ in
   # uv's standalone pythons (OpenSSL dir /etc/ssl) read /etc/ssl/cert.pem, which NixOS lacks ⇒ 0
   # trusted CAs, every stdlib TLS call fails verification — in services as in offload's `bash -lc`.
   environment.etc."ssl/cert.pem".source = "/etc/ssl/certs/ca-certificates.crt";
+  # Offload runs land here first ⇒ FHS paths in project code (`#!/bin/bash`, `/usr/bin/git`) must
+  # resolve: envfs serves /bin + /usr/bin from the calling process's PATH.
+  services.envfs.enable = true;
+  # A caller whose PATH holds no Nix dir (suites pinning PATH=<mock>:/usr/bin:/bin) falls back to the
+  # system profile, not just envfs's own sh + env.
+  fileSystems."/usr/bin".options = [ "fallback-path=/run/current-system/sw/bin" ];
+  # Headless browsers lay out with these ⇒ the controller's resolved families (Noto CJK JP), so UI
+  # suites tap the same targets there as here.
+  fonts.packages = with pkgs; [
+    noto-fonts
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+    noto-fonts-color-emoji
+  ];
+  fonts.fontconfig.defaultFonts = {
+    sansSerif = [ "Noto Sans CJK JP" ];
+    serif = [ "Noto Serif CJK JP" ];
+    monospace = [ "Noto Sans Mono CJK JP" ];
+    emoji = [ "Noto Color Emoji" ];
+  };
+  # rustup ships no default toolchain ⇒ a bare `cargo` (outside any rust-toolchain.toml) fails.
+  systemd.services.rustup-default = {
+    wantedBy = [ "multi-user.target" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    path = [ pkgs.rustup ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      User = "offload";
+    };
+    script = "rustup default >/dev/null 2>&1 || rustup default stable";
+  };
+  # Suites commit in scratch repos ⇒ offload runs need a git identity; offload's alone (a system
+  # one would sign trading's commits as eturkes).
+  # tmpfiles would create missing parents root-owned ⇒ both dirs declared.
+  systemd.tmpfiles.rules =
+    let
+      gitconfig = pkgs.writeText "offload-gitconfig" ''
+        [user]
+          name = offload
+          email = offload@nixbox.invalid
+      '';
+    in
+    [
+      "d /home/offload/.config 0755 offload users -"
+      "d /home/offload/.config/git 0755 offload users -"
+      "L+ /home/offload/.config/git/config - - - - ${gitconfig}"
+    ];
   virtualisation.podman.enable = true;
   environment.systemPackages = with pkgs; [
     rsync
@@ -156,6 +241,17 @@ in
     xz
     just
     file
+    # Toolchain managers: each fetches the repo's own pin (lean-toolchain, rust-toolchain.toml,
+    # go.mod via GOTOOLCHAIN=auto).
+    elan
+    rustup
+    go
+    # Gate tools projects take from the host: shellcheck; swipl 9.2.9 = cnl-ckc's pin; bwrap =
+    # `lake check`'s sandbox; clang's analyzer (lowPrio: gcc keeps `cc`).
+    shellcheck
+    swi-prolog
+    bubblewrap
+    (lib.lowPrio clang)
     # Trading (contracts build + tests) + Codexify's tool checks.
     nodejs
     pnpm
