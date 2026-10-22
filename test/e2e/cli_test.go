@@ -223,25 +223,38 @@ func TestL1Eligibility(t *testing.T) {
 			}
 			r := s.run(append(args, "--", "pwd")...)
 			r.requireCode(t, 0)
-			want := s.root
-			if mode == "pool" {
-				want = s.workdir("alpha")
+			want := s.workdir("alpha") // L2: pool first
+			if mode == "local" {
+				want = s.root
 			}
 			if strings.TrimSpace(r.stdout) != want {
 				t.Fatalf("cwd=%q, want %q", r.stdout, want)
 			}
 		})
 	}
-	t.Run("local-full-falls-back", func(t *testing.T) {
-		s := newSandbox(t, true)
-		s.holdSlot("", 1)
-		s.holdSlot("", 2)
-		r := s.run("run", "--", "pwd")
-		r.requireCode(t, 0)
-		if strings.TrimSpace(r.stdout) != s.workdir("alpha") {
-			t.Fatalf("did not fall back to pool: %q", r.stdout)
-		}
-	})
+	for _, unavailable := range []string{"pool-full", "pool-down", "workdir-busy"} {
+		t.Run(unavailable+"-falls-back", func(t *testing.T) {
+			s := newSandbox(t, true, host{name: "alpha", cpus: 8, down: unavailable == "pool-down"})
+			switch unavailable {
+			case "pool-full":
+				s.holdSlot("alpha", 1)
+				s.holdSlot("alpha", 2)
+			case "workdir-busy": // S4: a run from the same root holds the host's workdir lock
+				dir := filepath.Join(s.runtime, "offload", "hosts", "alpha")
+				must(t, os.MkdirAll(dir, 0o700))
+				lock, err := os.OpenFile(filepath.Join(dir, "wd-"+filepath.Base(s.workdir("alpha"))+".lock"), os.O_CREATE|os.O_RDWR, 0o600)
+				must(t, err)
+				t.Cleanup(func() { _ = lock.Close() })
+				must(t, syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB))
+			}
+			r := s.run("run", "--", "pwd")
+			r.requireCode(t, 0)
+			if strings.TrimSpace(r.stdout) != s.root {
+				t.Fatalf("did not fall back to a local slot: %q", r.stdout)
+			}
+			requireContains(t, r.stderr, "offload: local slot 1/2")
+		})
+	}
 }
 
 func TestL2Placement(t *testing.T) {
@@ -274,6 +287,25 @@ func TestL2Placement(t *testing.T) {
 				t.Errorf("placement=%q, want %q", r.stdout, s.workdir(tc.want))
 			}
 		})
+	}
+}
+
+func TestL2SignalDuringPoolProbeTakesNoLocalSlot(t *testing.T) {
+	s := newSandbox(t, false)
+	s.write(filepath.Join(s.hosts, "alpha", ".probe-hang"), "")
+	p := s.start("run", "--", "touch", "must-not-run")
+	p.await("pool probe", func() bool {
+		calls, _ := filepath.Glob(filepath.Join(s.hosts, "alpha", ".ssh-call-*"))
+		return len(calls) > 0
+	})
+	p.signal(syscall.SIGINT)
+	r := p.wait(3 * time.Second)
+	r.requireCode(t, 130)
+	assertAbsent(t, filepath.Join(s.root, "must-not-run"))
+	for i := 1; i <= 2; i++ {
+		if b, err := os.ReadFile(filepath.Join(s.runtime, "heavy", fmt.Sprintf("slot%d.owner", i))); err == nil && len(b) > 0 {
+			t.Errorf("L3: a signal during the probe left local slot %d claimed: %q", i, b)
+		}
 	}
 }
 

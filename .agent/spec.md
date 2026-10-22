@@ -10,7 +10,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 ## Decisions
 
 - Stack = Go, one static binary; shells out to `ssh`, `rsync`, `git`. License = Apache-2.0 WITH LLVM-exception (`LICENSE` + `NOTICE`, as cnl-ckc).
-- User = agents alone (owner never calls it). Trigger = hybrid `offload run [--local|--pool] -- <cmd>`: the agent opts a command in (= offloadable: project-scoped, no GPU/desktop, timing not recorded); the tool runs it in a free local `heavy` slot, else a free pool slot, else waits on both (one waiting message); stderr names where it ran. `--host`, `--gpu`, `--no-sync` imply `--pool`; `--gpu` = pool hosts with an NVIDIA GPU (local GPU work → `gpu-run`). Timing-recorded runs stay on plain `heavy`.
+- User = agents alone (owner never calls it). Trigger = hybrid `offload run [--local|--pool] -- <cmd>`: the agent opts a command in (= offloadable: project-scoped, untimed; controller-only = dGPU, desktop, BrowserOS Neo); the tool runs it in a free pool slot, else a free local `heavy` slot, else waits on both (one waiting message); stderr names where it ran. Pool first: the controller (t25-480) stays free for the owner's on-demand work; load ranks pool hosts alone (nixbox's idle task keeps its load up). `--host`, `--gpu`, `--no-sync` imply `--pool`; `--gpu` = pool hosts with an NVIDIA GPU; dGPU work = `gpu-run`. Timing-recorded runs stay on plain `heavy`.
 - `heavy` interop: offload takes heavy's slots itself — `${XDG_RUNTIME_DIR:-/tmp}/heavy/slot<i>`, i = 1…`HEAVY_SLOTS` (default 2), flock(2) exclusive non-blocking, owner line `<pid> since HH:MM:SS: <cmd %q>` in `slot<i>.owner`, emptied at exit ⇒ `heavy --status` lists offload's local runs. `heavy` stays a separate host script.
 - Admission = per-host `slots` in the pool file (default 2); slot locks on the controller (`${XDG_RUNTIME_DIR}/offload/hosts/<name>/slot<i>`). Loadavg ranks hosts with a free slot (score = 1-min load / nproc), never admits: an idle task's threads inflate it.
 - Remote run = pick host → sync up → `bash -lc` the command in the remote workdir over ssh, live output, rc passed through → sync down; `--get PATH` also fetches an ignored path; `--no-sync` skips both syncs.
@@ -30,8 +30,6 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] Pool-first placement (owner ruling: keep the controller free; trading's idle load means a load score never prefers nixbox): L1/L2 + `Decisions` + README, red test first; GPU work stays on the controller (`gpu-run`). Install after the row above holds.
-- [ ] Global pool guidance (agents repo `claude/cachyos/CLAUDE.md` + `fable/`): minimal — nixbox first, a tool missing there → add it in `machines/nixbox/`; dGPU = the controller exception.
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase

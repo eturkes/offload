@@ -53,24 +53,26 @@ func (p placement) release() {
 }
 
 // place loops rounds (L2) until a slot is taken, ctx ends, or the request can never be met (L4).
+// Pool first: the controller stays free for the owner's own work.
 func (p *placer) place(ctx context.Context) (placement, error) {
 	p.downUntil, p.downWhy, p.known = map[string]time.Time{}, map[string]string{}, map[string]probe.Stats{}
 	waited := false
 	for {
-		if !p.opts.pool {
-			s, ok, err := p.heavy.TryAcquire(ownerText(p.opts.argv))
-			if err != nil || ok {
-				return placement{local: s}, err
-			}
-		}
 		if len(p.hosts) > 0 {
 			pl, ok, err := p.tryPool(ctx)
 			if err != nil || ok {
 				return pl, err
 			}
 		}
+		// A signal during the probe → no local slot (runCommand never releases one taken after it).
 		if ctx.Err() != nil {
 			return placement{}, ctx.Err()
+		}
+		if !p.opts.pool {
+			s, ok, err := p.heavy.TryAcquire(ownerText(p.opts.argv))
+			if err != nil || ok {
+				return placement{local: s}, err
+			}
 		}
 		if !waited {
 			fmt.Fprintf(p.stderr, "offload: waiting for a free slot (%s)\n", p.occupancy())
