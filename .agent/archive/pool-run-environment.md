@@ -7,3 +7,23 @@ Artifacts entry (retired):
 
 Decision text superseded by the implementation (`offload ctr`):
 - Pool run environment (owner): cross-host parity moves from per-tool nixbox additions to a replicated environment; containerized dev environments = good practice + an orthogonal portability test. PROTOTYPE spike = per-project image alone (Nix two-sided pin dropped): the gate command wraps `podman run` (rootless both sides; offload unchanged). Grading check (owner: a cold fill of all 73 D28 revisions in the image ≈ 3–6 h is not needed to confirm the system ⇒ key equality + one replay suffice): in a local clone of cement at its HEAD (verdict store copied; keys path-independent; the live cement root untouched) — (1) `d28-hits` (cement's own `_d28_content_key` + `_d28_verdict`, no replay) on both hosts; (2) one cold D28 revision replayed in the image on the controller (`d28-one`) → its verdict hits on nixbox (`d28-hits` 0 → 1 there; native today 0: nixbox uv 0.11.21 vs 0.13.1 ⇒ different Python builds); (3) `.agent/gate --omit-d28` in the image on both hosts green + wall-clock vs native per host; (4) upkeep per image bump (steps, seconds, bytes shipped). Distribution measured: `podman save | ssh podman load`, a controller-local registry over an ssh reverse tunnel, a per-host build (the ruled one, above).
+
+IMPLEMENT (closed → MAINTAIN — whole product), Tasks:
+- [x] 2efc60d Spikes: container HOME under `--userns=keep-id`; kill guarantee through podman (in-container init on a liveness pipe vs `--cgroups=split`); offload install path on nixbox
+- [x] 2efc60d Contract: `offload ctr` predicates (tier kernel) in `.agent/contract.md` + `consultant` review before code
+- [x] 2efc60d `offload ctr` run path: switch, definition lookup, content-hash tag, build on miss, mounts, exit status, kill guarantee — red-first tests (fake podman + real podman)
+- [x] 2efc60d Layer check across hosts (ruled sync check: equal `RootFS.Layers` digest lists)
+- [x] bbaf2c2 nixbox: offload installed + switch set + deploy; live runs on both hosts
+- [x] b78f436 Agents repo (agents repo commits b78f436 + f40dfde): `CLAUDE.project.md` CI gate line + `CLAUDE.local.md` tier; cachyos `CLAUDE.md` pool line + `offload ctr` usage + switch in settings `env`
+- [x] 2c2744d README + prototype retired (`prototype-pool-run-environment` tag) + deferred rows
+- [x] 61de9f1 Closing review per lens + security (MAIN) + mutation credit + re-review round → `.agent/review.md` (commits 61de9f1, a6e9c20, 0ab413f, f8a3bcb, 3e74210, d9ce65c)
+- Deferred queue → `.agent/deferred.md`
+
+
+Routed request (Phase lines at close):
+IMPLEMENT — pool run environment + CI gate compute
+> At this point don't you think it might be a good idea to go containerized with our workloads so we can replicate them across machines?
+> Barring that, an advantage of NixOS is the ease at which we can pin multiple versions I thought?
+> Sounds good. I think containerized dev environments are good practice anyway. This also gives us an orthogonal way to test portability.
+> If we already have CI, then why are we running these long gates on my own machines anyway?
+> […] my project gates are very long. It is by far the bottleneck I am facing in development right now.
