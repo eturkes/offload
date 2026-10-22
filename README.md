@@ -22,16 +22,28 @@ On each pool host:
 - An SSH server. Set `ClientAliveInterval 15` and `ClientAliveCountMax 4`, so that a run stops within about one minute when the controller disappears.
 - Optional: a systemd user manager for the user that offload logs in as. Run `loginctl enable-linger <user>` to keep it running without a login. Then a stopped run also stops the daemons that its command started.
 
+For `offload ctr` (project images), on each machine that sets `OFFLOAD_CTR=1`:
+
+- Rootless Podman 4.9 or later, local (not the remote client).
+- Subordinate user and group IDs for the user (`/etc/subuid` and `/etc/subgid`).
+- The same offload binary as on the controller in the `PATH`. `tools/install` does this.
+
 ## Install
 
-Build the binary and put it on your `PATH`:
+Run the install script from the repository:
 
 ```sh
-CGO_ENABLED=0 go build -trimpath -o ~/.local/bin/offload.new ./cmd/offload
-mv ~/.local/bin/offload.new ~/.local/bin/offload
+tools/install
 ```
 
-The `mv` replaces the binary in one step, so runs that are in progress are not affected.
+The script builds one static binary and installs it as `~/.local/bin/offload` on this machine and on each host of the pool file.
+It shows the SHA-256 checksum that each machine reports. All checksums must be the same.
+To install on specified hosts only, give their SSH addresses as arguments.
+
+The script replaces the binary in one step, so runs that are in progress are not affected.
+Run the script again after each change to offload.
+
+Make sure that `~/.local/bin` is in the `PATH` of each machine, also for login shells on the pool hosts.
 
 ## Configure the pool
 
@@ -136,6 +148,90 @@ Without a scope, a process that starts its own session is not stopped.
 A process that another systemd unit takes over is not stopped.
 An offload run that the command starts also stops its own command. A command of that inner run that ignores TERM can outlive it.
 
+## Run a command in the project image
+
+A project can define its own container image in `.devcontainer/Containerfile`.
+Then the same tools, at the same versions, run the command on every machine:
+
+```sh
+offload ctr -- make test
+```
+
+`offload ctr` runs the command in the image only on machines that set `OFFLOAD_CTR=1`.
+On other machines, or with `OFFLOAD_CTR=0`, the command runs directly, as if you typed it without `offload ctr`.
+Set the variable once for each machine, for example in the environment of your agents and in the login environment of each pool host.
+
+To run the command in the image on a pool host, put `offload ctr` after `offload run`:
+
+```sh
+offload run -- offload ctr -- make test
+```
+
+### How the image is made
+
+Each machine builds the image itself, the first time that it needs it.
+The tag of the image is a checksum of the `.devcontainer` directory: the file contents, names, permissions and symbolic links.
+When you change a file in the directory, the next run builds a new image.
+offload shows `offload: building …` on stderr while it builds.
+
+offload builds with `podman build --timestamp 0`.
+Thus, if all the inputs of the image are fixed, each machine builds the same layers.
+To fix the inputs, follow these rules in the `Containerfile`:
+
+- Refer to each base image by its digest, for example `FROM debian:trixie-slim@sha256:…`.
+- Install packages from a dated archive, for example `snapshot.debian.org`.
+- Give exact versions of all other tools.
+- Remove logs and caches that the build writes.
+
+To make sure that the pool hosts build the same image as this machine, run this command in the project:
+
+```sh
+offload ctr --check
+```
+
+The command builds the image on this machine and on each pool host, then compares the layer digests and the offload binary.
+It shows one line for each host and exits with 0 only when all hosts are the same.
+It waits for a free slot on each host. It does not compare the image configuration, for example `ENV`.
+`offload ctr --layers` shows the layer digests of this machine only.
+
+### What the command sees in the image
+
+- The project directory, at the same path as on the host. The command starts in the current directory.
+- For a linked git worktree, also the git directory of the main repository.
+- The environment variables from the `ENV` lines of the image. Variables from the host do not go into the container.
+- `HOME` is `/.offload/home`. This directory is kept between runs, one for each project on each machine. Point the caches and virtual environments of your tools there, for example `ENV UV_PROJECT_ENVIRONMENT=/.offload/home/venv`. Runs of the same project at the same time share this directory.
+- Your own user ID. Files that the command writes in the project belong to you.
+- The standard input, output and error of `offload ctr`. offload does not keep a log of the output.
+
+offload ignores the `ENTRYPOINT`, `CMD`, `USER` and `WORKDIR` lines of the image.
+offload reads only the `Containerfile`. If you also add a `devcontainer.json` for other tools, offload does not read it.
+A project path that contains `:` cannot go into a container. offload then stops with exit status 125.
+
+### Exit status and stopping
+
+`offload ctr` exits with the exit status of the command, also when the command exits with 2 or 125.
+In the image, a command that is not found gives 127, and a command that cannot run gives 126.
+offload uses these values for its own results:
+
+| Status | Meaning |
+|--------|---------|
+| 2 | The options are not correct, `OFFLOAD_CTR` has a value other than `0` or `1`, or `.devcontainer/Containerfile` is missing. |
+| 125 | offload could not run the command, for example the build failed or Podman failed. The message on stderr tells what failed. |
+
+offload sends HUP, INT, QUIT, TERM, USR1 and USR2 to the command when it receives them.
+The command then decides what to do, and `offload ctr` exits with the status of the command.
+When the command stops, offload sends TERM to the processes that it left. After 10 seconds, it stops them with KILL.
+When offload itself stops, also with `kill -9`, all processes in the container stop at once and the container is removed.
+
+### Remove old images
+
+offload does not remove images. To see the images and remove the old ones, use Podman:
+
+```sh
+podman images localhost/offload-ctr
+podman rmi localhost/offload-ctr:<tag>
+```
+
 ## See the pool
 
 ```sh
@@ -162,6 +258,7 @@ Run the full check chain before you commit:
 ```
 
 The chain checks formatting, lint, tests (with the race detector), the build, known vulnerabilities, secrets in the git history, the CI workflows, shell scripts and Nix files.
+The tests of `offload ctr` use Podman. Without Podman, these tests are skipped.
 
 ## License
 
