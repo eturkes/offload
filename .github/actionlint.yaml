@@ -1,0 +1,5 @@
+# actionlint 1.7.12 (latest release) predates GitHub's ubuntu-26.04 label (rhysd/actionlint#682 open)
+# ⇒ declared here until a release knows it; then drop this file.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
