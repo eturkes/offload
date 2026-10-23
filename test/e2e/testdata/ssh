@@ -16,7 +16,8 @@ done
 (($#)) || exit 254
 # Contract X5: every connection carries these options; a call without one fails like a misconfigured ssh.
 args=" ${original[*]} "
-for opt in BatchMode=yes StrictHostKeyChecking=accept-new ConnectTimeout=5 ServerAliveInterval=15 ServerAliveCountMax=4; do
+for opt in BatchMode=yes StrictHostKeyChecking=accept-new ConnectTimeout=5 ServerAliveInterval=15 ServerAliveCountMax=4 \
+    ForwardAgent=no ForwardX11=no ClearAllForwardings=yes; do
     if [[ $args != *" -o $opt "* ]]; then
         printf 'fake ssh: connection without -o %s\n' "$opt" >&2
         exit 254

@@ -368,6 +368,7 @@ func TestX6Remote255AndTransport(t *testing.T) {
 var x5 = []string{
 	"-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
 	"-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4",
+	"-o", "ForwardAgent=no", "-o", "ForwardX11=no", "-o", "ClearAllForwardings=yes",
 }
 
 func TestHarnessFakeSSH(t *testing.T) {
