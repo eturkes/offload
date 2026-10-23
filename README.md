@@ -37,7 +37,8 @@ tools/install
 ```
 
 The script builds one static binary and installs it as `~/.local/bin/offload` on this machine and on each host of the pool file.
-It shows the SHA-256 checksum that each machine reports. All checksums must be the same.
+It also installs the `heavy` script from `tools/heavy` as `~/.local/bin/heavy`, so that project scripts that run slow commands through `heavy` also work on the pool hosts.
+It shows the SHA-256 checksum of each file that each machine reports. All checksums of a file must be the same.
 To install on specified hosts only, give their SSH addresses as arguments.
 
 The script replaces the binary in one step, so commands that already run are not affected.

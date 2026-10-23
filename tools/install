@@ -1,25 +1,32 @@
 #!/bin/sh
 # install [ADDRESS…] — build offload once (static: it is also the init inside images, K11) and install
-# that same binary as ~/.local/bin/offload here and on each pool host (default: every `address` in
-# the pool file). Prints the sha256 each side reports; they must match.
+# that same binary + tools/heavy (project scripts wrap slow commands in it, on pool hosts too) into
+# ~/.local/bin here and on each pool host (default: every `address` in the pool file). Prints the
+# sha256 each side reports per file; they must match.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 (cd "$root" && CGO_ENABLED=0 go build -trimpath -o "$tmp/offload" ./cmd/offload)
+cp "$root/tools/heavy" "$tmp/heavy"
+chmod 755 "$tmp/heavy"
 mkdir -p "$HOME/.local/bin"
-cp "$tmp/offload" "$HOME/.local/bin/offload.new"
-mv "$HOME/.local/bin/offload.new" "$HOME/.local/bin/offload" # one rename: running offloads keep theirs
-echo "here: $(sha256sum "$HOME/.local/bin/offload" | cut -d' ' -f1)"
+for f in offload heavy; do
+  cp "$tmp/$f" "$HOME/.local/bin/$f.new"
+  mv "$HOME/.local/bin/$f.new" "$HOME/.local/bin/$f" # one rename: running copies keep theirs
+  echo "here $f: $(sha256sum "$HOME/.local/bin/$f" | cut -d' ' -f1)"
+done
 if [ $# -eq 0 ]; then
   addresses=$(cd "$root" && go run ./tools/pooladdrs) # offload's own pool parser; no whitespace in an address (P2)
   # shellcheck disable=SC2086 # one word per address
   set -- $addresses
 fi
 for address; do
-  printf '%s: ' "$address"
-  ssh -o BatchMode=yes -o ConnectTimeout=5 -T -- "$address" \
-    'mkdir -p ~/.local/bin && cat >~/.local/bin/offload.new && chmod 755 ~/.local/bin/offload.new &&
-     mv ~/.local/bin/offload.new ~/.local/bin/offload && sha256sum ~/.local/bin/offload | cut -d" " -f1' \
-    <"$tmp/offload"
+  for f in offload heavy; do
+    printf '%s %s: ' "$address" "$f"
+    ssh -o BatchMode=yes -o ConnectTimeout=5 -T -- "$address" \
+      "mkdir -p ~/.local/bin && cat >~/.local/bin/$f.new && chmod 755 ~/.local/bin/$f.new &&
+       mv ~/.local/bin/$f.new ~/.local/bin/$f && sha256sum ~/.local/bin/$f | cut -d' ' -f1" \
+      <"$tmp/$f"
+  done
 done

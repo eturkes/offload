@@ -15,13 +15,14 @@ import (
 	"time"
 )
 
-// testdata/heavy = byte copy of the host's heavy script: the protocol offload must interoperate with.
+// tools/heavy = the heavy script tools/install deploys on every host: the protocol offload must
+// interoperate with.
 
 func envOf(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
 
 func heavyCmd(t *testing.T, runtime string, slots string, args ...string) *exec.Cmd {
 	t.Helper()
-	cmd := exec.Command("bash", append([]string{"testdata/heavy"}, args...)...)
+	cmd := exec.Command("bash", append([]string{"../../tools/heavy"}, args...)...)
 	cmd.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+runtime, "HEAVY_SLOTS="+slots)
 	return cmd
 }
