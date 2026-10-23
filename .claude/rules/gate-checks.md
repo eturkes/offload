@@ -23,4 +23,4 @@ Each step fires on a planted bad input (rerun the seed after editing its check):
 - nixlint: a tracked `*.nix` file `{ ... }:\n{ }` → statix W10 empty pattern, rc 1; one holding `let\n  unused = 1;\nin\n{ }` → deadnix rc 1.
 - spec-lint: a history line appended under `## Phase` → rc 1.
 - `.agent/tool`: a pin with a wrong sha256 → refuses the asset, rc 2.
-- `.agent/pins` (weekly `pins.yml`, not a gate step): a pin behind its latest release → `behind`, rc 1; a workflow `go-version` ≠ `go.mod` → rc 1; an unknown source repo → `lookup failed`, rc 2.
+- `.agent/pins` (weekly `pins.yml`, not a gate step): a pin behind its latest release → `behind`, rc 1; a workflow `go-version` ≠ `go.mod` → rc 1; a planted `runs-on: ubuntu-22.04` → `behind`, rc 1; an unknown source repo → `lookup failed`, rc 2.

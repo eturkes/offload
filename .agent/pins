@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # pins — every hand-moved version pin vs its latest upstream release (Dependabot moves none of
 # them): `.agent/tool --pins` (a git-built tool tracks its newest tag, or nixpkgs' revision), Go (`go.mod` `go` line; each workflow's setup-go `go-version` must
-# equal it), uv (setup-uv `version`), zizmor (`.agent/gate`). Prints a markdown table; rc 0 = all
+# equal it), uv (setup-uv `version`), zizmor (`.agent/gate`), each distinct workflow `runs-on` label
+# (vs the newest GA x64 `ubuntu-NN.04` in actions/runner-images' README). Prints a markdown table; rc 0 = all
 # current, 1 = a pin behind or a Go copy off `go.mod`, 2 = a lookup failed. Network ⇒ not a gate
 # step; runs weekly in `.github/workflows/pins.yml`. GH_TOKEN, when set, authenticates GitHub calls.
 set -euo pipefail
@@ -23,6 +24,10 @@ latest() { # latest <source> → newest stable release, without a leading v/go
       sort -V | tail -n 1 | grep . ;;
     nixpkgs:*) get "https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-unstable/${1#nixpkgs:}" |
       sed -n 's/^ *rev = "\([0-9a-f]\{40\}\)";/\1/p' | head -n 1 | grep . ;;
+    # Available Images rows: | Image (beta/preview badge = not GA) | Architecture | YAML Label | … |
+    runner-images) get https://raw.githubusercontent.com/actions/runner-images/main/README.md |
+      awk -F'|' '$2 ~ /^ *Ubuntu/ && $2 !~ /badge\/(beta|preview)/ && $3 ~ /^ *x64 *$/ { print $4 }' |
+      grep -o 'ubuntu-[0-9]*\.04' | sort -V | tail -n 1 | grep . ;;
     *) return 1 ;;
   esac | sed 's/^v//; s/^go//'
 }
@@ -32,6 +37,9 @@ pins=$(.agent/tool --pins)
 pins+=$'\n'"go $gomod golang"
 pins+=$'\n'"uv $(grep -A4 'astral-sh/setup-uv@' .github/workflows/gate.yml | sed -n 's/.*version: "\(.*\)"/\1/p') github:astral-sh/uv"
 pins+=$'\n'"zizmor $(grep -o 'zizmor==[0-9.]*' .agent/gate | cut -d= -f3) pypi:zizmor"
+while read -r label; do
+  pins+=$'\n'"runs-on $label runner-images"
+done < <(sed -n 's/^ *runs-on: *\([^ #]*\).*/\1/p' .github/workflows/*.yml | sort -u)
 
 rc=0
 echo '| pin | pinned | latest | state |'
