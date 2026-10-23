@@ -15,10 +15,10 @@ in
     ./network.nix
     ./secureboot.nix
     ./idle.nix
+    ./performance.nix
   ];
 
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.tmp.cleanOnBoot = true;
   # Root = LUKS2 unlocked by the TPM → unattended reboots; no passphrase slot (recovery key alone).
   # The volume key goes into PCR 15 right after unlock; the token demands PCR 15 = 0 (`tpm-bind`) ⇒
   # a swapped-header volume unlocked first leaves the real token sealed.
