@@ -1,0 +1,20 @@
+# Reviewed `check` wrapper facts: each security wrapper's /bin-style path strings (envfs resolves /bin
+# + /usr/bin from the caller's PATH, no AT_SECURE check) + the ruling that makes the exec safe. A new
+# wrapper, a new string or a gone one reds `check` until this file rules it.
+# Safe = the exec happens after the program drops to the caller's uid, or only after authentication
+# `eturkes` cannot pass (no password on any account; not in sudoers), or the path cannot exist.
+wrapper chsh /usr/sbin/sss_cache        # cannot exist: /usr = root 0755 holding bin (envfs) alone
+wrapper fusermount -
+wrapper fusermount3 -
+wrapper mount -
+wrapper newgidmap /usr/sbin/sss_cache   # cannot exist: as chsh
+wrapper newgrp /bin/sh                  # after the drop: `PATH=<dir>:$PATH sg users -c true` ran the planted sh as uid 1000
+wrapper newuidmap /usr/sbin/sss_cache   # cannot exist: as chsh
+wrapper passwd /usr/sbin/sss_cache      # cannot exist: as chsh
+wrapper pkexec -
+wrapper sg /bin/sh                      # after the drop: as newgrp (sg = newgrp)
+wrapper su /bin/sh                      # after PAM authentication of the target user (no passwords)
+wrapper sudo /bin/sh                    # after sudoers + authentication: eturkes refused; offload = wheel (root already)
+wrapper sudoedit /bin/sh                # as sudo
+wrapper umount -
+wrapper unix_chkpwd -

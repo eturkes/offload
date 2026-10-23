@@ -1,8 +1,10 @@
 #!/bin/sh
-# deploy [nixos-rebuild action] — push machines/nixbox to the installed box + rebuild (default: switch).
+# deploy [nixos-rebuild action] — push machines/nixbox to the installed box + rebuild (default: switch);
+# after a switch, `check` (a finding → rc 1, the box already switched).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
 [ -f "$here/wifi.env" ] || { echo "deploy: $here/wifi.env missing" >&2; exit 2; } # network.nix needs it
 rsync -q --chmod=F600 --rsync-path="sudo rsync" "$here"/*.nix "$here/wifi.env" "offload@$ip:/etc/nixos/"
 ssh "offload@$ip" "sudo nixos-rebuild ${1:-switch}"
+[ "${1:-switch}" != switch ] || "$here/check"

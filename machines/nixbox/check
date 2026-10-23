@@ -1,0 +1,49 @@
+#!/bin/sh
+# check [--dump | --facts FILE] — from the controller: nixbox findings an agent must act on. rc 0 =
+# none, 1 = findings (one `check: …` line each), 2 = facts unavailable. Facts = lines collected as
+# root over ssh (--dump prints them; --facts evaluates a saved or planted file instead):
+#   wrapper <name> <path>|-|?  per security wrapper, each `strings` line of its real program matching
+#                              ^/(usr/)?s?bin/ (- = none, ? = real program not found). envfs
+#                              (configuration.nix) resolves /bin + /usr/bin from the caller's PATH
+#                              with no AT_SECURE check ⇒ every such exec by a setuid program needs a
+#                              ruling in wrappers.reviewed; any other set = a finding.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
+collect() {
+  ssh -o BatchMode=yes -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes -T \
+    "offload@$ip" sudo sh -s <<'EOF'
+set -eu
+for w in /run/wrappers/bin/*; do
+  n=${w##*/}
+  # The wrapper binary embeds its real program's store path (NixOS wrapper.c, SOURCE_PROG).
+  src=$(strings "$w" | grep -m1 -E '^/nix/store/[a-z0-9]{32}-[^/]+/(s?bin|libexec)/' || true)
+  if [ -z "$src" ]; then
+    echo "wrapper $n ?"
+  else
+    hits=$(strings "$src" | grep -E '^/(usr/)?s?bin/' | sort -u || true)
+    [ -n "$hits" ] || hits=-
+    printf '%s\n' "$hits" | sed "s|^|wrapper $n |"
+  fi
+done
+EOF
+}
+case ${1-} in
+  '') facts=$(collect) || { echo "check: collecting facts from $ip failed" >&2; exit 2; } ;;
+  --dump) collect; exit ;;
+  --facts) facts=$(cat "${2:?usage: check [--dump | --facts FILE]}") ;;
+  *) echo "usage: check [--dump | --facts FILE]" >&2; exit 2 ;;
+esac
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+printf '%s\n' "$facts" | grep '^wrapper ' | sort -u >"$tmp/seen" || true
+sed 's/[[:space:]]*#.*//; /^$/d' "$here/wrappers.reviewed" | sort -u >"$tmp/reviewed"
+found=0
+comm -23 "$tmp/seen" "$tmp/reviewed" | while read -r line; do
+  echo "check: unreviewed ${line#wrapper } (rule it in wrappers.reviewed)"
+done | grep . && found=1
+comm -13 "$tmp/seen" "$tmp/reviewed" | while read -r line; do
+  echo "check: reviewed but absent: ${line#wrapper } (drop it from wrappers.reviewed)"
+done | grep . && found=1
+[ "$found" = 0 ] && echo "check: ok"
+exit "$found"
