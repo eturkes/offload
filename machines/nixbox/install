@@ -3,15 +3,21 @@
 # wipes <disk> (GPT: 1 GiB ESP + LUKS2 ext4 root), creates Secure Boot keys, installs
 # machines/nixbox, enrolls TPM2 (no PCRs yet; `tpm-bind` after firmware enrollment, README.md) +
 # a recovery key → $RECOVERY_KEY, drops the setup keyfile, pulls back hardware-configuration.nix,
-# reboots. Needs machines/nixbox/wifi.env (gitignored).
+# reboots. Needs machines/nixbox/wifi.env + installer_host_key.pub (gitignored; the ISO's key).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 disk=${1:?usage: install /dev/<disk>}
 rk=${RECOVERY_KEY:-$HOME/.local/share/offload/nixbox-recovery-key}
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
-# Installer host key is ephemeral → kept out of known_hosts.
-o="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
 [ -f "$here/wifi.env" ] || { echo "install: $here/wifi.env missing" >&2; exit 2; }
+# The ISO's sshd host key = installer_host_key (installer.nix) ⇒ known_hosts holds its .pub alone:
+# any other key stops the first ssh call, before wifi.env or the recovery key cross.
+[ -s "$here/installer_host_key.pub" ] || { echo "install: $here/installer_host_key.pub missing" >&2; exit 2; }
+kh=$(mktemp)
+trap 'rm -f "$kh"' EXIT
+printf '%s %s\n' "$ip" "$(cut -d' ' -f1,2 "$here/installer_host_key.pub")" > "$kh"
+o="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$kh -o GlobalKnownHostsFile=/dev/null -o LogLevel=ERROR"
+o="$o -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes"
 # Partition n of /dev/nvme0n1 = …p<n>, of /dev/sda = …<n>; lsblk order is unreliable.
 case $disk in *[0-9]) esp=${disk}p1 luks=${disk}p2 ;; *) esp=${disk}1 luks=${disk}2 ;; esac
 ssh $o "root@$ip" "set -eu
