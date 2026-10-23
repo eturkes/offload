@@ -58,6 +58,6 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 
 ## Idle task
 
-- `user-1001.slice` (`eturkes`) = `CPUWeight=idle` (cgroup `cpu.idle` yields to siblings only ⇒ set on the user slice, sibling of `offload`'s). IO weight unenforced (NVMe scheduler `none`).
+- `user-1001.slice` (`eturkes`) = `CPUWeight=idle` (cgroup `cpu.idle` yields to siblings only ⇒ set on the user slice, sibling of `offload`'s) + `MemoryHigh=20G` = 2 × the slice's recorded peak (9.9G over a 36 h boot, `codexify.service` incl. page cache): above it the kernel throttles + reclaims into swap, never kills. Check: an `eturkes` allocator of 24 GiB (urandom) holds the slice at 20.0 GiB (`memory.events` high 0 → 856, 4.1 GiB swapped) while a concurrent 4 GiB offload run completes rc 0. IO weight unenforced (NVMe scheduler `none`).
 - Check: 8 CPU burners as `eturkes` → an 8-way CPU job as `offload` takes ≈ its solo time (1877 ms vs 1532–1789 ms solo); the same burners as `offload` → 3847 ms.
 - Reverse cost (trading's intraday watcher, 90 s 8-way burn via `offload run`, offload at 7.9 of 8 CPUs): the slice keeps its 0.04 CPU, but idle-class wakeups lag (sleep overshoot p99 0.7 → 119 ms) ⇒ frame interval 13.5 → 20.8 s, decision-time quote age 1.3 → 3.9 s median, max 4.6 s against the model's 5 s `max_quote_age_ms` gate. A quote past the gate is dropped for that frame (market coverage `unavailable`, counted as a rejection); seen once live (7.1 s, frame gap 21 s = the burn's signature).
