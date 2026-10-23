@@ -176,7 +176,8 @@ in
   # trusted CAs, every stdlib TLS call fails verification — in services as in offload's `bash -lc`.
   environment.etc."ssl/cert.pem".source = "/etc/ssl/certs/ca-certificates.crt";
   # Offload runs land here first ⇒ FHS paths in project code (`#!/bin/bash`, `/usr/bin/git`) must
-  # resolve: envfs serves /bin + /usr/bin from the calling process's PATH.
+  # resolve: envfs serves /bin + /usr/bin from the calling process's PATH — a setuid caller's too (no
+  # AT_SECURE check) ⇒ `check` rules every wrapper's /bin-style exec (wrappers.reviewed).
   services.envfs.enable = true;
   # A caller whose PATH holds no Nix dir (suites pinning PATH=<mock>:/usr/bin:/bin) falls back to the
   # system profile, not just envfs's own sh + env.
