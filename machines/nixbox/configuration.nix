@@ -84,8 +84,15 @@ in
       Type = "oneshot";
       RemainAfterExit = true;
     };
+    # dell-pc's profile handler can refuse writes (EACCES) early in boot, a race between boots ⇒ retry
+    # ≤ 30 s; a failed write would otherwise stop the script before PL1.
     script = ''
-      echo performance > /sys/firmware/acpi/platform_profile
+      p=/sys/firmware/acpi/platform_profile
+      for _ in $(seq 30); do
+        echo performance > $p 2>/dev/null && break
+        sleep 1
+      done
+      [ "$(cat $p)" = performance ]
       echo 22000000 > /sys/class/powercap/intel-rapl-mmio:0/constraint_0_power_limit_uw
     '';
   };
