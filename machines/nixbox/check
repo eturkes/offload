@@ -12,6 +12,12 @@
 #                              (configuration.nix) resolves /bin + /usr/bin from the caller's PATH
 #                              with no AT_SECURE check ⇒ every such exec by a setuid program needs a
 #                              ruling in wrappers.reviewed; any other set = a finding.
+#   sshd|fw|listen|secret …    configuration posture (owner: configuration flaws only, performance
+#                              first): effective sshd settings, the nftables input policy + allow
+#                              rules + temporarily opened ports, non-loopback listeners, files in the
+#                              system closure holding the Wi-Fi PSK (read via a root-only temp file,
+#                              never argv), wifi.env's mode — any set other than config.reviewed's =
+#                              a finding.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
@@ -35,6 +41,20 @@ for w in /run/wrappers/bin/*; do
     printf '%s\n' "$hits" | sed "s|^|wrapper $n |"
   fi
 done
+/run/current-system/sw/bin/sshd -T -f /etc/ssh/sshd_config | awk 'tolower($1) ~ /^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|permitemptypasswords|pubkeyauthentication|clientaliveinterval|clientalivecountmax|x11forwarding|allowagentforwarding|allowtcpforwarding|gatewayports|permituserenvironment)$/ { print "sshd", tolower($1), tolower($2) }'
+echo "fw input-policy $(nft -j list chain inet nixos-fw input | jq -r '.nftables[] | select(.chain) | .chain.policy')"
+nft list chain inet nixos-fw input-allow | sed '1,/{/d; /^[[:space:]]*}/,$d; s/^[[:space:]]*//; s/ comment ".*"$//; /^$/d; s/^/fw allow /'
+echo "fw temp-ports $(nft -j list set inet nixos-fw temp-ports | jq '[.nftables[] | select(.set) | .set.elem // [] | length] | add')"
+ss -Hltnup | awk '$5 !~ /^(127\.|\[::1\])/ { match($7, /"[^"]+"/); print "listen", $1, $5, substr($7, RSTART + 1, RLENGTH - 2) }'
+f=$(umask 077 && mktemp)
+sed -n 's/^WIFI_PSK=//p' /etc/nixos/wifi.env >"$f"
+if [ -s "$f" ]; then
+  echo "secret psk-files $(nix-store -qR /run/current-system | xargs grep -rlF -f "$f" 2>/dev/null | wc -l)"
+else
+  echo "secret psk-files ?"
+fi
+rm -f "$f"
+stat -c 'secret wifi.env %a %U' /etc/nixos/wifi.env
 EOF
 }
 case ${1-} in
@@ -45,9 +65,13 @@ case ${1-} in
 esac
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-printf '%s\n' "$facts" | grep '^wrapper ' | sort -u >"$tmp/seen" || true
-sed 's/[[:space:]]*#.*//; /^$/d' "$here/wrappers.reviewed" | sort -u >"$tmp/reviewed"
 found=0
+compare() { # compare <fact-word regex> <reviewed file>: facts ≠ the file's lines → findings
+  printf '%s\n' "$facts" | grep -E "^($1) " | sort -u >"$tmp/seen" || true
+  sed 's/[[:space:]]*#.*//; /^$/d' "$here/$2" | sort -u >"$tmp/reviewed"
+  comm -23 "$tmp/seen" "$tmp/reviewed" | sed "s|^|check: unreviewed: |; s|\$| (rule it in $2)|"
+  comm -13 "$tmp/seen" "$tmp/reviewed" | sed "s|^|check: reviewed but absent: |; s|\$| (update $2)|"
+}
 printf '%s\n' "$facts" | awk '
   $1 == "now" { now = $2 }
   $1 == "upgrade" { last = $2; at = $3; if ($2 == "done") ok = $3 }
@@ -58,11 +82,7 @@ printf '%s\n' "$facts" | awk '
     if (last != "" && (ok == "" || now - ok > 3 * 86400))
       printf "check: the last successful nixos-upgrade run is %s h old (> 72)\n", ok == "" ? "?" : int((now - ok) / 3600)
   }' | grep . && found=1
-comm -23 "$tmp/seen" "$tmp/reviewed" | while read -r line; do
-  echo "check: unreviewed ${line#wrapper } (rule it in wrappers.reviewed)"
-done | grep . && found=1
-comm -13 "$tmp/seen" "$tmp/reviewed" | while read -r line; do
-  echo "check: reviewed but absent: ${line#wrapper } (drop it from wrappers.reviewed)"
-done | grep . && found=1
+compare wrapper wrappers.reviewed | grep . && found=1
+compare 'sshd|fw|listen|secret' config.reviewed | grep . && found=1
 [ "$found" = 0 ] && echo "check: ok"
 exit "$found"

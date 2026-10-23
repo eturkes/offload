@@ -1,0 +1,31 @@
+# Reviewed `check` configuration facts (owner: configuration flaws only, performance first). A changed,
+# new or gone line reds `check` until this file rules it.
+# sshd: key-only logins from the controller key; ClientAlive 15 × 4 = offload contract X5's teardown.
+# Forwarding stays at OpenSSH's defaults: only the controller key logs in.
+sshd allowagentforwarding yes
+sshd allowtcpforwarding yes
+sshd clientalivecountmax 4
+sshd clientaliveinterval 15
+sshd gatewayports no
+sshd kbdinteractiveauthentication no
+sshd passwordauthentication no
+sshd permitemptypasswords no
+sshd permitrootlogin no
+sshd permituserenvironment no
+sshd pubkeyauthentication yes
+sshd x11forwarding no
+# nftables: drop by default; SSH from the home LAN alone (IPv6 to 22 dropped); no temporary ports.
+fw allow icmp type echo-request accept
+fw allow icmpv6 type != { nd-redirect, 139 } accept
+fw allow ip saddr 192.168.40.0/24 tcp dport 22 accept
+fw allow ip6 daddr fe80::/64 udp dport 546 accept
+fw allow meta l4proto . th dport @temp-ports accept
+fw input-policy drop
+fw temp-ports 0
+# Non-loopback listeners: sshd + NetworkManager's DHCPv6 client (link-local) alone.
+listen tcp 0.0.0.0:22 sshd
+listen tcp [::]:22 sshd
+listen udp [fe80::62f2:62ff:feb1:79c5]%wlo1:546 NetworkManager
+# The Wi-Fi PSK: no file of the running system's closure holds it; wifi.env root-only.
+secret psk-files 0
+secret wifi.env 600 root
