@@ -93,7 +93,6 @@ in
     enable = true;
     freeMemThreshold = 3;
   };
-  zramSwap.enable = true;
   services.fstrim.enable = true;
 
   # Always on AC → cap charge at 80 % to spare the battery. dell-laptop threshold writes only store
