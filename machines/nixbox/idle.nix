@@ -14,8 +14,15 @@ in
     linger = true; # trading's user services run without a login
   };
 
+  # MemoryHigh = 2 × the slice's recorded peak (9.9G over a 36 h boot, codexify.service incl. page
+  # cache; trading's trial units ≤ 384M): above it the kernel throttles + reclaims, never kills ⇒ a
+  # runaway chat job slows down instead of driving the box into earlyoom, whose kill can hit an
+  # offload run.
   systemd.slices."user-1001" = {
     overrideStrategy = "asDropin"; # keep the user-.slice template's settings
-    sliceConfig.CPUWeight = "idle";
+    sliceConfig = {
+      CPUWeight = "idle";
+      MemoryHigh = "20G";
+    };
   };
 }
