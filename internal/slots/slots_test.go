@@ -191,7 +191,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestKilledHolderFreesSlot(t *testing.T) { // S6
+func TestKilledHolderFreesSlot(t *testing.T) { // S2 + R2: the kernel frees the lock; stale owner text ignored
 	dir := t.TempDir()
 	cmd := exec.Command(os.Args[0], "-test.run=^$")
 	cmd.Env = append(os.Environ(), "SLOTS_TEST_HOLD="+dir)
@@ -242,7 +242,7 @@ func TestSlotFilesNeverBlockOnPlantedFIFO(t *testing.T) { // security: /tmp fall
 		done := make(chan error, 1)
 		go func() {
 			if planted == "wait.lock" {
-				f, err := WaitLock(context.Background(), filepath.Join(dir, planted))
+				f, err := WaitLock(context.Background(), filepath.Dir(dir), filepath.Join(dir, planted))
 				if f != nil {
 					_ = f.Close()
 				}
@@ -266,5 +266,132 @@ func TestSlotFilesNeverBlockOnPlantedFIFO(t *testing.T) { // security: /tmp fall
 		case <-time.After(2 * time.Second):
 			t.Fatalf("%s planted as a FIFO: open blocked (no reader)", planted)
 		}
+	}
+}
+
+// S6: under the /tmp fallback another user can pre-create a lock directory; every component below
+// the runtime dir must be a real directory of ours without group/other write, else no slot.
+func TestS6LockDirsRefusePlantedComponents(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		plant func(t *testing.T, base string) // plants under base
+		dir   func(env func(string) string) (Dir, error)
+	}{
+		{"heavy-0777", plantDir("heavy", 0o777), heavyDir},
+		{"heavy-0770", plantDir("heavy", 0o770), heavyDir},
+		{"heavy-symlink", plantLink("heavy"), heavyDir},
+		{"offload-0777", plantDir("offload", 0o777), hostDir},
+		{"hosts-symlink", func(t *testing.T, base string) {
+			t.Helper()
+			if err := os.Mkdir(filepath.Join(base, "offload"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			plantLink(filepath.Join("offload", "hosts"))(t, base)
+		}, hostDir},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := t.TempDir()
+			tc.plant(t, base)
+			d, err := tc.dir(envOf(map[string]string{"XDG_RUNTIME_DIR": base}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			s, ok, err := d.TryAcquire(" x")
+			if err == nil || ok {
+				s.Release()
+				t.Fatalf("TryAcquire under a planted %s: ok=%v err=%v, want refusal", tc.name, ok, err)
+			}
+			if _, statErr := os.Lstat(filepath.Join(d.Path, "slot1")); !errors.Is(statErr, os.ErrNotExist) {
+				t.Errorf("slot1 created under the planted dir (lstat err=%v)", statErr)
+			}
+		})
+	}
+}
+
+func TestS6LockDirsAcceptOwnPrivateTree(t *testing.T) { // S6 positive control: 0755 (heavy's mkdir -p) passes
+	base := t.TempDir()
+	plantDir("heavy", 0o755)(t, base)
+	d, err := heavyDir(envOf(map[string]string{"XDG_RUNTIME_DIR": base}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, ok, err := d.TryAcquire(" x")
+	if err != nil || !ok {
+		t.Fatalf("own 0755 heavy dir refused: ok=%v err=%v", ok, err)
+	}
+	s.Release()
+	h, err := hostDir(envOf(map[string]string{"XDG_RUNTIME_DIR": base}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, ok, err = h.TryAcquire(" x")
+	if err != nil || !ok {
+		t.Fatalf("fresh host dir refused: ok=%v err=%v", ok, err)
+	}
+	s.Release()
+	for _, p := range []string{"offload", "offload/hosts", "offload/hosts/h"} {
+		info, err := os.Lstat(filepath.Join(base, p))
+		if err != nil || info.Mode().Perm() != 0o700 {
+			t.Errorf("%s: created with %v (err %v), want 0700", p, info.Mode(), err)
+		}
+	}
+}
+
+func heavyDir(env func(string) string) (Dir, error) { return Heavy(env) }
+
+func hostDir(env func(string) string) (Dir, error) { return Host(env, "h", 2), nil }
+
+func plantDir(rel string, mode os.FileMode) func(*testing.T, string) {
+	return func(t *testing.T, base string) {
+		t.Helper()
+		p := filepath.Join(base, rel)
+		if err := os.Mkdir(p, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(p, mode); err != nil { // umask-proof
+			t.Fatal(err)
+		}
+	}
+}
+
+func plantLink(rel string) func(*testing.T, string) {
+	return func(t *testing.T, base string) {
+		t.Helper()
+		target := t.TempDir() // a real 0700 dir of ours: only the symlink itself is wrong
+		if err := os.Symlink(target, filepath.Join(base, rel)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestS6MakeDirsBoundsAndBase(t *testing.T) { // S6: dir strictly below base; a missing base = 0700
+	root := t.TempDir()
+	base := filepath.Join(root, "runtime")
+	for _, dir := range []string{base, root, filepath.Join(root, "elsewhere", "x")} {
+		if err := MakeDirs(base, dir); err == nil {
+			t.Errorf("MakeDirs(%q, %q) accepted a dir not below base", base, dir)
+		}
+	}
+	assertAbsentPath(t, base)
+	assertAbsentPath(t, filepath.Join(root, "elsewhere"))
+	if err := MakeDirs(base, filepath.Join(base, "heavy")); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Lstat(base); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("created base %v (err %v), want 0700", info.Mode(), err)
+	}
+	file := filepath.Join(root, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := MakeDirs(filepath.Join(file, "runtime"), filepath.Join(file, "runtime", "heavy")); err == nil {
+		t.Fatal("MakeDirs under a regular file succeeded")
+	}
+}
+
+func assertAbsentPath(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("%s exists (lstat err=%v)", path, err)
 	}
 }

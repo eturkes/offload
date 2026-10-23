@@ -132,6 +132,9 @@ It uses these values for its own results:
 
 When the command itself exits with 2 or 125, offload also exits with that value.
 
+offload keeps its slot and build locks in `$XDG_RUNTIME_DIR`, or in `/tmp` when that variable is not set.
+When a lock directory there is a symbolic link, belongs to another user, or other users can write to it, offload stops with exit status 125.
+
 ### Stop a run
 
 Stop offload in any way, also with `kill -9`.

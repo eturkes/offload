@@ -115,7 +115,8 @@ func Ensure(ctx context.Context, p Project, getenv func(string) string, stderr i
 	if ok, xerr := exists(ctx, tag); ok || xerr != nil {
 		return tag, xerr
 	}
-	lock, err := slots.WaitLock(ctx, filepath.Join(slots.RuntimeDir(getenv), "offload", "ctr", strings.TrimPrefix(tag, Repo+":")+".lock"))
+	base := slots.RuntimeDir(getenv)
+	lock, err := slots.WaitLock(ctx, base, filepath.Join(base, "offload", "ctr", strings.TrimPrefix(tag, Repo+":")+".lock"))
 	if err != nil {
 		return "", err
 	}

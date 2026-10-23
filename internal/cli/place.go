@@ -120,7 +120,7 @@ func (p *placer) tryPool(ctx context.Context) (placement, bool, error) {
 		if !ok {
 			continue
 		}
-		wd, held, err := slots.TryLock(filepath.Join(dir.Path, "wd-"+filepath.Base(p.tree.Workdir())+".lock"))
+		wd, held, err := slots.TryLock(dir.Base, filepath.Join(dir.Path, "wd-"+filepath.Base(p.tree.Workdir())+".lock"))
 		if err != nil || !held {
 			s.Release()
 			if err != nil {
