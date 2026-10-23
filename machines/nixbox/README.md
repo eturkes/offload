@@ -7,7 +7,7 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 - `host.nix` = shared facts (iface, address, stateVersion, controller key).
 - `configuration.nix` = installed system; `network.nix` = NM Wi-Fi profile + static IPv4 (installer + system); `secureboot.nix` = lanzaboote v1.2.0 + fwupd's signed-app bind (`Firmware`).
 - `installer.nix` = headless ISO: Wi-Fi + static IP + sshd with controller key.
-- `wifi.nix` = `{ ssid; psk; }`, gitignored, mode 600 on the box. Regenerate from the controller's NM profile `JCOM_hSAf`.
+- `wifi.env` = `WIFI_SSID=…` + `WIFI_PSK=…` (systemd EnvironmentFile syntax), gitignored, `/etc/nixos/wifi.env` mode 600 root on the box; `network.nix` keeps `$WIFI_*` placeholders in the store, envsubst'd into `/run/NetworkManager/system-connections/lan.nmconnection`. Regenerate from the controller's NM profile `JCOM_hSAf`. Check: `sudo bash -c 'grep -rlF -f <(sed -n s/^WIFI_PSK=//p /etc/nixos/wifi.env) $(nix-store -qR /run/current-system)'` prints nothing.
 - `hardware-configuration.nix` = written by `install`.
 - `tpm-bind` = re-seal the TPM2 LUKS token from the controller (Disk + boot security).
 - `efi-entry` = run by `install`: one `Linux Boot Manager` entry on the new ESP (stale ones from a reused disk deleted). Dry run on the live box: `ssh offload@<ip> 'sudo DRY_RUN=1 sh -s -- /dev/nvme0n1' < machines/nixbox/efi-entry`.
@@ -16,7 +16,7 @@ Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe, TPM 2.0), Wi-Fi only → 
 ## Ops
 
 - Change config → `machines/nixbox/deploy` (rsync → `/etc/nixos`, `nixos-rebuild switch`).
-- Installer ISO → `nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=machines/nixbox/installer.nix -I nixpkgs=https://channels.nixos.org/nixos-26.05/nixexprs.tar.xz` (controller has no nix → `podman run -v offload-nix:/nix … docker.io/nixos/nix`; `wifi.nix` must sit beside `installer.nix`).
+- Installer ISO → `nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=machines/nixbox/installer.nix -I nixpkgs=https://channels.nixos.org/nixos-26.05/nixexprs.tar.xz` (controller has no nix → `podman run -v offload-nix:/nix … docker.io/nixos/nix`; `wifi.env` must sit beside `installer.nix`; the ISO's store holds it — keep the image + stick private).
 - Reinstall (wipes disk) → stick in, `sudo efibootmgr --bootnext <USB entry>` + reboot on the box, then `machines/nixbox/install /dev/nvme0n1`.
 - Recovery key (TPM refuses after BIOS reset/key change) = `~/.local/share/offload/nixbox-recovery-key` on the controller; typed at the console LUKS prompt.
 

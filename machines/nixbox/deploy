@@ -3,5 +3,6 @@
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
-rsync -q --chmod=F600 --rsync-path="sudo rsync" "$here"/*.nix "offload@$ip:/etc/nixos/"
+[ -f "$here/wifi.env" ] || { echo "deploy: $here/wifi.env missing" >&2; exit 2; } # network.nix needs it
+rsync -q --chmod=F600 --rsync-path="sudo rsync" "$here"/*.nix "$here/wifi.env" "offload@$ip:/etc/nixos/"
 ssh "offload@$ip" "sudo nixos-rebuild ${1:-switch}"

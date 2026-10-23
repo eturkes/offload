@@ -5,5 +5,5 @@ __pycache__/
 .venv/
 *.pyc
 result
-machines/*/wifi.nix
+machines/*/wifi.env
 .tools/
