@@ -3,6 +3,11 @@
 { pkgs, lib, ... }:
 let
   host = import ./host.nix;
+  # nixos-unstable channel rev (Hydra-built ⇒ binary cache) for packages 26.05 ships too old.
+  unstable = import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/02c087f3fe673c9e317f206a627cb6b910336dbe.tar.gz";
+    sha256 = "1l60ar0j7j7jrrg4r7j4kscrih0qn2n0lslffzflhv86lyq650r2";
+  }) { inherit (pkgs.stdenv.hostPlatform) system; };
 in
 {
   imports = [
@@ -250,10 +255,11 @@ in
     elan
     rustup
     go
-    # Gate tools projects take from the host: shellcheck; swipl 9.2.9 = cnl-ckc's pin; bwrap =
+    # Gate tools projects take from the host: shellcheck; swipl 10.0.2 = cnl-ckc's pin (26.05: 9.2.9,
+    # refused by its identity gate) → unstable, frozen at its rev; bwrap =
     # `lake check`'s sandbox; clang's analyzer (lowPrio: gcc keeps `cc`).
     shellcheck
-    swi-prolog
+    unstable.swi-prolog
     bubblewrap
     (lib.lowPrio clang)
     # Trading (contracts build + tests) + Codexify's tool checks.
