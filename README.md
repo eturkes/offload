@@ -153,6 +153,18 @@ Without a scope, a process that starts its own session is not stopped.
 A process that another systemd unit takes over is not stopped.
 An offload run that the command starts also stops its own command. A command of that inner run that ignores TERM can outlive it.
 
+### Limit the memory of a run
+
+offload does not limit the memory of a run. A slot limits only the number of runs.
+For a command that can use much memory, start it in a systemd scope with a limit:
+
+```sh
+offload run -- systemd-run --user --scope -q -p MemoryMax=20G -p MemorySwapMax=0 make test
+```
+
+When the command uses more memory than the limit, the kernel stops it, and the other programs on the machine keep their memory.
+The command is then in that scope and not in the scope of offload. offload still stops it through its session.
+
 ## Run a command in the project image
 
 A project can define its own container image in `.devcontainer/Containerfile`.
