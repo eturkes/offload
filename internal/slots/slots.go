@@ -23,7 +23,10 @@ type Slot struct {
 }
 
 // Dir = a set of slot files: <path>/slot1 … slot<Total>, each with a slot<i>.owner text file.
+// Base = the runtime dir it hangs off (MakeDirs checks every component below it; empty = Path's
+// parent).
 type Dir struct {
+	Base  string
 	Path  string
 	Total int
 }
@@ -62,18 +65,54 @@ func Heavy(getenv func(string) string) (Dir, error) {
 	if err != nil {
 		return Dir{}, err
 	}
-	return Dir{Path: filepath.Join(RuntimeDir(getenv), "heavy"), Total: n}, nil
+	base := RuntimeDir(getenv)
+	return Dir{Base: base, Path: filepath.Join(base, "heavy"), Total: n}, nil
 }
 
 // Host = offload's slot directory for one pool host.
 func Host(getenv func(string) string, name string, total int) Dir {
-	return Dir{Path: filepath.Join(RuntimeDir(getenv), "offload", "hosts", name), Total: total}
+	base := RuntimeDir(getenv)
+	return Dir{Base: base, Path: filepath.Join(base, "offload", "hosts", name), Total: total}
+}
+
+// MakeDirs creates every missing component of dir below base (0700) and requires each one, new or
+// existing, to be a real directory of the euid without group/other write (S6): under the /tmp
+// fallback another user could pre-create one, then share our locks or read their owner lines.
+// base itself is created if missing (as MkdirAll did) but never checked; dir must lie below it.
+func MakeDirs(base, dir string) error {
+	rel, err := filepath.Rel(base, dir)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, "../") {
+		return fmt.Errorf("lock directory %s is not below %s", dir, base)
+	}
+	if err := os.MkdirAll(base, 0o700); err != nil {
+		return err
+	}
+	p := base
+	for _, part := range strings.Split(rel, "/") {
+		p = filepath.Join(p, part)
+		if err := os.Mkdir(p, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		info, err := os.Lstat(p)
+		if err != nil {
+			return err
+		}
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !info.IsDir() || !ok || int(st.Uid) != os.Geteuid() || info.Mode().Perm()&0o022 != 0 {
+			return fmt.Errorf("%s: a lock directory must be a real directory of uid %d without group or other write (found %v)", p, os.Geteuid(), info.Mode())
+		}
+	}
+	return nil
 }
 
 // TryAcquire takes the lowest free slot without blocking; ok = false when every slot is held.
 // owner = the text after "<pid> since <HH:MM:SS>:" in the owner file.
 func (d Dir) TryAcquire(owner string) (s *Slot, ok bool, err error) {
-	if err := os.MkdirAll(d.Path, 0o700); err != nil {
+	base := d.Base
+	if base == "" {
+		base = filepath.Dir(d.Path)
+	}
+	if err := MakeDirs(base, d.Path); err != nil {
 		return nil, false, err
 	}
 	for i := 1; i <= d.Total; i++ {
@@ -161,10 +200,11 @@ func tryLock(path string) (f *os.File, held bool, err error) {
 // File = the slot's lock fd, for a child that must keep the slot held past offload's own exit.
 func (s *Slot) File() *os.File { return s.file }
 
-// WaitLock flocks path (created with its directory, symlinks never followed), polling every
-// 200 ms while another holder has it, until ctx ends. The file stays open across polls.
-func WaitLock(ctx context.Context, path string) (*os.File, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+// WaitLock flocks path (created with its directories below base per MakeDirs, symlinks never
+// followed), polling every 200 ms while another holder has it, until ctx ends. The file stays open
+// across polls.
+func WaitLock(ctx context.Context, base, path string) (*os.File, error) {
+	if err := MakeDirs(base, filepath.Dir(path)); err != nil {
 		return nil, err
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0o600) //nolint:gosec // G304: runtime dir path
@@ -189,9 +229,10 @@ func WaitLock(ctx context.Context, path string) (*os.File, error) {
 	}
 }
 
-// TryLock flocks path non-blocking, creating it and its directory; held = false when busy.
-func TryLock(path string) (f *os.File, held bool, err error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+// TryLock flocks path non-blocking, creating it and its directories below base (MakeDirs); held =
+// false when busy.
+func TryLock(base, path string) (f *os.File, held bool, err error) {
+	if err := MakeDirs(base, filepath.Dir(path)); err != nil {
 		return nil, false, err
 	}
 	return tryLock(path)

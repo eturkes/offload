@@ -54,7 +54,7 @@ func TestR2HoldersScanOnlyConfiguredRange(t *testing.T) {
 	}
 	defer second.Release()
 	first.Release()
-	outside, held, err := TryLock(filepath.Join(d.Path, "slot0"))
+	outside, held, err := TryLock(filepath.Dir(d.Path), filepath.Join(d.Path, "slot0"))
 	if err != nil || !held {
 		t.Fatalf("fixture slot0 = %v, %v", held, err)
 	}
@@ -68,12 +68,12 @@ func TestS4WorkdirLockCreatesParents(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "new-host")
 	path := filepath.Join(dir, "wd-project.lock")
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-	first, held, err := TryLock(path)
+	first, held, err := TryLock(filepath.Dir(dir), path)
 	if err != nil || !held {
 		t.Fatalf("S4: new workdir lock = %v, %v", held, err)
 	}
 	defer func() { _ = first.Close() }()
-	second, held, err := TryLock(path)
+	second, held, err := TryLock(filepath.Dir(dir), path)
 	if second != nil {
 		_ = second.Close()
 	}
@@ -96,7 +96,7 @@ func TestS3OwnerWriteFailureReleasesSlot(t *testing.T) {
 			s.Release()
 			t.Fatalf("S3: failed owner write admitted command: held=%v err=%v", held, err)
 		}
-		f, locked, err := TryLock(filepath.Join(dir, "slot1"))
+		f, locked, err := TryLock(filepath.Dir(dir), filepath.Join(dir, "slot1"))
 		if f != nil {
 			_ = f.Close()
 		}
