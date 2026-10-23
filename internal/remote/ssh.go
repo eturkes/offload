@@ -14,13 +14,18 @@ import (
 )
 
 // SSHOptions apply to every ssh connection, rsync's included. BatchMode: an agent cannot answer a
-// prompt. ServerAlive*: a dead link ends ssh in ~1 min instead of hanging a run forever.
+// prompt. ServerAlive*: a dead link ends ssh in ~1 min instead of hanging a run forever. Forward*,
+// ClearAllForwardings: command-line values beat ssh_config, so a `Host *` default never hands a pool
+// host (root there + every offloaded run) the controller's agent, display or a port forward.
 var SSHOptions = []string{
 	"-o", "BatchMode=yes",
 	"-o", "ConnectTimeout=5",
 	"-o", "StrictHostKeyChecking=accept-new",
 	"-o", "ServerAliveInterval=15",
 	"-o", "ServerAliveCountMax=4",
+	"-o", "ForwardAgent=no",
+	"-o", "ForwardX11=no",
+	"-o", "ClearAllForwardings=yes",
 }
 
 // Target = one pool host as ssh + rsync reach it: its address + options beyond SSHOptions.
