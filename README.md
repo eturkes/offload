@@ -24,7 +24,7 @@ On each pool host:
 
 For `offload ctr` (project images), on each machine that sets `OFFLOAD_CTR=1`:
 
-- Rootless Podman 4.9 or later, local (not the remote client).
+- Rootless Podman 5.7 or later, local (not the remote client).
 - Subordinate user and group IDs for the user (`/etc/subuid` and `/etc/subgid`).
 - The same offload binary as on the controller in the `PATH`. `tools/install` does this.
 

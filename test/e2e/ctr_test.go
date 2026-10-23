@@ -38,14 +38,10 @@ func requirePodman(t *testing.T) string {
 			return
 		}
 		storageConf = filepath.Join(storageDir, "storage.conf")
-		// Rootless podman 4.x reads rootless_storage_path, ignoring graphroot; 5+ reads graphroot and
-		// fails an ID-mapped layer copy on the deprecation warning when both are set.
-		key := "graphroot"
-		if out, _ := exec.Command("podman", "version", "--format", "{{.Client.Version}}").Output(); strings.HasPrefix(string(out), "4.") {
-			key = "rootless_storage_path"
-		}
-		if storageErr = os.WriteFile(storageConf, fmt.Appendf(nil, "[storage]\ndriver = \"vfs\"\n%s = %q\nrunroot = %q\n",
-			key, filepath.Join(storageDir, "graph"), filepath.Join(storageDir, "run")), 0o600); storageErr != nil {
+		// graphroot alone: podman 5+ fails an ID-mapped layer copy on the deprecation warning when
+		// rootless_storage_path is also set.
+		if storageErr = os.WriteFile(storageConf, fmt.Appendf(nil, "[storage]\ndriver = \"vfs\"\ngraphroot = %q\nrunroot = %q\n",
+			filepath.Join(storageDir, "graph"), filepath.Join(storageDir, "run")), 0o600); storageErr != nil {
 			return
 		}
 		// The shared image, built once up front: parallel tests then time their own work alone.
