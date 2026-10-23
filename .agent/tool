@@ -9,7 +9,7 @@
 #                               `.agent/pins`
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-names="golangci-lint betterleaks actionlint shellcheck nixfmt statix deadnix govulncheck gotestsum mutago"
+names="golangci-lint betterleaks actionlint zizmor shellcheck nixfmt statix deadnix govulncheck gotestsum mutago"
 gh=https://github.com
 spec() { # spec <name>: sets v + (sum, url, member) | pkg
 case $1 in
@@ -22,6 +22,9 @@ case $1 in
   actionlint) v=1.7.12 sum=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
     url=$gh/rhysd/actionlint/releases/download/v$v/actionlint_${v}_linux_amd64.tar.gz
     member=actionlint ;;
+  zizmor) v=1.31.1 sum=d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99
+    url=$gh/zizmorcore/zizmor/releases/download/v$v/zizmor-x86_64-unknown-linux-gnu.tar.gz
+    member=zizmor ;;
   shellcheck) v=0.11.0 sum=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
     url=$gh/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.linux.x86_64.tar.xz
     member=shellcheck-v$v/shellcheck ;;

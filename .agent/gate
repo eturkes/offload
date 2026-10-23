@@ -43,7 +43,7 @@ else
   step secrets .agent/tool betterleaks git . --log-opts=HEAD --redact=100 --validation=false \
     --no-banner --log-level warn
   step actions .agent/tool actionlint
-  step zizmor uvx zizmor==1.31.1 --offline --quiet .github/workflows
+  step zizmor .agent/tool zizmor --offline --quiet .github/workflows
   mapfile -t scripts < <(shell_scripts)
   step shell .agent/tool shellcheck -S warning "${scripts[@]}"
   mapfile -t nix < <(git ls-files '*.nix')
