@@ -2,6 +2,11 @@
 # check [--dump | --facts FILE] — from the controller: nixbox findings an agent must act on. rc 0 =
 # none, 1 = findings (one `check: …` line each), 2 = facts unavailable. Facts = lines collected as
 # root over ssh (--dump prints them; --facts evaluates a saved or planted file instead):
+#   now <epoch>                the box's clock.
+#   upgrade <result> <epoch>   per nixos-upgrade.service start job in the persistent journal,
+#                              oldest first: the last must be `done`, the last `done` ≤ 3 days old
+#                              (daily timer ⇒ one missed day tolerated); else no one would notice.
+#   failed <unit>              per failed system unit.
 #   wrapper <name> <path>|-|?  per security wrapper, each `strings` line of its real program matching
 #                              ^/(usr/)?s?bin/ (- = none, ? = real program not found). envfs
 #                              (configuration.nix) resolves /bin + /usr/bin from the caller's PATH
@@ -14,6 +19,10 @@ collect() {
   ssh -o BatchMode=yes -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes -T \
     "offload@$ip" sudo sh -s <<'EOF'
 set -eu
+echo "now $(date +%s)"
+journalctl -u nixos-upgrade.service JOB_TYPE=start -o json --no-pager |
+  jq -r 'select(.JOB_RESULT != null) | "upgrade \(.JOB_RESULT) \(.__REALTIME_TIMESTAMP | tonumber / 1000000 | floor)"'
+systemctl --failed --no-legend --plain | awk '{ print "failed " $1 }'
 for w in /run/wrappers/bin/*; do
   n=${w##*/}
   # The wrapper binary embeds its real program's store path (NixOS wrapper.c, SOURCE_PROG).
@@ -39,6 +48,16 @@ trap 'rm -rf "$tmp"' EXIT
 printf '%s\n' "$facts" | grep '^wrapper ' | sort -u >"$tmp/seen" || true
 sed 's/[[:space:]]*#.*//; /^$/d' "$here/wrappers.reviewed" | sort -u >"$tmp/reviewed"
 found=0
+printf '%s\n' "$facts" | awk '
+  $1 == "now" { now = $2 }
+  $1 == "upgrade" { last = $2; at = $3; if ($2 == "done") ok = $3 }
+  $1 == "failed" { print "check: failed unit " $2 }
+  END {
+    if (last == "") print "check: no nixos-upgrade run in the journal"
+    else if (last != "done") printf "check: the last nixos-upgrade run ended %s (%d h ago)\n", last, (now - at) / 3600
+    if (last != "" && (ok == "" || now - ok > 3 * 86400))
+      printf "check: the last successful nixos-upgrade run is %s h old (> 72)\n", ok == "" ? "?" : int((now - ok) / 3600)
+  }' | grep . && found=1
 comm -23 "$tmp/seen" "$tmp/reviewed" | while read -r line; do
   echo "check: unreviewed ${line#wrapper } (rule it in wrappers.reviewed)"
 done | grep . && found=1
