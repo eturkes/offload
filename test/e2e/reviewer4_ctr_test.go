@@ -20,6 +20,7 @@ func reviewFakePodman(t *testing.T, s *sandbox, cases string) {
 }
 
 func TestK3ReviewFindErrorsBeforePodman(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -32,6 +33,7 @@ func TestK3ReviewFindErrorsBeforePodman(t *testing.T) {
 }
 
 func TestK1ReviewNativeWordsAndENOEXEC(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.setenv("OFFLOAD_CTR", "0")
 	s.write(s.config, "not valid pool syntax")
@@ -47,6 +49,7 @@ func TestK1ReviewNativeWordsAndENOEXEC(t *testing.T) {
 }
 
 func TestK7ReviewCommandStatusWithoutPodman(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -57,6 +60,7 @@ run*) printf '7\n' >&3; exit 42 ;;`)
 }
 
 func TestK6ReviewStreamsWithoutPodman(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -75,6 +79,7 @@ run*) printf 'out\000\377\r'; printf 'err\001\376' >&2; cat; printf '7\n' >&3; e
 }
 
 func TestK8ReviewControlSignalWithoutPodman(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -92,6 +97,7 @@ run*)
 }
 
 func TestK5ReviewCancelActiveBuild(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -113,6 +119,7 @@ func TestK5ReviewCancelActiveBuild(t *testing.T) {
 }
 
 func TestK5ReviewBuildKeepsLockWithoutPodman(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -151,6 +158,7 @@ func TestK5ReviewBuildKeepsLockWithoutPodman(t *testing.T) {
 }
 
 func TestK8ReviewInitRefusesOutsidePID1(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	// The nonexistent CMD makes the PID-check mutant stop in start(), before teardown can run.
 	r := s.run("__ctr-init", s.path("guaranteed-missing-command"))
@@ -159,6 +167,7 @@ func TestK8ReviewInitRefusesOutsidePID1(t *testing.T) {
 }
 
 func TestK9ReviewLayersFailureAndSwitch(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "invalid-but-ignored")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -179,6 +188,7 @@ func TestK9ReviewLayersFailureAndSwitch(t *testing.T) {
 }
 
 func TestK10ReviewOrderedLayersAndHosts(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true, host{name: "zeta", cpus: 8, slots: 2}, host{name: "alpha", cpus: 8, slots: 2})
 	s.setenv("OFFLOAD_CTR", "invalid-but-ignored")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -213,6 +223,7 @@ func TestK10ReviewOrderedLayersAndHosts(t *testing.T) {
 }
 
 func TestK10ReviewHostsStartInParallel(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true, host{name: "zeta", cpus: 8, slots: 2}, host{name: "alpha", cpus: 8, slots: 2})
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
 	bin, err := os.ReadFile(binaryPath)
@@ -244,6 +255,7 @@ func TestK10ReviewHostsStartInParallel(t *testing.T) {
 }
 
 func TestK10ReviewLocalFailuresBeforeRemote(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
 	s.write(".devcontainer/Containerfile", "FROM scratch\n")
@@ -267,6 +279,7 @@ func TestK10ReviewLocalFailuresBeforeRemote(t *testing.T) {
 }
 
 func TestK7ReviewImageENOEXECAndFD3(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	s.write("script-without-shebang", "exit 73\n")
 	must(t, os.Chmod(s.path("script-without-shebang"), 0o755))
@@ -275,6 +288,7 @@ func TestK7ReviewImageENOEXECAndFD3(t *testing.T) {
 }
 
 func TestK8ReviewAllSignals(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	log := s.path("signals.log")
 	p := s.start("ctr", "--", "ctrhelper", "trap", log, "3", "5")
@@ -292,6 +306,7 @@ func TestK8ReviewAllSignals(t *testing.T) {
 }
 
 func TestK8ReviewLeftoverTERM(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	log := s.path("leftover.log")
 	s.ctr("ctrhelper", "spawn-trap", log, "6").requireCode(t, 6)
@@ -301,6 +316,7 @@ func TestK8ReviewLeftoverTERM(t *testing.T) {
 }
 
 func TestK8ReviewWholeCommandGroup(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	log := s.path("group.log")
 	p := s.start("ctr", "--", "ctrhelper", "trap-pair", log, "6")
@@ -332,6 +348,7 @@ func reviewMarkerPIDs(t *testing.T, marker string) []int {
 }
 
 func TestK8ReviewLivenessEndsContainer(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	marker := fmt.Sprintf("review-live-%d", time.Now().UnixNano())
 	ready := s.path("ready")
@@ -356,6 +373,7 @@ func TestK8ReviewLivenessEndsContainer(t *testing.T) {
 }
 
 func TestK8ReviewPodmanGoneFirst(t *testing.T) {
+	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	marker := fmt.Sprintf("k8podman-%d", time.Now().UnixNano())
 	ready := s.path("ready")

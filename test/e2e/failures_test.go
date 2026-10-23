@@ -12,6 +12,7 @@ import (
 )
 
 func TestY1GitErrorIsNotPlainMode(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	realGit, err := exec.LookPath("git")
 	must(t, err)
@@ -25,6 +26,7 @@ func TestY1GitErrorIsNotPlainMode(t *testing.T) {
 }
 
 func TestY8GetKeepsNewerLocal(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(".gitignore", "output\n")
 	s.write("output", "controller\n")
@@ -38,6 +40,7 @@ func TestY8GetKeepsNewerLocal(t *testing.T) {
 }
 
 func TestY9NoSyncCreatesWorkdir(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	assertAbsent(t, s.workdir("alpha"))
 	r := s.run("run", "--no-sync", "--", "bash", "-c", "test ! -e tracked && test ! -e .git && printf '%s' \"$PWD\"")
@@ -48,6 +51,7 @@ func TestY9NoSyncCreatesWorkdir(t *testing.T) {
 }
 
 func TestY10DownloadFailureOverridesCommand(t *testing.T) {
+	t.Parallel()
 	for _, code := range []int{0, 2, 255} {
 		t.Run(fmt.Sprint(code), func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -64,6 +68,7 @@ func TestY10DownloadFailureOverridesCommand(t *testing.T) {
 }
 
 func TestY11LivePredecessorAfterControllerDeath(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	markers := filepath.Join(s.base, "pids")
 	must(t, os.MkdirAll(markers, 0o700))
@@ -106,6 +111,7 @@ while :; do sleep 0.02; done`
 }
 
 func TestL4DownOrBusyGPUHostsWait(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"down", "busy"} {
 		t.Run(mode, func(t *testing.T) {
 			s := newSandbox(t, false, host{name: "alpha", cpus: 8}, host{name: "beta", cpus: 4, down: mode == "down"})

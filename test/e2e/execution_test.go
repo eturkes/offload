@@ -56,6 +56,7 @@ func sessionPIDs(t *testing.T, sid int) []int {
 }
 
 func TestX1ControllerDeathKillsSession(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		place  string
@@ -111,6 +112,7 @@ func TestX1ControllerDeathKillsSession(t *testing.T) {
 }
 
 func TestX1LeaderExitReapsBackground(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -149,6 +151,7 @@ func requireScope(t *testing.T) {
 }
 
 func TestX1ScopeEndsDoubleForkedDaemon(t *testing.T) {
+	t.Parallel()
 	requireScope(t)
 	daemon := `setsid -f bash -c 'echo $$ > "$0"; exec sleep 300' "$1"
 while [ ! -s "$1" ]; do sleep 0.01; done
@@ -181,6 +184,7 @@ while [ ! -s "$1" ]; do sleep 0.01; done
 }
 
 func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
+	t.Parallel()
 	requireScope(t) // a refusal needs a manager to ask: without one the watcher never tries
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
@@ -199,6 +203,7 @@ func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
 }
 
 func TestX1NestedRunEndsWithOuterRun(t *testing.T) { // X1 + X3: TERM to an inner watcher = EOF
+	t.Parallel()
 	s := newSandbox(t, false)
 	pidFile := filepath.Join(s.base, "inner.pid")
 	p := s.start("run", "--local", "--", binaryPath, "run", "--local", "--",
@@ -247,6 +252,7 @@ func readPIDIfAny(path string) int {
 }
 
 func TestX8RemoteProcessShowsScriptPath(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	excludes := filepath.Join(s.base, "global-excludes")
 	s.write(excludes, "# excludes-marker-7f3a\n*.tmp\n")
@@ -265,6 +271,7 @@ func TestX8RemoteProcessShowsScriptPath(t *testing.T) {
 }
 
 func TestX2ArgvAndEnvironment(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -296,6 +303,7 @@ func TestX2ArgvAndEnvironment(t *testing.T) {
 }
 
 func TestX3SignalsSkipDownload(t *testing.T) {
+	t.Parallel()
 	for _, signal := range []struct {
 		name string
 		sig  syscall.Signal
@@ -324,6 +332,7 @@ func TestX3SignalsSkipDownload(t *testing.T) {
 }
 
 func TestX4ByteExactStreaming(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -347,6 +356,7 @@ func TestX4ByteExactStreaming(t *testing.T) {
 }
 
 func TestX6Remote255AndTransport(t *testing.T) {
+	t.Parallel()
 	t.Run("command-255", func(t *testing.T) {
 		s := newSandbox(t, true)
 		r := s.run("run", "--pool", "--", "bash", "-c", "printf result > result; exit 255")
@@ -372,6 +382,7 @@ var x5 = []string{
 }
 
 func TestHarnessFakeSSH(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	ssh := filepath.Join(s.base, "bin", "ssh")
 	t.Run("missing-x5-option-refused", func(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 )
 
 func TestReviewY10OutputListFailureOverridesCommand(t *testing.T) {
+	t.Parallel()
 	for _, code := range []int{0, 42, 255} {
 		t.Run(fmt.Sprint(code), func(t *testing.T) {
 			s := newSandbox(t, true)

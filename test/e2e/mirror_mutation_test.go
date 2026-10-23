@@ -9,6 +9,7 @@ import (
 )
 
 func TestMirrorY10FileUploadFailure(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	// An existing mirror keeps the later prune from masking a lost upload error.
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)

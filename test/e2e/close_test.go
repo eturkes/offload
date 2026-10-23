@@ -13,6 +13,7 @@ import (
 // assertion.
 
 func TestX6TransportFailureDuringRunIs125(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(filepath.Join(s.hosts, "alpha", ".run-fail"), "")
 	marker := filepath.Join(s.base, "ran")
@@ -25,12 +26,14 @@ func TestX6TransportFailureDuringRunIs125(t *testing.T) {
 }
 
 func TestX6TransportFailureDuringNoSyncRunIs125(t *testing.T) { // no download to fail afterwards
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(filepath.Join(s.hosts, "alpha", ".run-fail"), "")
 	s.run("run", "--no-sync", "--", "true").requireCode(t, 125)
 }
 
 func TestR2StatusShowsProbeNumbers(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false, host{name: "alpha", cpus: 12, load: 3, gpus: 2, slots: 3})
 	r := s.run("status")
 	r.requireCode(t, 0)
@@ -48,6 +51,7 @@ func TestR2StatusShowsProbeNumbers(t *testing.T) {
 }
 
 func TestL3DownHostProbedAtMostEvery30s(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	alpha := filepath.Join(s.hosts, "alpha")
 	s.write(filepath.Join(alpha, ".transport-fail"), "")
@@ -65,6 +69,7 @@ func TestL3DownHostProbedAtMostEvery30s(t *testing.T) {
 }
 
 func TestS4SameTreeRunsSerializeAtController(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true) // alpha: 2 slots
 	first := filepath.Join(s.base, "first-done")
 	a := s.start("run", "--pool", "--", "bash", "-c", "sleep 3; touch "+first)
@@ -79,6 +84,7 @@ func TestS4SameTreeRunsSerializeAtController(t *testing.T) {
 }
 
 func TestY1HomeDirectoryNeverGoesToAHost(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.cwd = filepath.Join(s.base, "home")
 	r := s.run("run", "--pool", "--", "true")
@@ -105,6 +111,7 @@ func sshCalls(t *testing.T, s *sandbox, host string) []string {
 }
 
 func TestX5MultiplexOptIn(t *testing.T) {
+	t.Parallel()
 	// probe, 2 uploads, run (exit 255 ⇒ status lookup), download, --get = 7 connections
 	cmd := []string{"run", "--get", "out", "--", "bash", "-c", "echo x > out; exit 255"}
 	t.Run("on", func(t *testing.T) {
