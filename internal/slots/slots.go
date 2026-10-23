@@ -48,12 +48,12 @@ func HeavySlots(getenv func(string) string) (int, error) {
 	if !digits.MatchString(v) {
 		return 0, errors.New("HEAVY_SLOTS must be a positive integer")
 	}
-	// heavy: leading zeros stripped, then `$((slots)) == "$slots"` ⇒ 64-bit range.
-	n, err := strconv.ParseInt(strings.TrimLeft(v, "0"), 10, 64)
+	// heavy: leading zeros stripped, then `$((slots)) == "$slots"` ⇒ 64-bit range (= int on amd64).
+	n, err := strconv.Atoi(strings.TrimLeft(v, "0"))
 	if err != nil || n == 0 {
 		return 0, errors.New("HEAVY_SLOTS must be a positive shell integer")
 	}
-	return int(n), nil
+	return n, nil
 }
 
 // Heavy = heavy's slot directory.
