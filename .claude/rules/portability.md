@@ -1,0 +1,3 @@
+# Portability
+
+- `CLAUDE.md` `Authoring` portability (repo-relative paths, nothing machine-specific → `CLAUDE.local.md`) = inapplicable here (owner): offload = the owner's machine-infrastructure repo, as the agents repo — it configures the controller + pool hosts, other projects consume it ⇒ live law names machines (controller t25-480, nixbox, Aeon), home paths, controller tools (`heavy`, `gpu-run`, BrowserOS Neo), other repos + their paths and pool projects concretely, wherever precision needs them. Machine facts stay in versioned law; the `CLAUDE.local.md` tier is unused here. `Decisions` `Instruction tiers` = the tiering for projects on the pool, not for this repo.
