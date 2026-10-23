@@ -11,6 +11,7 @@ import (
 )
 
 func TestG1CancellationBeforeSetsidKillsSession(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	realSetsid, err := exec.LookPath("setsid")
 	must(t, err)
@@ -64,12 +65,14 @@ func TestG1CancellationBeforeSetsidKillsSession(t *testing.T) {
 }
 
 func TestG3DownloadListFailureIsNotSuccess(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	r := s.run("run", "--pool", "--", "bash", "-c", "printf changed-output > tracked; printf '[invalid' > .git/config")
 	r.requireCode(t, 125)
 }
 
 func TestG5UploadTypeChangeKeepsIgnoredRemoteFile(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(".gitignore", "cache/\n")
 	s.run("run", "--pool", "--", "bash", "-c", "mkdir cache; printf keep > cache/precious").requireCode(t, 0)
@@ -86,6 +89,7 @@ func TestG5UploadTypeChangeKeepsIgnoredRemoteFile(t *testing.T) {
 }
 
 func TestG7SignalDuringStatusLookupCancels(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	ssh := filepath.Join(s.base, "bin", "ssh")
 	original := ssh + "-original"
@@ -109,6 +113,7 @@ func TestG7SignalDuringStatusLookupCancels(t *testing.T) {
 }
 
 func TestG7SignalDuringInspectionWins(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	realGit, err := exec.LookPath("git")
 	must(t, err)

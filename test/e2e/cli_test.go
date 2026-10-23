@@ -12,6 +12,7 @@ import (
 )
 
 func TestC1FlagBoundary(t *testing.T) {
+	t.Parallel()
 	for _, boundary := range []string{"separator", "first-word"} {
 		t.Run(boundary, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -42,6 +43,7 @@ func TestC1FlagBoundary(t *testing.T) {
 }
 
 func TestC2ConflictsAndPoolImplications(t *testing.T) {
+	t.Parallel()
 	flags := [][]string{{"--pool"}, {"--host", "alpha"}, {"--gpu"}, {"--no-sync"}, {"--get", "artifact"}}
 	for _, flag := range flags {
 		t.Run("conflict-"+flag[0], func(t *testing.T) {
@@ -64,6 +66,7 @@ func TestC2ConflictsAndPoolImplications(t *testing.T) {
 }
 
 func TestC3ExitPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		for _, code := range []int{0, 2, 42, 125, 255} {
 			t.Run(fmt.Sprintf("%s/%d", place, code), func(t *testing.T) {
@@ -111,6 +114,7 @@ func TestC3ExitPrecedence(t *testing.T) {
 }
 
 func TestC4OutputChannels(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -132,6 +136,7 @@ func TestC4OutputChannels(t *testing.T) {
 }
 
 func TestC5PlacementLine(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -152,6 +157,7 @@ func TestC5PlacementLine(t *testing.T) {
 }
 
 func TestP3MissingPool(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"run", "pool", "status"} {
 		t.Run(mode, func(t *testing.T) {
 			s := newSandbox(t, false)
@@ -181,6 +187,7 @@ func TestP3MissingPool(t *testing.T) {
 }
 
 func TestR2Status(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true, host{name: "alpha", cpus: 8, load: 2, gpus: 1}, host{name: "beta", down: true})
 	s.holdSlot("", 2)
 	s.holdSlot("alpha", 1)
@@ -211,6 +218,7 @@ func TestR2Status(t *testing.T) {
 }
 
 func TestL1Eligibility(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"default", "local", "pool"} {
 		t.Run(mode, func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -258,6 +266,7 @@ func TestL1Eligibility(t *testing.T) {
 }
 
 func TestL2Placement(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		alpha    float64
@@ -291,6 +300,7 @@ func TestL2Placement(t *testing.T) {
 }
 
 func TestL2SignalDuringPoolProbeTakesNoLocalSlot(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.write(filepath.Join(s.hosts, "alpha", ".probe-hang"), "")
 	p := s.start("run", "--", "touch", "must-not-run")
@@ -310,6 +320,7 @@ func TestL2SignalDuringPoolProbeTakesNoLocalSlot(t *testing.T) {
 }
 
 func TestL3WaitingSignals(t *testing.T) {
+	t.Parallel()
 	for _, signal := range []struct {
 		name string
 		sig  syscall.Signal
@@ -349,6 +360,7 @@ func TestL3WaitingSignals(t *testing.T) {
 }
 
 func TestL4NoGPU(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false, host{name: "alpha", cpus: 8}, host{name: "beta", cpus: 4})
 	r := s.run("run", "--gpu", "--", "touch", "must-not-run")
 	r.requireCode(t, 125)

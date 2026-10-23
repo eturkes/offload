@@ -16,6 +16,7 @@ import (
 )
 
 func TestY1RootAndSubdirectory(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write("sub/input", "subdir\n")
 	s.cwd = filepath.Join(s.root, "sub")
@@ -30,6 +31,7 @@ func TestY1RootAndSubdirectory(t *testing.T) {
 }
 
 func TestY2WorkdirIdentity(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	for range 2 {
 		r := s.run("run", "--pool", "--", "pwd")
@@ -47,6 +49,7 @@ func TestY2WorkdirIdentity(t *testing.T) {
 }
 
 func TestY3UnsupportedGitLayouts(t *testing.T) {
+	t.Parallel()
 	for _, layout := range []string{"worktree-odd-id", "submodule", "nested", "external-git-dir", "alternates"} {
 		t.Run(layout, func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -137,6 +140,7 @@ func (s *sandbox) uploadOracle() []string {
 }
 
 func TestY4GitUploadDifferential(t *testing.T) {
+	t.Parallel()
 	for _, seed := range []uint64{1, 7, 91} {
 		t.Run(fmt.Sprintf("seed-%d", seed), func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -196,6 +200,7 @@ func TestY4GitUploadDifferential(t *testing.T) {
 }
 
 func TestY5GlobalExcludesReachTheHost(t *testing.T) { // Y5 + Y6 + X8: the excludes record governs R and D
+	t.Parallel()
 	s := newSandbox(t, true)
 	excludes := filepath.Join(s.base, "global-excludes")
 	s.write(excludes, "*.tmp\n")
@@ -213,6 +218,7 @@ func TestY5GlobalExcludesReachTheHost(t *testing.T) { // Y5 + Y6 + X8: the exclu
 }
 
 func TestY4SameSecondRewriteCrosses(t *testing.T) { // Y4: rsync's quick check at nanosecond precision
+	t.Parallel()
 	s := newSandbox(t, true)
 	second := time.Now().Truncate(time.Second).Add(-time.Minute)
 	stamp := func(at time.Duration) { must(t, os.Chtimes(s.path("tracked"), second.Add(at), second.Add(at))) }
@@ -239,6 +245,7 @@ func sameStatRewrite(t *testing.T, path, content string) {
 }
 
 func TestY4SameStatRewriteCrosses(t *testing.T) { // Y4: content decides, not size + mtime
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write("tracked", "aaaa\n")
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
@@ -251,6 +258,7 @@ func TestY4SameStatRewriteCrosses(t *testing.T) { // Y4: content decides, not si
 }
 
 func TestY6SameStatRewriteReturns(t *testing.T) { // Y6: content decides, not size + mtime
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write("tracked", "aaaa\n")
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
@@ -262,6 +270,7 @@ func TestY6SameStatRewriteReturns(t *testing.T) { // Y6: content decides, not si
 }
 
 func TestY7SameStatRewriteCrosses(t *testing.T) { // Y7: content decides, not size + mtime
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.write("file", "aaaa\n")
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
@@ -274,6 +283,7 @@ func TestY7SameStatRewriteCrosses(t *testing.T) { // Y7: content decides, not si
 }
 
 func TestY7SameStatRewriteReturns(t *testing.T) { // Y7: content decides, not size + mtime
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.write("file", "aaaa\n")
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
@@ -290,6 +300,7 @@ const gitState = `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD; git rev-l
 git diff --cached --name-only; git status --porcelain`
 
 func TestY4LinkedWorktreeRunsRemotely(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write("main-only", "x\n")
 	s.git("add", "main-only")
@@ -336,6 +347,7 @@ func TestY4LinkedWorktreeRunsRemotely(t *testing.T) {
 }
 
 func TestY4WorktreeRefusesAHostGitDirectory(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	linked := filepath.Join(s.base, "linked")
 	s.git("worktree", "add", "-qb", "feat", linked)
@@ -348,6 +360,7 @@ func TestY4WorktreeRefusesAHostGitDirectory(t *testing.T) {
 }
 
 func TestY4GitMetadataMirrorDeletes(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(".git/old-metadata", "obsolete\n")
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
@@ -357,6 +370,7 @@ func TestY4GitMetadataMirrorDeletes(t *testing.T) {
 }
 
 func TestY5Prune(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(".gitignore", "cache/\n")
 	s.write("remove-me", "tracked stale\n")
@@ -377,6 +391,7 @@ func TestY5Prune(t *testing.T) {
 }
 
 func TestY5PruneSymlinkAncestor(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write("parent/victim", "local tracked\n")
 	s.git("add", ".")
@@ -395,6 +410,7 @@ func TestY5PruneSymlinkAncestor(t *testing.T) {
 }
 
 func TestY6Download(t *testing.T) {
+	t.Parallel()
 	for _, code := range []int{0, 2, 125, 255} {
 		t.Run(fmt.Sprintf("command-%d", code), func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -446,6 +462,7 @@ func TestY6Download(t *testing.T) {
 }
 
 func TestY7PlainMirror(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.write(".gitignore", "cache/\n*.skip\n")
 	s.write("input", "controller\n")
@@ -468,6 +485,7 @@ func TestY7PlainMirror(t *testing.T) {
 }
 
 func TestY8Get(t *testing.T) {
+	t.Parallel()
 	t.Run("ignored-and-directory", func(t *testing.T) {
 		s := newSandbox(t, true)
 		s.write(".gitignore", "ignored/\n")
@@ -497,6 +515,7 @@ func TestY8Get(t *testing.T) {
 }
 
 func TestY9NoSync(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	remote := s.workdir("alpha")
 	s.write(filepath.Join(remote, "remote-only"), "keep\n")
@@ -509,6 +528,7 @@ func TestY9NoSync(t *testing.T) {
 }
 
 func TestY10UploadFailure(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(filepath.Join(s.hosts, "alpha", ".upload-fail"), "fail\n")
 	r := s.run("run", "--pool", "--", "touch", "must-not-run")
@@ -518,6 +538,7 @@ func TestY10UploadFailure(t *testing.T) {
 }
 
 func TestY11RemoteLock(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	remote := s.workdir("alpha")
 	meta := filepath.Join(s.hosts, "alpha", "offload", ".meta", filepath.Base(remote))

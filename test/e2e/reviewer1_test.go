@@ -12,6 +12,7 @@ import (
 )
 
 func TestReviewP2ExplicitZeroSlots(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.write(s.config, "[[host]]\nname = \"alpha\"\naddress = \"agent@alpha\"\nslots = 0\n")
 	r := s.run("run", "--", "touch", "must-not-run")
@@ -20,6 +21,7 @@ func TestReviewP2ExplicitZeroSlots(t *testing.T) {
 }
 
 func TestReviewR2FreshStatusHasNoHolders(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	r := s.run("status")
 	r.requireCode(t, 0)
@@ -34,6 +36,7 @@ func TestReviewR2FreshStatusHasNoHolders(t *testing.T) {
 }
 
 func TestReviewC3SignalDuringInspection(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	realGit, err := exec.LookPath("git")
 	must(t, err)
@@ -49,6 +52,7 @@ func TestReviewC3SignalDuringInspection(t *testing.T) {
 }
 
 func TestReviewY6DownloadListFailure(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	r := s.run("run", "--pool", "--", "bash", "-c", "printf result > result; printf corrupt > .git/index")
 	if got := s.read(filepath.Join(s.workdir("alpha"), "result")); got != "result" {
@@ -58,6 +62,7 @@ func TestReviewY6DownloadListFailure(t *testing.T) {
 }
 
 func TestReviewY8GetExistingDirectory(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.write(".gitignore", "output/\n")
 	s.write("output/local-only", "keep\n")
@@ -70,6 +75,7 @@ func TestReviewY8GetExistingDirectory(t *testing.T) {
 }
 
 func TestReviewL4PreviouslyUpHostGoesDown(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false, host{name: "alpha", cpus: 8}, host{name: "beta", cpus: 4})
 	release1 := s.holdSlot("beta", 1)
 	release2 := s.holdSlot("beta", 2)
@@ -89,6 +95,7 @@ func TestReviewL4PreviouslyUpHostGoesDown(t *testing.T) {
 }
 
 func TestReviewS4PoolOwnerNamesHost(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	p := s.start("run", "--pool", "--", "sleep", "120")
 	owner := filepath.Join(s.runtime, "offload", "hosts", "alpha", "slot1.owner")
@@ -102,6 +109,7 @@ func TestReviewS4PoolOwnerNamesHost(t *testing.T) {
 }
 
 func TestReviewY10FailedPrunePreventsCommand(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
 	s.write(filepath.Join(s.workdir("alpha"), "stale"), "must be removed before command\n")
@@ -119,6 +127,7 @@ func TestReviewY10FailedPrunePreventsCommand(t *testing.T) {
 }
 
 func TestReviewX1DeathBeforeSessionCreation(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	markers := filepath.Join(s.base, "pids")
 	must(t, os.MkdirAll(markers, 0o700))
@@ -165,6 +174,7 @@ func TestReviewX1DeathBeforeSessionCreation(t *testing.T) {
 }
 
 func TestReviewX3SignalDuringStatusRecovery(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	ssh := filepath.Join(s.base, "bin", "ssh")
 	marker := filepath.Join(s.base, "reading-status")

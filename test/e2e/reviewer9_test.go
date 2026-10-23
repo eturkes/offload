@@ -7,6 +7,7 @@ import (
 )
 
 func TestReviewer9GlobalExcludesNULPreservesUpload(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.run("run", "--pool", "--", "true").requireCode(t, 0)
 	excludes := filepath.Join(s.base, "global-excludes")
@@ -26,6 +27,7 @@ func TestReviewer9GlobalExcludesNULPreservesUpload(t *testing.T) {
 }
 
 func TestReviewer9ExcludesRecordIsNotAnUploadPath(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	excludes := filepath.Join(s.base, "global-excludes")
 	s.write(excludes, "!stale")
@@ -40,6 +42,7 @@ func TestReviewer9ExcludesRecordIsNotAnUploadPath(t *testing.T) {
 }
 
 func TestReviewer9MultiplexFallbackOnceAcrossHosts(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true,
 		host{name: "alpha", cpus: 8, load: 1, mux: true},
 		host{name: "beta", cpus: 8, load: 2, mux: true},

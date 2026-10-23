@@ -48,6 +48,8 @@ func TestReviewV6ProbeFailureIsNotAbsence(t *testing.T) {
 		fmt.Printf("returned-as-gone: helper pid %d is live; positive count=1; probe rc=2\n", child.Process.Pid)
 		return
 	}
+	// Parent only: the child above calls t.Setenv, which panics after t.Parallel.
+	t.Parallel()
 	child := exec.Command(os.Args[0], "-test.run=^TestReviewV6ProbeFailureIsNotAbsence$", "-test.v")
 	child.Env = append(os.Environ(), "OFFLOAD_REVIEW_V6_CHILD=1")
 	out, err := child.CombinedOutput()
