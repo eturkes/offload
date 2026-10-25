@@ -38,8 +38,6 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [x] a27dfea uv: nixbox's uv 0.11.21 resolved `UV_PYTHON=3.15` to 3.15.0b2 (cement mypy rc 139) → uv from the moved unstable pin + managed 3.15 upgraded to 3.15.0
-- [ ] ledger: offload kept no run record (rc, placement, wait, sync times lost with each agent's stderr) → run log `runs.jsonl` per controller (contract J)
 - Deferred queue → `.agent/deferred.md`
 
 ## Phase
