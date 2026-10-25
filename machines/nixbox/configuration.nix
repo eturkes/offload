@@ -5,8 +5,8 @@ let
   host = import ./host.nix;
   # nixos-unstable channel rev (Hydra-built ⇒ binary cache) for packages 26.05 ships too old.
   unstable = import (builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/02c087f3fe673c9e317f206a627cb6b910336dbe.tar.gz";
-    sha256 = "1l60ar0j7j7jrrg4r7j4kscrih0qn2n0lslffzflhv86lyq650r2";
+    url = "https://github.com/NixOS/nixpkgs/archive/3ec636362e1816bc2f0888fa0fa2c69f1bc9e504.tar.gz";
+    sha256 = "177diqkiwphjyqpk2n6nisayx840x28ksvq99kkyi2xsn37fp4md";
   }) { inherit (pkgs.stdenv.hostPlatform) system; };
 in
 {
@@ -244,7 +244,8 @@ in
     cmake
     pkg-config
     python3
-    uv
+    # 26.05's uv 0.11.21 resolves UV_PYTHON=3.15 to 3.15.0b2 (mypy's wheel segfaults on it).
+    unstable.uv
     tmux
     htop
     btop
