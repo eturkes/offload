@@ -100,7 +100,8 @@ func newSandbox(t *testing.T, git bool, hosts ...host) *sandbox {
 	must(t, os.WriteFile(filepath.Join(base, "bin", "ssh"), ssh, 0o700))
 	s.env = replaceEnv(os.Environ(), map[string]string{
 		"HOME": filepath.Join(base, "home"), "XDG_CONFIG_HOME": filepath.Join(base, "config"),
-		"XDG_RUNTIME_DIR": s.runtime, "OFFLOAD_CONFIG": s.config, "HEAVY_SLOTS": "2",
+		"XDG_RUNTIME_DIR": s.runtime, "XDG_STATE_HOME": filepath.Join(base, "state"),
+		"OFFLOAD_CONFIG": s.config, "HEAVY_SLOTS": "2",
 		"OFFLOAD_FAKE_HOSTS": s.hosts, "PATH": filepath.Join(base, "bin") + ":" + os.Getenv("PATH"),
 		"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(base, "gitconfig"),
 		"GIT_AUTHOR_NAME": "e2e", "GIT_AUTHOR_EMAIL": "e2e@example.invalid",

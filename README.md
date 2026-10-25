@@ -258,6 +258,39 @@ offload status
 
 The output shows the local `heavy` slots and their holders, then one line for each pool host: its slots in use, CPUs, load, free memory and GPUs.
 
+## See past runs
+
+Each `offload run` writes to a run log on the machine that starts it: `~/.local/state/offload/runs.jsonl`, or `$XDG_STATE_HOME/offload/runs.jsonl` when `XDG_STATE_HOME` is set.
+Each line is one JSON record.
+A run writes a `start` record when it gets a slot and an `end` record when offload exits.
+Both records of a run have the same `id`.
+
+The `end` record tells you:
+
+- where the run went (`place`: a local slot or a pool host, with its slot and load) and how long it waited (`waited`)
+- how long the upload, the command and the download took, in seconds (`upload`, `run`, `download`)
+- the exit status of the command (`cmd_rc`) and of offload (`rc`), and the signal that stopped offload (`signal`)
+- every line that offload wrote to stderr (`messages`); output of the command is not in the log
+
+Show the last 10 runs:
+
+```sh
+jq -c 'select(.event == "end") | {start, place: .place.host // .place.kind, argv, rc, run}' ~/.local/state/offload/runs.jsonl | tail -n 10
+```
+
+Show the runs that ended with exit status 125:
+
+```sh
+jq -c 'select(.event == "end" and .rc == 125) | {start, cwd, cmd_rc, messages}' ~/.local/state/offload/runs.jsonl
+```
+
+Exit status 125 tells you that offload could not complete the run, for example because a sync failed, or that the command itself exited with 125.
+When `cmd_rc` is not 125, offload stopped the run. The last line of `messages` then tells you why.
+
+A run with a `start` record and no `end` record ended without offload (for example `kill -9`), or it still runs.
+When the log grows past 64 MiB, offload renames it to `runs.jsonl.1` and starts a new log.
+If offload cannot write the log, it tells you once on stderr. The run itself does not change.
+
 ## Give a pool host an idle task
 
 A pool host can run a task of your choice when offload does not use it.

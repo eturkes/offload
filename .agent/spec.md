@@ -4,7 +4,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Artifacts
 
-- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote,ctr}`); contract `.agent/contract.md`. Install: `tools/install` (one static build + `tools/heavy` → `~/.local/bin/{offload,heavy}` here + on every pool host, sha256 per file per side; installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>` | `offload ctr [--] <cmd…>` | `offload ctr --layers|--check`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides; live: nixbox `multiplex = true`); example `pool.example.toml`. Pin freshness: `.agent/pins` (weekly `pins.yml`). User docs `README.md`.
+- `cmd/offload` = the CLI (Go; `internal/{cli,mirror,run,slots,pool,probe,remote,ctr,ledger}`); contract `.agent/contract.md`. Run log: `~/.local/state/offload/runs.jsonl` on each machine that starts runs (J; README `See past runs`). Install: `tools/install` (one static build + `tools/heavy` → `~/.local/bin/{offload,heavy}` here + on every pool host, sha256 per file per side; installed). Run: `offload status` | `offload run [--local|--pool] [--host H] [--gpu] [--no-sync] [--get PATH]… -- <cmd…>` | `offload ctr [--] <cmd…>` | `offload ctr --layers|--check`. Pool = `~/.config/offload/pool.toml` (`OFFLOAD_CONFIG` overrides; live: nixbox `multiplex = true`); example `pool.example.toml`. Pin freshness: `.agent/pins` (weekly `pins.yml`). User docs `README.md`.
 - `machines/nixbox/` = NixOS config of pool host `nixbox` (`offload@192.168.40.240`); runbook `machines/nixbox/README.md`. Deploy: `machines/nixbox/deploy`; reinstall: `machines/nixbox/install /dev/nvme0n1` (box on installer ISO from `installer.nix`); TPM re-seal: `machines/nixbox/tpm-bind`; firmware: README `Firmware`.
 
 ## Decisions
@@ -19,6 +19,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 - Git-exact sync: upload set = local `git ls-files -co --exclude-standard` (existing files) + `.git` mirrored (deletions included); after upload the remote deletes its non-ignored files absent from that set (remote git, same ignore sources; local global excludes file shipped along); download set = remote `git ls-files -co --exclude-standard` after the command, `--update`, no deletes, `.git` never returns. Pool hosts need git + GNU coreutils. Non-git dir = rsync mirror with the `.gitignore` dir-merge filter. Tracked files always cross; ignored paths (venvs, toolchains, caches) stay on each side.
 - A linked git worktree runs remotely too: the host gets the common git dir + that worktree's own admin dir in git's layout ⇒ its HEAD, index + per-worktree refs (owner ruling: lift the local-only rule).
 - Remote runs from one sync root serialize per (host, workdir) on a controller lock; local runs never lock.
+- Run log (owner): offload records every `run` itself — start + end JSONL records per machine (placement, wait, phase seconds, command + offload status, signal, offload's stderr lines) ⇒ field assessments read one source, not agent transcripts + journals; a log failure never touches the run.
 - Killing offload (any signal, incl. SIGKILL) kills the command's session, local or remote: the command runs under a watcher that kills its process group at stdin EOF.
 - Pool = TOML `[[host]]` tables (`name`, `address` = `[user@]host` or an ssh_config alias — ports + IPv6 via an alias, `slots`). SSH = BatchMode + accept-new host keys.
 - Idle task: each pool host may run one designated indefinite task, declared in `machines/<host>/`, in a systemd slice at idle CPU weight ⇒ offload work preempts it at once; nixbox's slice `MemoryHigh` = 20G (2 × its recorded peak; throttle + reclaim, never a kill); offload code unaffected. nixbox's idle task = trading, user `eturkes`; the owner activates + assigns workloads through ChatGPT (Codexify). Trading's own guards gate every start (`.agents/trading-paused` hold, `.agents/operations-active/<unit>` permit); its units stay disabled ⇒ a box reboot ends live trials until Codexify restarts them. Luna (pinned Codex) is held; v1 source-stopped (a reviewed v2 successor precedes any start).
@@ -37,7 +38,7 @@ A simple CLI for personal use to offload heavy compute work, at a moment's notic
 
 ## Tasks
 
-- [ ] uv: nixbox's uv 0.11.21 resolved `UV_PYTHON=3.15` to 3.15.0b2 (cement mypy rc 139) → uv from the moved unstable pin + managed 3.15 upgraded to 3.15.0
+- [x] a27dfea uv: nixbox's uv 0.11.21 resolved `UV_PYTHON=3.15` to 3.15.0b2 (cement mypy rc 139) → uv from the moved unstable pin + managed 3.15 upgraded to 3.15.0
 - [ ] ledger: offload kept no run record (rc, placement, wait, sync times lost with each agent's stderr) → run log `runs.jsonl` per controller (contract J)
 - Deferred queue → `.agent/deferred.md`
 

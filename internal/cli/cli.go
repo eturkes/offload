@@ -8,11 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/eturkes/offload/internal/ctr"
+	"github.com/eturkes/offload/internal/ledger"
 	"github.com/eturkes/offload/internal/mirror"
 	"github.com/eturkes/offload/internal/pool"
 	"github.com/eturkes/offload/internal/remote"
@@ -153,8 +155,28 @@ func signals(sigs ...os.Signal) (context.Context, func() int) {
 	return ctx, func() int { return 128 + int(got) }
 }
 
+var signalNames = map[int]string{129: "HUP", 130: "INT", 143: "TERM"}
+
+// runCommand = one `offload run`, its start + end records in the run log (J).
 func runCommand(o options, stderr io.Writer) int {
 	ctx, signalStatus := signals()
+	cwd, cwdErr := os.Getwd()
+	runlog := ledger.Begin(os.Getenv, cwd, o.argv, ledger.Options{
+		Local: o.local, Pool: o.pool, Host: o.host, GPU: o.gpu, NoSync: o.noSync, Get: o.gets,
+	}, stderr)
+	rc := runLogged(ctx, signalStatus, o, cwd, cwdErr, runlog)
+	return runlog.End(func() (int, string) {
+		if ctx.Err() != nil { // C3: a signal outranks every status, one arriving during this write too
+			s := signalStatus()
+			return s, signalNames[s]
+		}
+		return rc, ""
+	})
+}
+
+// runLogged = the run itself; err = os.Getwd's, reported as its first failure.
+func runLogged(ctx context.Context, signalStatus func() int, o options, cwd string, err error, runlog *ledger.Run) int {
+	stderr := runlog.Writer()
 	// C3: a signal outranks the failure it caused (a killed git or rsync).
 	fail := func(err error) int {
 		if ctx.Err() != nil {
@@ -163,7 +185,6 @@ func runCommand(o options, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "offload: %v\n", err)
 		return ExitFailure
 	}
-	cwd, err := os.Getwd()
 	if err != nil {
 		return fail(err)
 	}
@@ -193,6 +214,7 @@ func runCommand(o options, stderr io.Writer) int {
 		if t, err = mirror.Inspect(ctx, cwd); err != nil {
 			return fail(err)
 		}
+		runlog.Root(t.Root)
 		if t.Git && t.LocalOnly == "" { // nested repos surface in the file list (Y3, before remote work)
 			if _, err = mirror.UploadList(ctx, t.Root); errors.Is(err, mirror.ErrLocalOnly) {
 				t.LocalOnly = err.Error()
@@ -237,8 +259,14 @@ func runCommand(o options, stderr io.Writer) int {
 	defer pl.release()
 
 	if pl.local != nil {
+		runlog.Placed(ledger.Place{Kind: "local", Slot: pl.local.Index, Slots: pl.local.Total})
 		fmt.Fprintf(stderr, "offload: local slot %d/%d\n", pl.local.Index, pl.local.Total)
+		ran := runlog.Time(ledger.Command)
 		rc, runErr := run.Local(ctx, o.argv, pl.local.File())
+		ran()
+		if runErr == nil {
+			runlog.CommandStatus(rc)
+		}
 		if ctx.Err() != nil {
 			return signalStatus()
 		}
@@ -247,9 +275,14 @@ func runCommand(o options, stderr io.Writer) int {
 		}
 		return rc
 	}
+	busy := int(math.RoundToEven(100 * pl.stats.Busy())) // = %.0f's rounding (C5)
+	runlog.Placed(ledger.Place{
+		Kind: "pool", Slot: pl.slot.Index, Slots: pl.slot.Total, Host: pl.host.Name,
+		CPUs: pl.stats.CPUs, Busy: &busy, Workdir: t.Workdir(),
+	})
 	fmt.Fprintf(stderr, "offload: %s slot %d/%d (%d CPUs, %.0f%% busy) → ~/%s\n", pl.host.Name,
 		pl.slot.Index, pl.slot.Total, pl.stats.CPUs, 100*pl.stats.Busy(), t.Workdir())
-	rc, err := remoteRun(ctx, o, t, p.targets[pl.host.Name], gets, stderr)
+	rc, err := remoteRun(ctx, o, t, p.targets[pl.host.Name], gets, stderr, runlog)
 	if ctx.Err() != nil {
 		return signalStatus()
 	}
@@ -260,36 +293,22 @@ func runCommand(o options, stderr io.Writer) int {
 }
 
 // remoteRun = upload → run → download → --get (Y4–Y10).
-func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Target, gets []string, stderr io.Writer) (int, error) {
+func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Target, gets []string, stderr io.Writer, runlog *ledger.Run) (int, error) {
 	r := run.Remote{Target: target, Workdir: t.Workdir(), Meta: t.Meta(), Sub: t.Sub, Argv: o.argv, Mode: "nosync"}
-	switch {
-	case o.noSync:
-	case t.Git:
-		r.Mode = "git"
-		if t.Worktree != "" {
-			r.Mode = "worktree:" + t.Worktree
-		}
-		list, err := mirror.UploadList(ctx, t.Root)
-		if err != nil {
-			return 0, err
-		}
-		if r.Excludes, err = mirror.GlobalExcludes(ctx, t.Root); err != nil {
-			return 0, err
-		}
-		if err := mirror.UploadGit(ctx, t, target, list); err != nil {
-			return 0, err
-		}
-		r.Paths = list
-	default:
-		r.Mode = "plain"
-		if err := mirror.UploadPlain(ctx, t, target); err != nil {
-			return 0, err
-		}
+	if err := upload(ctx, o, t, target, &r, runlog); err != nil {
+		return 0, err
 	}
+	ran := runlog.Time(ledger.Command)
 	rc, err := r.Run(ctx)
+	ran()
 	if err != nil || ctx.Err() != nil {
 		return rc, err
 	}
+	runlog.CommandStatus(rc)
+	if r.Mode == "nosync" && len(gets) == 0 {
+		return rc, nil
+	}
+	downloaded := runlog.Time(ledger.Download)
 	switch {
 	case t.Git && !o.noSync:
 		err = mirror.DownloadGit(ctx, t, target)
@@ -302,10 +321,39 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Targ
 		}
 		err = mirror.Get(ctx, t, target, g)
 	}
+	downloaded()
 	if err != nil {
 		fmt.Fprintf(stderr, "offload: the command exited %d, but its outputs did not all come back\n", rc)
 	}
 	return rc, err
+}
+
+// upload sends the tree per r's mode (Y4, Y7); --no-sync sends nothing and times nothing (Y9).
+func upload(ctx context.Context, o options, t mirror.Tree, target remote.Target, r *run.Remote, runlog *ledger.Run) error {
+	if o.noSync {
+		return nil
+	}
+	defer runlog.Time(ledger.Upload)()
+	if !t.Git {
+		r.Mode = "plain"
+		return mirror.UploadPlain(ctx, t, target)
+	}
+	r.Mode = "git"
+	if t.Worktree != "" {
+		r.Mode = "worktree:" + t.Worktree
+	}
+	list, err := mirror.UploadList(ctx, t.Root)
+	if err != nil {
+		return err
+	}
+	if r.Excludes, err = mirror.GlobalExcludes(ctx, t.Root); err != nil {
+		return err
+	}
+	if err := mirror.UploadGit(ctx, t, target, list); err != nil {
+		return err
+	}
+	r.Paths = list
+	return nil
 }
 
 // checkLocalCommand mirrors the shell's 127/126 before any slot is taken (X2); path = what to exec.
