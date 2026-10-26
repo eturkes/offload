@@ -2,7 +2,7 @@
 # install [ADDRESS…] — build offload once (static: it is also the init inside images, K11) and install
 # that same binary + tools/heavy (project scripts wrap slow commands in it, on pool hosts too) into
 # ~/.local/bin here and on each pool host (default: every `address` in the pool file). Prints the
-# sha256 each side reports per file; they must match.
+# sha256 each side reports per file and exits 1 when any differs from the built file's.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
@@ -10,11 +10,21 @@ trap 'rm -rf "$tmp"' EXIT
 (cd "$root" && CGO_ENABLED=0 go build -trimpath -o "$tmp/offload" ./cmd/offload)
 cp "$root/tools/heavy" "$tmp/heavy"
 chmod 755 "$tmp/heavy"
+sum() { sha256sum "$1" | cut -d' ' -f1; }
+bad=0
+report() { # report <side> <file> <sum>: the sum, flagged when it is not the built file's
+  if [ "$3" = "$(sum "$tmp/$2")" ]; then
+    echo "$1 $2: $3"
+  else
+    echo "$1 $2: ${3:-?} (differs from the built $(sum "$tmp/$2"))"
+    bad=1
+  fi
+}
 mkdir -p "$HOME/.local/bin"
 for f in offload heavy; do
   cp "$tmp/$f" "$HOME/.local/bin/$f.new"
   mv "$HOME/.local/bin/$f.new" "$HOME/.local/bin/$f" # one rename: running copies keep theirs
-  echo "here $f: $(sha256sum "$HOME/.local/bin/$f" | cut -d' ' -f1)"
+  report here "$f" "$(sum "$HOME/.local/bin/$f")"
 done
 if [ $# -eq 0 ]; then
   addresses=$(cd "$root" && go run ./tools/pooladdrs) # offload's own pool parser; no whitespace in an address (P2)
@@ -23,12 +33,13 @@ if [ $# -eq 0 ]; then
 fi
 for address; do
   for f in offload heavy; do
-    printf '%s %s: ' "$address" "$f"
-    ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o ForwardAgent=no \
+    got=$(ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o ForwardAgent=no \
       -o ForwardX11=no -o ClearAllForwardings=yes \
       -T -- "$address" \
       "mkdir -p ~/.local/bin && cat >~/.local/bin/$f.new && chmod 755 ~/.local/bin/$f.new &&
        mv ~/.local/bin/$f.new ~/.local/bin/$f && sha256sum ~/.local/bin/$f | cut -d' ' -f1" \
-      <"$tmp/$f"
+      <"$tmp/$f")
+    report "$address" "$f" "$got"
   done
 done
+exit "$bad"
