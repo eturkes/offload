@@ -232,6 +232,9 @@ func GlobalExcludes(ctx context.Context, root string) (string, error) {
 		}
 		path = defaultExcludes()
 	}
+	if path != "" && !filepath.IsAbs(path) { // as `git -C root` reads it, not offload's cwd (a subdir)
+		path = filepath.Join(root, path)
+	}
 	data, err := os.ReadFile(path) //nolint:gosec // G304: git's own excludes path
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
