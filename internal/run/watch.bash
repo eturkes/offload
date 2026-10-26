@@ -6,6 +6,13 @@
 # teardown ends.
 # Every variable here is named `__…`: a local shadowing a variable the caller exported is exported
 # with the local's value, so a plain name (`unit`, `p`) would reach CMD's environment.
+# An exported SHELLOPTS turns its options on here too (errexit ends the watcher on a routine nonzero
+# status, noclobber refuses the mark write, xtrace writes into CMD's stderr) ⇒ the watcher runs on
+# bash's defaults; CMD gets the caller's value back at exec (X2). Under xtrace these lines still trace.
+__so=
+[[ ${SHELLOPTS@a} != *x* ]] || __so=$SHELLOPTS
+set +o allexport +o errexit +o errtrace +o functrace +o keyword +o noclobber +o noglob +o nounset \
+  +o pipefail +o posix +o verbose +o xtrace
 # alive SID EOF MARK: a process of session SID remains, or of the scope whose cgroup MARK names (its
 # cgroup.events says populated; systemd removes the dir once empty), or (EOF path) the leader is
 # still our child — EOF can arrive before it has called setsid(), when no session SID exists yet.
@@ -31,8 +38,8 @@ offload_launch() {
   # makes `&` jobs ignore INT + QUIT; `trap -` hands CMD the default dispositions back.
   # systemd-run --scope moves its own pid into the scope, then execs in place (pid kept). It finds
   # the manager through XDG_RUNTIME_DIR alone (so it gets RT) and adds INVOCATION_ID; the wrapper
-  # restores both as CMD had them. Its errors (a refused unit, a flag older systemd lacks) go to
-  # /dev/null while fd 8 carries stderr through to CMD. --expand-environment=no: by default it
+  # restores both (+ SHELLOPTS) as CMD had them. Its errors (a refused unit, a flag older systemd
+  # lacks) go to /dev/null while fd 8 carries stderr through to CMD. --expand-environment=no: by default it
   # rewrites argv (`$$` → `$`, `${X}` → its value).
   (
     trap - INT QUIT
@@ -43,9 +50,12 @@ offload_launch() {
           printf "%s\n" "$__cg" >"$1" || exit 1
           if [ -n "$2" ]; then export XDG_RUNTIME_DIR="$3"; else unset XDG_RUNTIME_DIR; fi
           if [ -n "$4" ]; then export INVOCATION_ID="$5"; else unset INVOCATION_ID; fi
-          shift 5
-          exec "$@" 2>&8 8>&-' offload "$__mark" "$__hx" "$__vx" "$__hi" "$__vi" "$@"
+          __s=$6
+          shift 6
+          [ -z "$__s" ] || exec env SHELLOPTS="$__s" "$@" 2>&8 8>&-
+          exec "$@" 2>&8 8>&-' offload "$__mark" "$__hx" "$__vx" "$__hi" "$__vi" "$__so" "$@"
     fi
+    [ -z "$__so" ] || exec env SHELLOPTS="$__so" setsid "$@"
     exec setsid "$@"
   ) </dev/null 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&- &
   __p=$!

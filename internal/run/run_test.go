@@ -652,3 +652,28 @@ func TestRemoteLockSerializes(t *testing.T) { // Y11
 		t.Fatalf("rc %d after %s (%s); want a wait for the lock", rc, waited, stderr)
 	}
 }
+
+// X2 + C3, both launch paths: an exported SHELLOPTS (errexit, noclobber) leaves the watcher's control
+// flow alone, and CMD's bash runs with the caller's options.
+func TestExportedShelloptsReachTheCommandAlone(t *testing.T) {
+	for _, scope := range []string{"scope", "refused-scope"} {
+		t.Run(scope, func(t *testing.T) {
+			if scope == "scope" {
+				requireScope(t)
+			} else {
+				failingSystemdRun(t)
+			}
+			t.Setenv("SHELLOPTS", "errexit:noclobber")
+			if rc, err := Local(context.Background(), []string{"true"}, nil); err != nil || rc != 0 {
+				t.Fatalf("true: rc %d err %v", rc, err)
+			}
+			dir := t.TempDir()
+			rc, err := Local(context.Background(), []string{"bash", "-c", `printf %s "$-" > "$1/opts"; false; touch "$1/after"`, "_", dir}, nil)
+			opts, _ := os.ReadFile(filepath.Join(dir, "opts"))
+			if _, statErr := os.Stat(filepath.Join(dir, "after")); err != nil || rc != 1 || !strings.Contains(string(opts), "e") ||
+				!strings.Contains(string(opts), "C") || statErr == nil {
+				t.Fatalf("rc %d err %v opts %q after-exists %v", rc, err, opts, statErr == nil)
+			}
+		})
+	}
+}

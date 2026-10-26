@@ -74,3 +74,10 @@ func TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder(t *testing.T) {
 		t.Fatalf("unlocked file's I/O error reported as a held slot: %q", r.stdout)
 	}
 }
+
+// X1/X2/C3: inherited errexit must not make a successful command fail in watcher teardown.
+func TestReviewR1X2ExportedErrexitPreservesStatus(t *testing.T) {
+	s := newSandbox(t, true)
+	s.setenv("SHELLOPTS", "errexit")
+	s.run("run", "--local", "--", "true").requireCode(t, 0)
+}

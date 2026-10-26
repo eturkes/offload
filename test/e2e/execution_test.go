@@ -437,3 +437,21 @@ func TestHarnessFakeSSH(t *testing.T) {
 		}
 	})
 }
+
+// X2 + C3: an exported SHELLOPTS (errexit, noclobber) leaves the watcher's control flow alone and
+// reaches CMD as the caller had it — locally, on a host, and through a scope.
+func TestX2ExportedShelloptsReachTheCommandAlone(t *testing.T) {
+	t.Parallel()
+	for _, place := range []string{"--local", "--pool"} {
+		t.Run(place, func(t *testing.T) {
+			s := newSandbox(t, false)
+			s.setenv("SHELLOPTS", "errexit:noclobber")
+			s.run("run", place, "--", "true").requireCode(t, 0)
+			r := s.run("run", place, "--", "bash", "-c", `printf %s "$-"; false; printf after`)
+			r.requireCode(t, 1)
+			if !strings.Contains(r.stdout, "e") || !strings.Contains(r.stdout, "C") || strings.Contains(r.stdout, "after") {
+				t.Errorf("CMD's options = %q, want the caller's errexit + noclobber in effect", r.stdout)
+			}
+		})
+	}
+}
