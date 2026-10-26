@@ -100,7 +100,7 @@ const safeChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345678
 // SIGKILL after 30 s. Own process group ⇒ a terminal's Ctrl-C reaches offload alone, which then
 // stops its children in order.
 func Command(ctx context.Context, name string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: callers pass fixed tools (rsync, ssh, bash)
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: callers pass fixed tools (rsync, ssh, bash, podman, this binary)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
 	cmd.WaitDelay = 30 * time.Second

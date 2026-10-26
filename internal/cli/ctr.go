@@ -20,6 +20,7 @@ import (
 	"github.com/eturkes/offload/internal/ctr"
 	"github.com/eturkes/offload/internal/pool"
 	"github.com/eturkes/offload/internal/probe"
+	"github.com/eturkes/offload/internal/remote"
 )
 
 // switchVar = the per-machine switch (K2): `1` runs ctr commands in the project's image.
@@ -183,7 +184,9 @@ func ctrCheck(stdout, stderr io.Writer) int {
 			}
 			var out bytes.Buffer
 			nonce := rand.Text()
-			cmd := exec.CommandContext(ctx, self, "run", "--host", h.Name, "--", "bash", "-c", remoteLayers, "_", nonce) //nolint:gosec // G204: this binary + a constant script
+			// remote.Command: a signal reaches the host run as TERM (it tears down + logs its end, J2),
+			// never as exec's default KILL.
+			cmd := remote.Command(ctx, self, "run", "--host", h.Name, "--", "bash", "-c", remoteLayers, "_", nonce)
 			cmd.Stdout, cmd.Stderr = &out, stderr
 			err := cmd.Run()
 			var ee *exec.ExitError

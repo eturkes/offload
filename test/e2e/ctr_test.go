@@ -852,3 +852,26 @@ func TestK8UnderSystemdUnitConmonStaysOutOfX1Scope(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+
+// K10 + J2: a signal to `ctr --check` reaches its host runs as TERM, so each tears down and logs its
+// end record (exec's default cancel = KILL, which leaves a start without an end).
+func TestK10CheckSignalEndsHostRunsWithTheirEndRecords(t *testing.T) {
+	t.Parallel()
+	s := newSandbox(t, true)
+	s.write(".devcontainer/Containerfile", "FROM scratch\n")
+	bin, err := os.ReadFile(binaryPath)
+	must(t, err)
+	must(t, os.WriteFile(filepath.Join(s.base, "bin", "offload"), bin, 0o755))
+	marker := filepath.Join(s.base, "inspecting")
+	s.setenv("OFFLOAD_CHECK_MARKER", marker)
+	reviewFakePodman(t, s, `"image exists") exit 0 ;;
+"image inspect")
+  if [ "$(basename "$HOME")" = alpha ]; then touch "$OFFLOAD_CHECK_MARKER"; exec sleep 60; fi
+  printf 'sha256:a\n'; exit 0 ;;`)
+	p := s.start("ctr", "--check")
+	p.await("host inspect", func() bool { _, err := os.Stat(marker); return err == nil })
+	p.signal(syscall.SIGTERM)
+	p.wait(30*time.Second).requireCode(t, 143)
+	_, end := s.runPair(time.Time{})
+	requireField(t, end, "signal", "TERM")
+}
