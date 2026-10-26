@@ -160,52 +160,60 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | clause → binds | verdict | evidence / ruling | sev | state |
 |----|----------------|---------|-------------------|-----|-------|
-| M1 | Execution `Git`: `.gitignore` current (a full gate + runs leave no untracked, unignored file) | unknown | | | open |
-| M2 | Execution gate command: full chain recorded in `.claude/rules/`, prints each step's wall-clock + the suite's slowest tests | unknown | | | open |
-| M3 | Execution fast gate recorded beside it (changed steps + tests, parallel + cached) | unknown | | | open |
-| M4 | Execution: a step dominating the full gate → a speed-up unit in `Tasks` or `deferred.md` | unknown | | | open |
-| M5 | Execution `CI gate` → keyed ruling (`gate.md`) current vs the repo's CI | unknown | | | open |
-| M6 | Execution task close: no temporary/stale artifacts or dangling symlinks in the tree (candidate at seed: `.ruff_cache/` in the tree) | unknown | | | open |
-| M7 | Execution UI design + charts | unknown | | | open |
-| M8 | Authoring: agent-optimized text in every non-human-facing artifact (comments, contract, rules, internal docs, runbook) | unknown | | | open |
-| M9 | Authoring: rules/facts omit provenance (dates, discovery events, origin stories) | unknown | | | open |
-| M10 | Authoring: future-facing text states actions positively; prohibitions name the thing | unknown | | | open |
-| M11 | Authoring: no strict text caps in guidance or checks | unknown | | | open |
-| M12 | Authoring: instruction tier routing (user `CLAUDE.md` / `CLAUDE.local.md` / agents / `CLAUDE.md` / rules / spec) + `portability.md` ruling | unknown | | | open |
-| M13 | Authoring: `.claude/rules/` = live law + why, no origin stories; multi-step recipe → committed script; bare tier small; area-bound → `paths:` | unknown | | | open |
-| M14 | Authoring: rule + agent frontmatter quoting + parse | unknown | | | open |
-| M15 | Authoring: `@path` imports only for files CC leaves unloaded; plain paths for auto-loaded ones | unknown | | | open |
-| M16 | Authoring `Human-facing` (README, `--help`, error texts): ASD-STE100 register; filler words (`simply`, `robust`, `seamlessly`, `leverage`) absent | unknown | | | open |
-| M17 | Engineering: comments spend on the why; code states the what | unknown | | | open |
-| M18 | Engineering: deterministic checks own every tool-decidable rule; each purpose-built check ships its failing input + firing in a `paths:` rule | unknown | | | open |
-| M19 | Engineering: gate backing a durable claim reruns from committed state; scratch-local validators recorded + scheduled | unknown | | | open |
-| M20 | Engineering: assurance tiers + contracts per unit (contract states tiers where units bind) | unknown | | | open |
-| M21 | Session flow: `spec.md` shape (5 sections, `Tasks` pointer last, `Phase` = state) via `spec-lint`; every line binds current/future work | unknown | | | open |
-| M22 | Session flow: `deferred.md` = one entry + acceptance check each | unknown | | | open |
-| M23 | Session flow: `spec-lint` in the gate command; archive holds finished work | unknown | | | open |
-| M24 | Session flow: `CLAUDE.md` + `.claude/agents/` = current template copies | unknown | | | open |
+| M1 | Execution `Git`: `.gitignore` current (a full gate + runs leave no untracked, unignored file) | finding | `.gitignore:4-6` `__pycache__/`, `.venv/`, `*.pyc` = template-era Python entries (9f0ce71), no Python in the repo (`.agent/plant` runs python3 from stdin, no bytecode); `.ruff_cache/` (Oct 21, ruff 0.17.1) sits in the tree hidden by its own `*` .gitignore → R2 | minor | open |
+| M2 | Execution gate command: full chain recorded in `.claude/rules/`, prints each step's wall-clock + the suite's slowest tests | pass | `.agent/gate` prints `== <step>: <cmd>`, the rc + seconds table, then `slowest tests` (10) — B1 output | – | closed |
+| M3 | Execution fast gate recorded beside it (changed steps + tests, parallel + cached) | pass | `gate.md` 2 records `.agent/gate fast [pkg…]` = fmt + lint + cached tests + spec-lint; B2 both forms rc 0 | – | closed |
+| M4 | Execution: a step dominating the full gate → a speed-up unit in `Tasks` or `deferred.md` | finding | test = 46.2 s of the 53.2 s gate (87 %; next step 2.6 s); `internal/run` 44.5 s with 0 of 27 tests `t.Parallel()`, e2e 41.9 s; no speed-up unit in `Tasks` or `deferred.md` → R3 | minor | open |
+| M5 | Execution `CI gate` → keyed ruling (`gate.md`) current vs the repo's CI | pass | `gate.md` 3 keys the `CI gate` ruling (owner) + Gate CI dispatch procedure; Gate runs on `main` push + dispatch (B3). Its `≈ 1.5 min on nixbox` figure = the existing `deferred.md` row (3 of ≥ 5 records so far) | – | closed |
+| M6 | Execution task close: no temporary/stale artifacts or dangling symlinks in the tree (candidate at seed: `.ruff_cache/` in the tree) | finding | `.ruff_cache/` = stale artifact (no ruff in the repo) → R2; dangling symlinks: `find . -xtype l` outside `.git`, `.tools`, `.scratch` → 0 (control: a planted dangling link in `.scratch` → 1) | minor | open |
+| M7 | Execution UI design + charts | n/a | no UI, no charts or figures in the repo | – | closed |
+| M8 | Authoring: agent-optimized text in every non-human-facing artifact (comments, contract, rules, internal docs, runbook) | pass | contract, rules, runbook, comments = telegraphic, symbol-forward; human-facing = README + usage alone | – | closed |
+| M9 | Authoring: rules/facts omit provenance (dates, discovery events, origin stories) | pass | `rg` dates/discovery words over `.claude/rules`, spec, contract, runbook, README → 1 hit = an advisory id (GO-2021-0113); deferred.md dates = acceptance deadlines | – | closed |
+| M10 | Authoring: future-facing text states actions positively; prohibitions name the thing | pass | rules: prohibitions name the thing (`never commit, never print`, `never copy to a pool host`); actions stated as `→` | – | closed |
+| M11 | Authoring: no strict text caps in guidance or checks | pass | no length linter (`.golangci.yml`: no lll), spec-lint has no size caps, no word/line limits in rules | – | closed |
+| M12 | Authoring: instruction tier routing (user `CLAUDE.md` / `CLAUDE.local.md` / agents / `CLAUDE.md` / rules / spec) + `portability.md` ruling | pass | `portability.md` keys the tier ruling; machine facts = versioned law here; no `CLAUDE.local.md` | – | closed |
+| M13 | Authoring: `.claude/rules/` = live law + why, no origin stories; multi-step recipe → committed script; bare tier small; area-bound → `paths:` | pass | bare tier = `gate.md` (5) + `portability.md` (1); area law under `paths:` (code, gate-checks, machines); recipes → scripts (`.agent/plant`, `tpm-bind`, `check`, `deploy`); no origin stories | – | closed |
+| M14 | Authoring: rule + agent frontmatter quoting + parse | finding | frontmatter of `code.md`, `gate-checks.md`, `machines.md` = `paths:` + double-quoted globs (by eye); no gate step parses or shapes it (gate = 13 steps, none reads `.claude/`) → R4 | minor | open |
+| M15 | Authoring: `@path` imports only for files CC leaves unloaded; plain paths for auto-loaded ones | pass | `CLAUDE.md:1` `@.agent/spec.md` alone (spec = not auto-loaded); rules + agents named by plain path | – | closed |
+| M16 | Authoring `Human-facing` (README, `--help`, error texts): ASD-STE100 register; filler words (`simply`, `robust`, `seamlessly`, `leverage`) absent | finding | README + usage read in STE register (short imperative sentences, condition first); filler words 0 today (`rg -i -w` over README, `cli.go`, `tools/heavy`), but no gate step checks them → R5 | minor | open |
+| M17 | Engineering: comments spend on the why; code states the what | pass | comments carry constraints + measurements (e.g. `run.go` boot, `watch.bash` setsid/`&` notes, `performance.nix` fsync numbers); stale comments = G lens | – | closed |
+| M18 | Engineering: deterministic checks own every tool-decidable rule; each purpose-built check ships its failing input + firing in a `paths:` rule | finding | tool-decidable clauses without a check: frontmatter (R4), filler words (R5), deferred acceptance (R6), test ids (R8), `__` names (R9); checked ones fire (V13, V14, M32, M37) | minor | open |
+| M19 | Engineering: gate backing a durable claim reruns from committed state; scratch-local validators recorded + scheduled | pass | gates rerun from committed state (`.agent/gate`, `check --facts`); the 13197df mutation replay script lived in `.scratch` = credit evidence, not a gate (re-credit → V rows) | – | closed |
+| M20 | Engineering: assurance tiers + contracts per unit (contract states tiers where units bind) | pass | contract tiers per section (CLI/Slots/Placement/Sync/Execution/Image runs = kernel; Pool file/Probe/Run log = data) | – | closed |
+| M21 | Session flow: `spec.md` shape (5 sections, `Tasks` pointer last, `Phase` = state) via `spec-lint`; every line binds current/future work | finding | `.agent/spec-lint` rc 0 (shape); every-line-binds: `Decisions` holds 2 dead clauses — `Controller copy deleted after a checksum-verified copy (confirm immediately before)` (done at IMPLEMENT close) and `cement + cnl-ckc's cachyos-specific rules → the owner trims them … (\`.agent/deferred.md\`)` (row closed in 3f92e44) → R10 (Decisions edit = owner ruling) | minor | open |
+| M22 | Session flow: `deferred.md` = one entry + acceptance check each | finding | 6/6 entries carry `Accept:` today; no check (spec-lint reads spec.md alone) → R6 | minor | open |
+| M23 | Session flow: `spec-lint` in the gate command; archive holds finished work | pass | `spec-lint` = gate step (B1); `.agent/archive/` holds closed phases + ledgers | – | closed |
+| M24 | Session flow: `CLAUDE.md` + `.claude/agents/` = current template copies | finding | `CLAUDE.md` + 6 agents = template bytes (cmp); `.agent/spec-lint` behind the template (`copy-template --check` rc 1: one `# shellcheck disable=SC2016` line, template commit 7e8ad36 today) → R7 | minor | open |
 | M25 | `code.md` 1: contract = law; tests cite predicate ids | unknown | | | open |
-| M26 | `code.md` 2: watch/remote/boot bash-only, GNU tools, no controller paths; every variable `__…`; `<&0` + `trap - INT QUIT` kept | unknown | | | open |
-| M27 | `code.md` 3: host deletion = `prune_one` + worktree `rm -f .git`; rsync `--delete` only inside `.git` / `<meta>/repo` | unknown | | | open |
-| M28 | `code.md` 4: init PID-1 guard, handlers (no `signal.Ignore`), podman `Setsid` + scope + no `INVOCATION_ID`, nonblocking control end, `CGO_ENABLED=0` on every shipping build | unknown | | | open |
+| M26 | `code.md` 2: watch/remote/boot bash-only, GNU tools, no controller paths; every variable `__…`; `<&0` + `trap - INT QUIT` kept | finding | all variables in `watch.bash`, `remote.bash`, `local.bash`, boot are `__…` (read); the guard `TestReviewer9RemoteKeepsCallerVariables` exports a fixed list of 15 names ⇒ a new unprefixed variable outside that list stays green → R9 | minor | open |
+| M27 | `code.md` 3: host deletion = `prune_one` + worktree `rm -f .git`; rsync `--delete` only inside `.git` / `<meta>/repo` | pass | `--delete` only in `UploadGit` (.git / `<meta>/repo`) + `UploadPlain` (Y7); host deletions = `prune_one`, worktree `rm -f .git`, meta files; U without `--delete` guarded by TestG5UploadTypeChangeKeepsIgnoredRemoteFile | – | closed |
+| M28 | `code.md` 4: init PID-1 guard, handlers (no `signal.Ignore`), podman `Setsid` + scope + no `INVOCATION_ID`, nonblocking control end, `CGO_ENABLED=0` on every shipping build | pass | init refuses unless PID 1 (TestK8ReviewInitRefusesOutsidePID1), handlers not `signal.Ignore` (`init.go:39`), podman `Setsid` + scope + no `INVOCATION_ID` (`ctr.go` podmanCommand), nonblocking control end (`controlPair`); `CGO_ENABLED=0` in `tools/install`, gate build, e2e TestMain, CodeQL build | – | closed |
 | M29 | `code.md` 5: shipped change → `tools/install`; `--check` reds a differing binary | unknown | | | open |
-| M30 | `code.md` 6: real-podman e2e isolation (vfs storage, `FROM scratch` + ctrhelper static, prebuild fails never skips; CI `OFFLOAD_REQUIRE_PODMAN=1`) | unknown | | | open |
-| M31 | `code.md` 7: run log ownership (`runLogged`), J4, `signalStatus` ordering, e2e `XDG_STATE_HOME`, `runPair` validator | unknown | | | open |
-| M32 | `code.md` 8: every ssh/rsync connection takes `remote.SSHOptions`; fake ssh refuses otherwise (rc 254), honors `-n` | unknown | | | open |
-| M33 | `code.md` 9–10: fake-host marker semantics + mutation recipe (`.agent/plant`) match the harness + script | unknown | | | open |
-| M34 | `gate.md` 1–2: step list + fast gate = `.agent/gate`; CI runs the same command | unknown | | | open |
-| M35 | `gate.md` 3: CI-gate ruling + Gate CI dispatch procedure + timing claims | unknown | | | open |
-| M36 | `gate.md` 4: tool pins (sha256 / sumdb / commit id), `go.mod` go line = CI setup-go + `GOTOOLCHAIN=local` | unknown | | | open |
-| M37 | `gate.md` 5: suppressions name rule + reason (`nolintlint` fires on a bare one) | unknown | | | open |
-| M38 | `gate.md` 6: CodeQL + Dependabot scope + `pins` coverage of hand-moved pins | unknown | | | open |
-| M39 | `gate-checks.md`: every recorded seed still fires (= V13) + every gate step has a seed | unknown | | | open |
-| M40 | `machines.md` 1 + 4: `wifi.env` + `installer_host_key` gitignored, never committed; secrets referenced by string path, never a Nix path or inline | unknown | | | open |
-| M41 | `machines.md` 2–3 + 6–7: deploy/boot-chain/recovery-key/Codexify/reboot facts vs scripts + runbook | unknown | | | open |
-| M42 | `machines.md` 5: `check` planted-fact list (= V14) | unknown | | | open |
-| M43 | `portability.md`: ruling keyed + consistent with `CLAUDE.md` `Authoring` | unknown | | | open |
+| M30 | `code.md` 6: real-podman e2e isolation (vfs storage, `FROM scratch` + ctrhelper static, prebuild fails never skips; CI `OFFLOAD_REQUIRE_PODMAN=1`) | pass | `ctr_test.go`: one vfs storage per package run (`CONTAINERS_STORAGE_CONF`), removed via `podman unshare rm -rf`; prebuild failure → Fatal under `OFFLOAD_REQUIRE_PODMAN`; `gate.yml` sets `OFFLOAD_REQUIRE_PODMAN: "1"` | – | closed |
+| M31 | `code.md` 7: run log ownership (`runLogged`), J4, `signalStatus` ordering, e2e `XDG_STATE_HOME`, `runPair` validator | pass | `cli.go` runCommand → runLogged + one `End`; `signalStatus()` read after `ctx.Err()`; harness sets `XDG_STATE_HOME` (`harness_test.go:103`); `runPair` = exact key sets | – | closed |
+| M32 | `code.md` 8: every ssh/rsync connection takes `remote.SSHOptions`; fake ssh refuses otherwise (rc 254), honors `-n` | pass | `testdata/ssh` refuses a call lacking any of the 8 X5 options (rc 254), honors `-n` | – | closed |
+| M33 | `code.md` 9–10: fake-host marker semantics + mutation recipe (`.agent/plant`) match the harness + script | pass | markers in `testdata/ssh` = `.probe`, `.probe-hang`, `.transport-fail`, `.run-fail` (boot = `sha256sum`), `.upload-fail`/`.download-fail` (rc 23), `.ssh-call-<pid>` = `code.md` list; `.agent/plant` = the recipe's apply/run/`git checkout` revert | – | closed |
+| M34 | `gate.md` 1–2: step list + fast gate = `.agent/gate`; CI runs the same command | pass | `gate.md` step list = `.agent/gate` (13 steps, same order); `gate.yml` runs `.agent/gate` | – | closed |
+| M35 | `gate.md` 3: CI-gate ruling + Gate CI dispatch procedure + timing claims | pass | see M5; the `≈ 3 min` CI figure holds (Gate runs 148–203 s, deferred row) | – | closed |
+| M36 | `gate.md` 4: tool pins (sha256 / sumdb / commit id), `go.mod` go line = CI setup-go + `GOTOOLCHAIN=local` | pass | release assets sha256 (`.agent/tool`), go-installed via sumdb, statix/deadnix pinned commit ids; `go.mod` `go 1.27.3` = setup-go `"1.27.3"` ×2 + `GOTOOLCHAIN: local` | – | closed |
+| M37 | `gate.md` 5: suppressions name rule + reason (`nolintlint` fires on a bare one) | pass | `nolintlint` require-explanation + require-specific; bare `//nolint` seed → rc 1 (V13) | – | closed |
+| M38 | `gate.md` 6: CodeQL + Dependabot scope + `pins` coverage of hand-moved pins | pass | CodeQL Go manual build; Dependabot gomod + github-actions weekly; `.agent/pins` covers `.agent/tool`, go line, `runs-on` (B16). Register: `machines/nixbox` fetchTarball pins (lanzaboote v1.2.0, nixos-unstable rev) sit outside `pins` → deferred row | – | closed |
+| M39 | `gate-checks.md`: every recorded seed still fires (= V13) + every gate step has a seed | pass | V13: every recorded seed fires; every gate step (13) has one | – | closed |
+| M40 | `machines.md` 1 + 4: `wifi.env` + `installer_host_key` gitignored, never committed; secrets referenced by string path, never a Nix path or inline | pass | `git check-ignore`: `machines/*/wifi.env`, `installer_host_key`(+`.pub`) ignored, `!! machines/nixbox/installer_host_key` untracked; system config names `/etc/nixos/wifi.env` by string (`network.nix`), PSK scan of the live closure 0 (V14, B18); installer.nix's Nix-path copies = the ISO's own store (runbook) | – | closed |
+| M41 | `machines.md` 2–3 + 6–7: deploy/boot-chain/recovery-key/Codexify/reboot facts vs scripts + runbook | pass | `deploy` = rsync + `nixos-rebuild` + `check`; recovery key path `~/.local/share/offload/nixbox-recovery-key` in `install` + `tpm-bind`; Codexify + reboot facts = runbook; (check-at-every-deploy vs switch-only → SF14) | – | closed |
+| M42 | `machines.md` 5: `check` planted-fact list (= V14) | pass | = V14 | – | closed |
+| M43 | `portability.md`: ruling keyed + consistent with `CLAUDE.md` `Authoring` | pass | `portability.md` keys `Authoring` portability as inapplicable (owner) + names the replacement (versioned machine law) | – | closed |
 
 ## Findings
 
 | id | finding | sev | `file:line` + proof | fix | acceptance | state |
 |----|---------|-----|---------------------|-----|------------|-------|
 | R1 | `mutago` pin 2.10.37 behind its latest release 2.10.38 (B16) | minor | `.agent/tool` `mutago) v=2.10.37` · `.agent/pins` rc 1 `behind` | | `.agent/pins` rc 0 | open |
+| R2 | stale ignore entries + stale artifact (M1, M6) | minor | `.gitignore:4` `__pycache__/` (+ `.venv/`, `*.pyc`); `.ruff_cache/` in the tree |  | `.gitignore` = paths this repo makes; `ls -a` shows no `.ruff_cache`; gate leaves `git status --porcelain` empty | open |
+| R3 | test step dominates the gate with no speed-up unit (M4) | minor | B1: test 46.2 s / 53.2 s; `internal/run` 0/27 parallel |  | a `deferred.md` row with an equal-strength acceptance check | open |
+| R4 | rule frontmatter unchecked (M14) | minor | gate steps: none reads `.claude/rules` |  | gate step reds a rule with an unquoted glob / unknown key (seed recorded) | open |
+| R5 | human-facing filler words unchecked (M16) | minor | gate steps: none reads README/usage for wording |  | gate step reds a planted `simply` in README (seed recorded) | open |
+| R6 | deferred acceptance per entry unchecked (M22) | minor | `.agent/spec-lint` reads spec.md alone |  | gate step reds an entry without `Accept:` (seed recorded) | open |
+| R7 | `.agent/spec-lint` behind the template (M24) | minor | `copy-template --check` rc 1 |  | `copy-template --check` rc 0 | open |
+| R9 | `__` reservation guard covers a fixed name list (M26) | minor | `internal/run/reviewer9_test.go:104` `names := []string{"f", "d", …}` |  | guard derives names from the scripts; planted `x=1` in `remote.bash` → red | open |
+| R10 | `Decisions` carries 2 dead clauses (M21) | minor | `rg -Fn 'Controller copy deleted' .agent/spec.md`; `rg -Fn 'owner trims them' .agent/spec.md` |  | owner ruling → clauses pruned, spec-lint rc 0 | open |
