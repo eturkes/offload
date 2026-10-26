@@ -22,7 +22,7 @@ for f in .claude/rules/*.md; do
     NR == 1 { if ($0 != "---") exit; st = 1; next }
     st == 1 { if ($0 == "paths:") { st = 2; next } print f ":" NR ": frontmatter holds `paths:` alone"; exit }
     st == 2 && $0 == "---" { if (!n) print f ":" NR ": `paths:` lists no glob"; st = 0; exit }
-    st == 2 { if ($0 ~ /^  - "[^"]+"$/) n++; else print f ":" NR ": glob = a double-quoted list item (`  - \"…\"`)" }
+    st == 2 { if ($0 ~ /^  - "[^"\\]+"$/) n++; else print f ":" NR ": glob = a double-quoted list item without escapes (`  - \"…\"`)" }
     END { if (st == 2) print f ":" NR ": frontmatter never closes (`---`)" }' "$f")"
 done
 
