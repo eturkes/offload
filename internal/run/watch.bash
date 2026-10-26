@@ -8,8 +8,11 @@
 # with the local's value, so a plain name (`unit`, `p`) would reach CMD's environment.
 # An exported SHELLOPTS turns its options on here too (errexit ends the watcher on a routine nonzero
 # status, noclobber refuses the mark write, xtrace writes into CMD's stderr) ⇒ the watcher runs on
-# bash's defaults; CMD gets the caller's value back at exec (X2). Under xtrace these lines still trace.
-__so=
+# bash's defaults; CMD gets the caller's value back at exec (X2). Local runs: run.go moves it to
+# __shellopts before bash starts (noexec, onecmd: no line here would run); on a host these lines
+# reset what they can, and still trace under xtrace.
+__so=${__shellopts-}
+unset __shellopts
 [[ ${SHELLOPTS@a} != *x* ]] || __so=$SHELLOPTS
 set +o allexport +o errexit +o errtrace +o functrace +o keyword +o noclobber +o noglob +o nounset \
   +o pipefail +o posix +o verbose +o xtrace

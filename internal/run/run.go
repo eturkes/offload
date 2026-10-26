@@ -55,11 +55,25 @@ var ErrNotStarted = errors.New("remote setup failed")
 // held until the watcher's teardown ends, even if offload dies first (S5).
 func Local(ctx context.Context, argv []string, lock *os.File) (int, error) {
 	cmd := remote.Command(context.Background(), "bash", append([]string{"-c", watchScript + localScript, "offload"}, argv...)...)
+	cmd.Env = watcherEnv(os.Environ())
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if lock != nil {
 		cmd.ExtraFiles = []*os.File{lock}
 	}
 	return supervise(ctx, cmd, nil)
+}
+
+// watcherEnv = env with an exported SHELLOPTS moved to __shellopts: bash would apply it before the
+// watcher's first line runs (noexec + onecmd stop the script outright); the watcher hands it to CMD (X2).
+func watcherEnv(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, "SHELLOPTS="); ok {
+			kv = "__shellopts=" + v
+		}
+		out = append(out, kv)
+	}
+	return out
 }
 
 // Remote = one remote run (Y5, X1, X6).
