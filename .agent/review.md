@@ -32,107 +32,107 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| C1 | m1 cli | unknown | | | open |
-| C2 | m2 run | unknown | | | open |
-| C3 | m3 mirror | unknown | | | open |
-| C4 | m4 slots | unknown | | | open |
-| C5 | m5 pool | unknown | | | open |
-| C6 | m6 probe | unknown | | | open |
-| C7 | m7 remote | unknown | | | open |
-| C8 | m8 ctr | unknown | | | open |
-| C9 | m9 ledger | unknown | | | open |
-| C10 | m10 shell | unknown | | | open |
-| C11 | m11 e2e harness | unknown | | | open |
-| C12 | m12 tools | unknown | | | open |
-| C13 | m13 gate | unknown | | | open |
-| C14 | m14 machines | unknown | | | open |
+| C1 | m1 cli | finding | reviewer-1 (C1): hybrid lookup before placement; `parseCheck` Scanner 64 KiB token, `sc.Err()` ignored; remote `cmd_rc` dropped under cancel; MAIN: `ctrCheck` children via `exec.CommandContext` = SIGKILL on a signal → R14, R18, R12, R25 | minor | open |
+| C2 | m2 run | finding | reviewer-1: exported `SHELLOPTS=errexit` ends the watcher (`true` → rc 1); reviewer-2: prune sort/comm pipelines unchecked → R21, R15 | minor | open |
+| C3 | m3 mirror | finding | reviewer-2: relative `core.excludesFile` read from the invocation cwd → R19, R15 | minor | open |
+| C4 | m4 slots | finding | reviewer-1: `Holders` counts an open error as held; owner text read blocking (FIFO) + following links → R20 | minor | open |
+| C5 | m5 pool | pass | reviewer-2 `.agent/archive/review/cr-reviewer-2.md`: P1–P3 decode/validation, callers fit; `./internal/pool` rc 0 | – | closed |
+| C6 | m6 probe | pass | reviewer-2: 4-field parser, 7.5 s + 0.5 s WaitDelay, callers fan out/join; `./internal/probe` rc 0 | – | closed |
+| C7 | m7 remote | pass | reviewer-1 `.agent/archive/review/cr-reviewer-1.md`: SSHOptions + `-T` on every path, mux resolved once, Quote/Join + process-group cancel fit; `./internal/remote` rc 0 | – | closed |
+| C8 | m8 ctr | pass | reviewer-2: tag framing, build lock inheritance, argv, init PID-1/fd 3/reap/teardown; `./internal/ctr` rc 0 (real-podman K8 readiness reds under load → deferred row) | – | closed |
+| C9 | m9 ledger | finding | reviewer-1 + reviewer-4 independently: `End` returns a second `final()` read → R11 | minor | open |
+| C10 | m10 shell | finding | reviewer-1, -4, -6 independently: `filepath.SplitList("")` = no entries; bash searches cwd → R13 | minor | open |
+| C11 | m11 e2e harness | finding | reviewer-1: fake ssh `*loadavg*|*nproc*` matches command words; reviewer-3: `fakePodman` resolves real podman before writing a full fake → R22, R23 | minor | open |
+| C12 | m12 tools | finding | `tools/heavy` + `pooladdrs` pass (reviewer-2); MAIN: `tools/install` prints sums, never compares them; its ssh lacks `StrictHostKeyChecking=accept-new` (reviewer-6 register) → R27, R28 | minor | open |
+| C13 | m13 gate | pass | reviewer-2: step rc captured per step, aggregate rc; `.agent/tool` digest refusal; pins rc precedence; plant revert | – | closed |
+| C14 | m14 machines | finding | reviewer-2: `efi-entry` listing rc masked by sed; collector pipelines fail open (MAIN rules); reviewer-6: deploy runs `check` after `switch` alone; reviewer-3: deploy/tpm-bind ssh without forwarding/batch options → R16, R17, R26, R27 | minor | open |
 
 ## U — Cleanup: existing helpers reused; derivable state computed, never duplicated; near-duplicates merged; dead code removed; independent steps parallel; startup + hot paths lean; closures capture only what they use
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| U1 | m1 cli | unknown | | | open |
-| U2 | m2 run | unknown | | | open |
-| U3 | m3 mirror | unknown | | | open |
-| U4 | m4 slots | unknown | | | open |
-| U5 | m5 pool | unknown | | | open |
-| U6 | m6 probe | unknown | | | open |
-| U7 | m7 remote | unknown | | | open |
-| U8 | m8 ctr | unknown | | | open |
-| U9 | m9 ledger | unknown | | | open |
-| U10 | m10 shell | unknown | | | open |
-| U11 | m11 e2e harness + test helpers (duplicated helpers across `*_test.go`) | unknown | | | open |
-| U12 | m12 tools | unknown | | | open |
-| U13 | m13 gate | unknown | | | open |
-| U14 | m14 machines | unknown | | | open |
+| U1 | m1 cli | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U2 | m2 run | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U3 | m3 mirror | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U4 | m4 slots | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U5 | m5 pool | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U6 | m6 probe | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U7 | m7 remote | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U8 | m8 ctr | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U9 | m9 ledger | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U10 | m10 shell | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U11 | m11 e2e harness + test helpers (duplicated helpers across `*_test.go`) | finding | reviewer-3: `requireScope` probe + fail/skip policy twice (`internal/run/run_test.go:128`, `test/e2e/execution_test.go:134`); register: ctrhelper mode `id` without a caller → R24 | minor | open |
+| U12 | m12 tools | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U13 | m13 gate | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
+| U14 | m14 machines | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` (rematched) | – | closed |
 
 ## A — Altitude: a special case on shared infrastructure = a fix due in the mechanism
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| A1 | m1 cli | unknown | | | open |
-| A2 | m2 run | unknown | | | open |
-| A3 | m3 mirror | unknown | | | open |
-| A4 | m4 slots | unknown | | | open |
-| A5 | m5 pool | unknown | | | open |
-| A6 | m6 probe | unknown | | | open |
-| A7 | m7 remote | unknown | | | open |
-| A8 | m8 ctr | unknown | | | open |
-| A9 | m9 ledger | unknown | | | open |
-| A10 | m10 shell | unknown | | | open |
-| A11 | m11 e2e harness | unknown | | | open |
-| A12 | m12 tools | unknown | | | open |
-| A13 | m13 gate | unknown | | | open |
-| A14 | m14 machines | unknown | | | open |
+| A1 | m1 cli | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A2 | m2 run | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A3 | m3 mirror | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A4 | m4 slots | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A5 | m5 pool | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A6 | m6 probe | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A7 | m7 remote | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A8 | m8 ctr | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A9 | m9 ledger | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A10 | m10 shell | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A11 | m11 e2e harness | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A12 | m12 tools | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A13 | m13 gate | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
+| A14 | m14 machines | pass | reviewer-3 `.agent/archive/review/cr-reviewer-3.md` | – | closed |
 
 ## G — claim soundness + guarantee-vs-claim gaps (each claim vs observed behavior)
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| G1 | `README.md` (every promise, example + recipe) | unknown | | | open |
-| G2 | `--help` / usage + user-facing error texts (`offload`, `offload run`, `offload ctr`, `heavy`) | unknown | | | open |
-| G3a | `.agent/contract.md` family C predicates vs behavior (each id) | unknown | | | open |
-| G3b | `.agent/contract.md` family P predicates vs behavior (each id) | unknown | | | open |
-| G3c | `.agent/contract.md` family R predicates vs behavior (each id) | unknown | | | open |
-| G3d | `.agent/contract.md` family S predicates vs behavior (each id) | unknown | | | open |
-| G3e | `.agent/contract.md` family L predicates vs behavior (each id) | unknown | | | open |
-| G3f | `.agent/contract.md` family Y predicates vs behavior (each id) | unknown | | | open |
-| G3g | `.agent/contract.md` family X predicates vs behavior (each id) | unknown | | | open |
-| G3h | `.agent/contract.md` family J predicates vs behavior (each id) | unknown | | | open |
-| G3i | `.agent/contract.md` family K predicates vs behavior (each id) | unknown | | | open |
-| G4 | `.agent/spec.md` `Artifacts` (paths, run commands, live facts) | unknown | | | open |
-| G5 | `machines/nixbox/README.md` runbook vs scripts + config | unknown | | | open |
-| G6 | `pool.example.toml` comments vs P-predicates | unknown | | | open |
-| G7 | facts stated in `.claude/rules/*` (timings, recipes, mechanisms) vs code | unknown | | | open |
-| G8 | code comments m1 cli | unknown | | | open |
-| G9 | code comments m2 run | unknown | | | open |
-| G10 | code comments m3 mirror | unknown | | | open |
-| G11 | code comments m4 slots | unknown | | | open |
-| G12 | code comments m5 pool + m6 probe | unknown | | | open |
-| G13 | code comments m7 remote + m10 shell | unknown | | | open |
-| G14 | code comments m8 ctr | unknown | | | open |
-| G15 | code comments m9 ledger | unknown | | | open |
-| G16 | code comments m11 e2e harness + test comments citing ids | unknown | | | open |
-| G17 | comments m12 tools | unknown | | | open |
-| G18 | comments m13 gate | unknown | | | open |
-| G19 | comments m14 machines (nix + scripts, `*.reviewed`) | unknown | | | open |
+| G1 | `README.md` (every promise, example + recipe) | finding | reviewer-4 `.agent/archive/review/cr-reviewer-4.md`: log rc + native-ctr parity promises vs reds; `--no-sync` row omits `--get` → R11, R13, R29 | minor | open |
+| G2 | `--help` / usage + user-facing error texts (`offload`, `offload run`, `offload ctr`, `heavy`) | finding | reviewer-4: usage omits the `XDG_CONFIG_HOME` tier; `--no-sync` line → R29 | minor | open |
+| G3a | `.agent/contract.md` family C predicates vs behavior (each id) | finding | reviewer-4: C3 lists `worktree` among 125s while Y3/Y4 run linked worktrees → R29 | minor | open |
+| G3b | `.agent/contract.md` family P predicates vs behavior (each id) | pass | reviewer-4: P1–P3 witnesses rc 0 | – | closed |
+| G3c | `.agent/contract.md` family R predicates vs behavior (each id) | pass | reviewer-4: R1/R2 witnesses rc 0 | – | closed |
+| G3d | `.agent/contract.md` family S predicates vs behavior (each id) | pass | reviewer-4: S1–S6 witnesses rc 0 | – | closed |
+| G3e | `.agent/contract.md` family L predicates vs behavior (each id) | finding | reviewer-4 register R4-R1: L2 prose = probe → pick → acquire; code reserves slot + workdir lock first, then probes → R29 | minor | open |
+| G3f | `.agent/contract.md` family Y predicates vs behavior (each id) | pass | reviewer-4: Y1–Y11 witnesses rc 0 | – | closed |
+| G3g | `.agent/contract.md` family X predicates vs behavior (each id) | finding | reviewer-4: X2 fails on explicit empty PATH → R13 | minor | open |
+| G3h | `.agent/contract.md` family J predicates vs behavior (each id) | finding | reviewer-4: J2 split status (red 7f9e791) → R11 | minor | open |
+| G3i | `.agent/contract.md` family K predicates vs behavior (each id) | finding | reviewer-4: K2/K7 inherit X2 empty-PATH failure; real-podman batch reds under load → deferred row → R13 | minor | open |
+| G4 | `.agent/spec.md` `Artifacts` (paths, run commands, live facts) | pass | reviewer-4: artifacts exist; installed offload + heavy sha256 equal both sides | – | closed |
+| G5 | `machines/nixbox/README.md` runbook vs scripts + config | pass | reviewer-4: runbook vs scripts + live knobs agree | – | closed |
+| G6 | `pool.example.toml` comments vs P-predicates | pass | reviewer-4: example parses, comments = P1/P2 | – | closed |
+| G7 | facts stated in `.claude/rules/*` (timings, recipes, mechanisms) vs code | finding | reviewer-4: `code.md` `.transport-fail` = `(every call 255)`, fake ssh answers probes first → R29 | minor | open |
+| G8 | code comments m1 cli | finding | reviewer-4: `ctr.go` execNative `as if typed` vs empty PATH → R13 | minor | open |
+| G9 | code comments m2 run | pass | reviewer-4 | – | closed |
+| G10 | code comments m3 mirror | pass | reviewer-4 | – | closed |
+| G11 | code comments m4 slots | finding | reviewer-4: `slots.go:18` `the kernel frees it if offload dies first` vs S5 watcher inheritance → R29 | minor | open |
+| G12 | code comments m5 pool + m6 probe | pass | reviewer-4 | – | closed |
+| G13 | code comments m7 remote + m10 shell | finding | reviewer-4: `shell/look.go` package comment promises bash parity → R13 | minor | open |
+| G14 | code comments m8 ctr | pass | reviewer-4 | – | closed |
+| G15 | code comments m9 ledger | pass | reviewer-4 | – | closed |
+| G16 | code comments m11 e2e harness + test comments citing ids | finding | reviewer-4: `ctr_test.go:465` `(its own group, offload's session)` vs K8 own session → R29 | minor | open |
+| G17 | comments m12 tools | pass | reviewer-4 | – | closed |
+| G18 | comments m13 gate | pass | reviewer-4 | – | closed |
+| G19 | comments m14 machines (nix + scripts, `*.reviewed`) | pass | reviewer-4 | – | closed |
 
 ## V — verification integrity (`Engineering`): each test seen red on its unfixed revision (revision + command in a commit body) or mutation-credited (default operators, scope = files it imports/calls, every survivor ruled); kills via observable behavior; no test detection / fixture-value return / contract-unowned expected tables in the implementation; skipped, xfailed, deleted or demoted cases carry a `deferred.md` row + owner approval; tests cite contract ids (`code.md`)
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| V1 | m1 cli (`internal/cli` + e2e `cli_test.go`) | unknown | | | open |
-| V2 | m2 run (unit + e2e execution/close/failures/locks) | unknown | | | open |
-| V3 | m3 mirror (unit + mutation + e2e sync) | unknown | | | open |
-| V4 | m4 slots | unknown | | | open |
-| V5 | m5 pool | unknown | | | open |
-| V6 | m6 probe | unknown | | | open |
-| V7 | m7 remote | unknown | | | open |
-| V8 | m8 ctr (unit + real-podman e2e) | unknown | | | open |
-| V9 | m9 ledger (unit + e2e `ledger_test.go`) | unknown | | | open |
-| V10 | m10 shell | unknown | | | open |
-| V11 | m11 e2e harness self-tests (fake ssh X5 refusal, `-n`, markers) | unknown | | | open |
-| V12 | m12 tools (`pooladdrs` test; `heavy` + `install` coverage) | unknown | | | open |
+| V1 | m1 cli (`internal/cli` + e2e `cli_test.go`) | finding | reviewer-5 `.agent/archive/review/cr-reviewer-5.md`: 4 cli unit tests without red or mutation record → R31, R8 | minor | open |
+| V2 | m2 run (unit + e2e execution/close/failures/locks) | finding | reviewer-5: 9 run tests uncredited, 7 selected-plant-only; environment skips (`requireScope`) without a deferred row + approval → R32, R35, R37, R8 | minor | open |
+| V3 | m3 mirror (unit + mutation + e2e sync) | finding | reviewer-5: 2 selected-plant-only (`TestY5GlobalExcludesReachTheHost`, `TestReviewer9ExcludesRecordIsNotAnUploadPath`) → R35, R8 | minor | open |
+| V4 | m4 slots | finding | reviewer-5 E1: 85e2c60 MakeDirs survivors without an independent ruling → R36, R8 | minor | open |
+| V5 | m5 pool | pass | reviewer-5: 6 tests, 5 mutation + 1 red | – | closed |
+| V6 | m6 probe | pass | reviewer-5: 6 tests, 5 mutation + 1 red | – | closed |
+| V7 | m7 remote | finding | reviewer-5: `TestTargetCarriesOptions`, `TestMultiplex`, `TestReviewer9MultiplexFallbackOnceAcrossHosts` selected-plant-only (mutago finds no source in `internal/remote`: `ssh.go` has no `ssh_test.go`) → R35, R8 | minor | open |
+| V8 | m8 ctr (unit + real-podman e2e) | finding | reviewer-5: 80 tests credited; `requirePodman` local skip without a deferred row + approval → R37, R8 | minor | open |
+| V9 | m9 ledger (unit + e2e `ledger_test.go`) | finding | reviewer-5: 13197df's 13 survivors ruled by the test author alone → R36 | minor | open |
+| V10 | m10 shell | finding | reviewer-5: `TestLookMatchesBash` uncredited → R33, R8 | minor | open |
+| V11 | m11 e2e harness self-tests (fake ssh X5 refusal, `-n`, markers) | finding | reviewer-5: harness self-tests credited; ids missing on review tests → R8 | minor | open |
+| V12 | m12 tools (`pooladdrs` test; `heavy` + `install` coverage) | finding | reviewer-5: `TestEveryValidPoolSpellingYieldsItsAddress` uncredited → R34 | minor | open |
 | V13 | m13 gate: every step fires on its `gate-checks.md` seed (replanted) | pass | replanted in a disposable worktree with each step's own gate command (`/tmp/offload-cr/src/plant.sh`): fmt 1, lint 1, tidy 1, test 1, build 1 (vet + race on the same file 0/0), vuln 3, secrets 1 (clean history 0), actionlint 1, zizmor 14, shell 1 (file listed by the gate's shebang scan), nix 1, statix 1 (`[10] Warning: Found empty pattern`), deadnix 1 (clean tree statix/deadnix 0/0), spec-lint 1, `.agent/tool` wrong sha256 → `tool: sha256 mismatch … refusing it` rc 2; `.agent/pins`: go-version 1.27.2 → `differs from go.mod` rc 1, `runs-on: ubuntu-22.04` → `behind` rc 1, unknown repo → `lookup failed` rc 2 (go-version + runs-on rc confounded by R1's live `behind` → rerun at R1's fix); extra: bare `//nolint` → nolintlint rc 1 | – | closed |
 | V14 | m14 machines: `check` fires on every `machines.md` planted fact | pass | `check --dump` (46 facts) → `--facts`: live 0 `check: ok`; + `wrapper pkexec /bin/sh` 1, + `wrapper ping -` 1, + `wrapper doas ?` 1, − `wrapper umount -` 1, upgrades → `done <now−10 d>` 1 (240 h), + `failed <now−1 h>` 1, no upgrade 1, + `failed foo.service` 1, `sshd passwordauthentication yes` 1, + `listen tcp 0.0.0.0:8080 python3` 1, `fw temp-ports 1` 1, `fw input-policy accept` 1, `secret psk-files 1` 1, last success 71 h → 0; PSK scan positive control on the box: the pre-fix `…-lan` path → 1 file | – | closed |
 
@@ -140,21 +140,21 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| SF1 | m1 cli: trigger + flags, placement order (pool → local heavy → wait both, one waiting message), load ranking, `--host/--gpu/--no-sync` ⇒ `--pool`, stderr placement | unknown | | | open |
-| SF2 | m2 run: remote run sequence, rc passthrough, kill-on-signal incl. SIGKILL (watcher), per-(host, workdir) serialization, local runs never lock | unknown | | | open |
-| SF3 | m3 mirror: sync root, workdir naming, git-exact up/down sets, deletion pass, download `--update` no deletes, `.git` never returns, non-git mirror, linked worktree layout | unknown | | | open |
-| SF4 | m4 slots: heavy interop (paths, flock, owner line, emptied at exit), pool slot locks, admission vs loadavg | unknown | | | open |
-| SF5 | m5 pool: TOML `[[host]]` (`name`, `address`, `slots` default 2), `OFFLOAD_CONFIG` | unknown | | | open |
-| SF6 | m6 probe: load = rank only (1-min / nproc), GPU inventory | unknown | | | open |
-| SF7 | m7 remote: BatchMode + accept-new, ssh_config alias addresses | unknown | | | open |
-| SF8 | m8 ctr: K-predicates, switch `OFFLOAD_CTR`, `.devcontainer/Containerfile`, tag = content hash, host builds itself, `--check` = `RootFS.Layers` equality, LAN lanes only | unknown | | | open |
-| SF9 | m9 ledger: every `run` logged (start once a slot is held + end), fields per `Decisions`, log failure never touches the run | unknown | | | open |
-| SF10 | m10 shell: lookup = bash's (126/127) | unknown | | | open |
-| SF11 | m11 e2e: harness models the pool hosts `Decisions` describe (git + coreutils, ssh options) | unknown | | | open |
-| SF12 | m12 tools: install = one static build → controller + every pool host, sha256 per side; heavy separate script deployed alongside | unknown | | | open |
-| SF13 | m13 gate + CI: `Gate compute` + `CI gate` rulings, Gate CI on Ubuntu 26.04, pins weekly, Dependabot scope | unknown | | | open |
-| SF14 | m14 machines: idle task slice, accounts, LAN-only nftables, key-only ssh, LUKS/TPM/Secure Boot, compute posture, carried tools, security posture, Wi-Fi secret path, `check` at every deploy | unknown | | | open |
-| SF15 | `Decisions` binding no code module (trading + Codexify, instruction tiers, nixbox role, gate image placement, pool run environment, run memory) vs machines config, README, rules: each fits or is ruled n/a by name | unknown | | | open |
+| SF1 | m1 cli: trigger + flags, placement order (pool → local heavy → wait both, one waiting message), load ranking, `--host/--gpu/--no-sync` ⇒ `--pool`, stderr placement | finding | reviewer-6 `.agent/archive/review/cr-reviewer-6.md` + reviewer-1: hybrid `offload run` → 127 for a host-only tool; `--pool` control rc 0 → R14 | minor | open |
+| SF2 | m2 run: remote run sequence, rc passthrough, kill-on-signal incl. SIGKILL (watcher), per-(host, workdir) serialization, local runs never lock | pass | reviewer-6: upload→`bash -lc`→download, rc passthrough, watcher EOF, (host, workdir) lock, local unlocked | – | closed |
+| SF3 | m3 mirror: sync root, workdir naming, git-exact up/down sets, deletion pass, download `--update` no deletes, `.git` never returns, non-git mirror, linked worktree layout | pass | reviewer-6: sync root, workdir naming, U/D sets, prune, `--update`, plain mirror, worktree layout | – | closed |
+| SF4 | m4 slots: heavy interop (paths, flock, owner line, emptied at exit), pool slot locks, admission vs loadavg | finding | reviewer-6: Decision `<cmd %q>` vs S3 POSIX quoting (`remote.Join`) → R30 | minor | open |
+| SF5 | m5 pool: TOML `[[host]]` (`name`, `address`, `slots` default 2), `OFFLOAD_CONFIG` | pass | reviewer-6 | – | closed |
+| SF6 | m6 probe: load = rank only (1-min / nproc), GPU inventory | pass | reviewer-6 | – | closed |
+| SF7 | m7 remote: BatchMode + accept-new, ssh_config alias addresses | pass | reviewer-6 | – | closed |
+| SF8 | m8 ctr: K-predicates, switch `OFFLOAD_CTR`, `.devcontainer/Containerfile`, tag = content hash, host builds itself, `--check` = `RootFS.Layers` equality, LAN lanes only | finding | reviewer-6: K2/K7 lookup = R13 → R13 | minor | open |
+| SF9 | m9 ledger: every `run` logged (start once a slot is held + end), fields per `Decisions`, log failure never touches the run | finding | Decision `Run log` (command + offload status): end record can disagree with the exit status (R11); remote `cmd_rc` null though the status came back (R12) → R11, R12 | minor | open |
+| SF10 | m10 shell: lookup = bash's (126/127) | finding | reviewer-6 → R13 | minor | open |
+| SF11 | m11 e2e: harness models the pool hosts `Decisions` describe (git + coreutils, ssh options) | finding | reviewer-6 pass on fixtures; reviewer-1: the fake answers probes for any command naming `nproc`/`loadavg` → R22 | minor | open |
+| SF12 | m12 tools: install = one static build → controller + every pool host, sha256 per side; heavy separate script deployed alongside | pass | reviewer-6: one static build, heavy alongside, sums per side printed (comparison automation = R28 under C12) | – | closed |
+| SF13 | m13 gate + CI: `Gate compute` + `CI gate` rulings, Gate CI on Ubuntu 26.04, pins weekly, Dependabot scope | pass | reviewer-6 | – | closed |
+| SF14 | m14 machines: idle task slice, accounts, LAN-only nftables, key-only ssh, LUKS/TPM/Secure Boot, compute posture, carried tools, security posture, Wi-Fi secret path, `check` at every deploy | finding | reviewer-6: compute posture, idle slice, carried tools live = config; deploy check skipped off `switch`. MAIN security items: sshd key-only + root off, nftables LAN-only 22, PSK not in the closure, `wifi.env` 600 root (V14 live facts = `config.reviewed`, B18 `check: ok`); accounts `offload` wheel / `eturkes` unprivileged, LUKS TPM2 + PCR 15 measure, lanzaboote (config read) = Decisions → R26 | minor | open |
+| SF15 | `Decisions` binding no code module (trading + Codexify, instruction tiers, nixbox role, gate image placement, pool run environment, run memory) vs machines config, README, rules: each fits or is ruled n/a by name | finding | reviewer-6 pass on Codexify, tiers, nixbox role, image placement, run memory; MAIN: 2 dead clauses in those Decisions → R10 | minor | open |
 
 ## M — `CLAUDE.md` + `.claude/rules/` conformance: each clause that binds a tracked file (tool-decidable → its gate check runs + fires on a planted bad input; none → finding, fixed by wiring the check)
 
@@ -184,7 +184,7 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | M22 | Session flow: `deferred.md` = one entry + acceptance check each | finding | 6/6 entries carry `Accept:` today; no check (spec-lint reads spec.md alone) → R6 | minor | open |
 | M23 | Session flow: `spec-lint` in the gate command; archive holds finished work | pass | `spec-lint` = gate step (B1); `.agent/archive/` holds closed phases + ledgers | – | closed |
 | M24 | Session flow: `CLAUDE.md` + `.claude/agents/` = current template copies | finding | `CLAUDE.md` + 6 agents = template bytes (cmp); `.agent/spec-lint` behind the template (`copy-template --check` rc 1: one `# shellcheck disable=SC2016` line, template commit 7e8ad36 today) → R7 | minor | open |
-| M25 | `code.md` 1: contract = law; tests cite predicate ids | unknown | | | open |
+| M25 | `code.md` 1: contract = law; tests cite predicate ids | finding | reviewer-5: 21 tests cite no contract id; no check → R8 | minor | open |
 | M26 | `code.md` 2: watch/remote/boot bash-only, GNU tools, no controller paths; every variable `__…`; `<&0` + `trap - INT QUIT` kept | finding | all variables in `watch.bash`, `remote.bash`, `local.bash`, boot are `__…` (read); the guard `TestReviewer9RemoteKeepsCallerVariables` exports a fixed list of 15 names ⇒ a new unprefixed variable outside that list stays green → R9 | minor | open |
 | M27 | `code.md` 3: host deletion = `prune_one` + worktree `rm -f .git`; rsync `--delete` only inside `.git` / `<meta>/repo` | pass | `--delete` only in `UploadGit` (.git / `<meta>/repo`) + `UploadPlain` (Y7); host deletions = `prune_one`, worktree `rm -f .git`, meta files; U without `--delete` guarded by TestG5UploadTypeChangeKeepsIgnoredRemoteFile | – | closed |
 | M28 | `code.md` 4: init PID-1 guard, handlers (no `signal.Ignore`), podman `Setsid` + scope + no `INVOCATION_ID`, nonblocking control end, `CGO_ENABLED=0` on every shipping build | pass | init refuses unless PID 1 (TestK8ReviewInitRefusesOutsidePID1), handlers not `signal.Ignore` (`init.go:39`), podman `Setsid` + scope + no `INVOCATION_ID` (`ctr.go` podmanCommand), nonblocking control end (`controlPair`); `CGO_ENABLED=0` in `tools/install`, gate build, e2e TestMain, CodeQL build | – | closed |
@@ -208,7 +208,7 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | finding | sev | `file:line` + proof | fix | acceptance | state |
 |----|---------|-----|---------------------|-----|------------|-------|
-| R1 | `mutago` pin 2.10.37 behind its latest release 2.10.38 (B16) | minor | `.agent/tool` `mutago) v=2.10.37` · `.agent/pins` rc 1 `behind` | | `.agent/pins` rc 0 | open |
+| R1 | `mutago` pin 2.10.37 behind its latest release 2.10.38 (B16) | minor | `.agent/tool` `mutago) v=2.10.37` · `.agent/pins` rc 1 `behind` | b7fb72f | `.agent/pins` rc 0; Gate CI run 40278723558 (ci/cr-r1) success | closed |
 | R2 | stale ignore entries + stale artifact (M1, M6) | minor | `.gitignore:4` `__pycache__/` (+ `.venv/`, `*.pyc`); `.ruff_cache/` in the tree |  | `.gitignore` = paths this repo makes; `ls -a` shows no `.ruff_cache`; gate leaves `git status --porcelain` empty | open |
 | R3 | test step dominates the gate with no speed-up unit (M4) | minor | B1: test 46.2 s / 53.2 s; `internal/run` 0/27 parallel |  | a `deferred.md` row with an equal-strength acceptance check | open |
 | R4 | rule frontmatter unchecked (M14) | minor | gate steps: none reads `.claude/rules` |  | gate step reds a rule with an unquoted glob / unknown key (seed recorded) | open |
@@ -217,3 +217,31 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | R7 | `.agent/spec-lint` behind the template (M24) | minor | `copy-template --check` rc 1 |  | `copy-template --check` rc 0 | open |
 | R9 | `__` reservation guard covers a fixed name list (M26) | minor | `internal/run/reviewer9_test.go:104` `names := []string{"f", "d", …}` |  | guard derives names from the scripts; planted `x=1` in `remote.bash` → red | open |
 | R10 | `Decisions` carries 2 dead clauses (M21) | minor | `rg -Fn 'Controller copy deleted' .agent/spec.md`; `rg -Fn 'owner trims them' .agent/spec.md` |  | owner ruling → clauses pruned, spec-lint rc 0 | open |
+| R8 | 21 tests cite no contract id + no check (M25, V1–V11) | minor | reviewer-5 R5-F5 table (21 `func Test…` anchors) | | | open |
+| R11 | end record + exit status can disagree (J2): `End` re-reads `final()` after the write | major | `internal/ledger/ledger.go:228` `rc, _ := final()`; red TestR4J2EndRecordAndExitShareFinalStatus (wt/reviewer-4 7f9e791) + TestReviewR1J2EndStatusFrozenWithRecord (wt/reviewer-1 3b56e10), rc 1 rerun by MAIN | | | open |
+| R12 | remote `cmd_rc` dropped under cancellation though the status came back (J2) | minor | `internal/cli/cli.go:305` `if err != nil \|\| ctx.Err() != nil {`; red TestReviewR1J2CancellationKeepsReturnedCommandStatus rc 1 (`cmd_rc=<nil>`, want 17) | | | open |
+| R13 | explicit empty PATH → 127 where bash runs the cwd command (X2, K2, K7) | minor | `internal/shell/look.go:28` `filepath.SplitList(os.Getenv("PATH"))`; reds TestReviewR1X2EmptyPathMatchesBash, TestR4X2EmptyPATHSearchesCurrentDirectory, TestSF10EmptyPathMatchesBash rc 1 | | | open |
+| R14 | hybrid run refuses a command the pool host has and the controller lacks (Decision `Trigger`, L1) | major | `internal/cli/cli.go:240` `if !o.pool {`; reds TestSF1HybridRunsPoolOnlyCommand + TestReviewR1L2HybridCommandExistsOnlyOnHost rc 1 (127; `--pool` control rc 0) | | | open |
+| R15 | remote prune inputs (sort/comm/excludes) unchecked → CMD runs on a wrong prune (Y5, Y10) | major | `internal/run/remote.bash:64` `tail -z -n +3 "$__meta/upload" \| LC_ALL=C sort -z`; red TestCRR2Y10PruneSortFailurePreventsCommand rc 1 (rc 0, ran=true) | | | open |
+| R16 | `efi-entry` treats a failed listing as no stale entries | minor | `machines/nixbox/efi-entry:13` `stale=$("$efi" \| sed -n`; red TestCRR2EFIReadFailureStopsBeforeChanges rc 1 | | | open |
+| R17 | `check` collectors fail open: a failing `systemctl --failed` or closure scan reads as clean | minor | `machines/nixbox/check:37` `systemctl --failed --no-legend --plain \| awk`; `:62` `xargs grep -rlF -f "$f" 2>/dev/null \| wc -l` | | | open |
+| R18 | `--check` layer list truncated by a ≥ 64 KiB unframed line → false `same` (K10) | major | `internal/cli/ctr.go:228` `bufio.NewScanner(strings.NewReader(out))`; red TestReviewR1K10LongNoiseCannotTruncateLayers rc 1 | | | open |
+| R19 | relative `core.excludesFile` read from the invocation cwd, not the root git used (Y5) | minor | `internal/mirror/mirror.go:233` `data, err := os.ReadFile(path)`; red TestCRR2Y5RelativeExcludesFromSubdirectory rc 1 | | | open |
+| R20 | `status` counts a slot open error as held; owner text read blocks on a FIFO + follows links (R2, S15 class) | minor | `internal/slots/slots.go:155` `f, held, err := tryLock(p)`, `:160` `os.ReadFile(p + ".owner")`; red TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder rc 1 | | | open |
+| R21 | exported `SHELLOPTS` (errexit…) changes the watcher's control flow (C3, X1) | minor | `internal/run/watch.bash:86` `pkill -TERM -s "$__p" 2>/dev/null`; red TestReviewR1X2ExportedErrexitPreservesStatus rc 1 (`true` → 1) | | | open |
+| R22 | fake ssh serves the probe answer to any command naming `nproc`/`loadavg` | minor | `test/e2e/testdata/ssh:37` `*loadavg*\|*nproc*)`; red TestReviewR1HarnessProbeWordsStayCommandData rc 1 | | | open |
+| R23 | full-fake podman helper needs a real podman on PATH | minor | `test/e2e/ctr_test.go:654` `podmanPath, err := exec.LookPath("podman")`; red TestR3FullFakePodmanNeedsNoInstalledPodman rc 1 | | | open |
+| R24 | duplicate scope prerequisite helper + dead ctrhelper mode | minor | `rg -Fn 't.Fatal("OFFLOAD_REQUIRE_SCOPE is set' internal/run/run_test.go test/e2e/execution_test.go` → 2; `ctrhelper/main.go:41` `case "id":` (0 callers) | | | open |
+| R25 | `ctr --check` SIGKILLs its child `offload run`s on a signal → start records without an end (J2, K10) | minor | `internal/cli/ctr.go:189` `exec.CommandContext(ctx, self, "run"` (default Cancel = Kill) | | | open |
+| R26 | `deploy` runs `check` after `switch` alone (Decision: at every deploy) | minor | `machines/nixbox/deploy:10` `[ "${1:-switch}" != switch ] \|\| "$here/check"`; red TestSF14DeployChecksNonSwitch rc 1 (test/boot/build) | | | open |
+| R27 | controller scripts' ssh options diverge: deploy + tpm-bind lack BatchMode/forwarding off, install lacks accept-new | minor | `machines/nixbox/deploy:9` `ssh "offload@$ip"`; `tpm-bind:19` `ssh "offload@$ip"`; `tools/install:29` no `StrictHostKeyChecking` | | | open |
+| R28 | `tools/install` leaves the per-side sha256 comparison to the reader | minor | `tools/install:4` `Prints the sha256 each side reports per file; they must match.` | | | open |
+| R29 | text vs behavior: usage pool tiers, C3 worktree clause, `--no-sync` text, `code.md` `.transport-fail`, 2 stale comments, L2 mechanism prose | minor | reviewer-4 R4-F1/F2/F5/F6/F7 + R4-R1 anchors (rematched at 41fd3c0) | | | open |
+| R30 | Decision `heavy interop` says `<cmd %q>`; S3 + code use POSIX single quotes | minor | `rg -Fn '<cmd %q>' .agent/spec.md` (owner ruling) | | | open |
+| R31 | cli unit tests lack verification credit | major | reviewer-5 R5-F1 (4 tests) | | | open |
+| R32 | run tests lack verification credit | major | reviewer-5 R5-F2 (9 tests) | | | open |
+| R33 | shell lookup test lacks verification credit | minor | reviewer-5 R5-F3 | | | open |
+| R34 | pooladdrs test lacks verification credit | minor | reviewer-5 R5-F4 | | | open |
+| R35 | 12 tests credited by selected plants alone (no default-operator sweep of their Go files) | minor | reviewer-5 R5-F6 | | | open |
+| R36 | survivors ruled by the test author alone: 13197df (13, ledger), 85e2c60 (slots MakeDirs) | minor | reviewer-5 R5-F7 + E1 | | | open |
+| R37 | environment-conditional skips (no user manager / no podman) carry no deferred row + owner approval | minor | reviewer-5 E2: `requireScope`, `requirePodman`, `locks_test.go:63` (owner ruling) | | | open |
