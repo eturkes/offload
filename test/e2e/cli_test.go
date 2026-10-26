@@ -395,3 +395,15 @@ func TestL1MissingLocalCommandUsesThePoolAlone(t *testing.T) {
 		assertAbsent(t, filepath.Join(s.runtime, "heavy", "slot1"))
 	})
 }
+
+// C3 + C4: an unknown flag = rc 2 with offload's `offload: ` reason + usage; the flag package's own
+// unprefixed `Usage of run:` output stays off stderr.
+func TestC4UnknownFlagReasonIsOffloads(t *testing.T) {
+	t.Parallel()
+	s := newSandbox(t, false)
+	r := s.run("run", "--bogus", "--", "true")
+	r.requireCode(t, 2)
+	if !strings.HasPrefix(r.stderr, "offload: flag provided but not defined: -bogus\n") || strings.Contains(r.stderr, "Usage of") {
+		t.Errorf("stderr %q", r.stderr)
+	}
+}

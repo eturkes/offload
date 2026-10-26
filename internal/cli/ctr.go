@@ -232,7 +232,6 @@ func ctrCheck(stdout, stderr io.Writer) int {
 // early and drop the layers after it.
 func parseCheck(out, nonce string) (sum string, layers []string, ok bool) {
 	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSuffix(line, "\r") // as Scanner's ScanLines
 		if v, found := strings.CutPrefix(line, "offload-check "+nonce+" "); found {
 			sum, ok = v, true
 		} else if v, found := strings.CutPrefix(line, "layer "+nonce+" "); found {

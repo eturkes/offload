@@ -66,12 +66,24 @@ func TestMultiplex(t *testing.T) { // X5
 	if fi, statErr := os.Stat(dir); err != nil || !slices.Equal(opts, want) || statErr != nil || fi.Mode().Perm() != 0o700 {
 		t.Fatalf("opts %q err %v dir %v %v", opts, err, fi, statErr)
 	}
-	at := short + "/" + strings.Repeat("r", maxControlDir-len(short+"/offload/ssh")-1) // dir exactly at the bound
-	if len(filepath.Join(at, "offload", "ssh")) != maxControlDir {
+	const bound = 49                                                           // X5: a dir past 49 bytes connects plainly (the contract's number, not the constant)
+	at := short + "/" + strings.Repeat("r", bound-len(short+"/offload/ssh")-1) // dir exactly at the bound
+	if len(filepath.Join(at, "offload", "ssh")) != bound {
 		t.Fatalf("bound fixture is %d bytes", len(filepath.Join(at, "offload", "ssh")))
 	}
 	if _, err := Multiplex(env(at)); err != nil {
-		t.Errorf("dir at the %d-byte bound refused: %v", maxControlDir, err)
+		t.Errorf("dir at the %d-byte bound refused: %v", bound, err)
+	}
+	// X5: a socket dir that cannot be created (a file where `offload` goes) → refused, said once.
+	blocked := filepath.Join(short, "blocked")
+	if err := os.MkdirAll(blocked, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(blocked, "offload"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if opts, err := Multiplex(env(blocked)); err == nil || opts != nil {
+		t.Errorf("uncreatable socket dir: opts %q err %v, want a refusal", opts, err)
 	}
 	for name, rt := range map[string]string{
 		"unset": "", "space": short + "/a b", "percent": short + "/a%h", "one past the bound": at + "x",

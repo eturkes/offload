@@ -67,3 +67,37 @@ func TestParseCheckTakesOnlyNonceFramedLines(t *testing.T) { // K10
 		t.Fatal("no offload-check line, yet ok")
 	}
 }
+
+// C1 + C3 + C4: `status` takes `-h`/`--help` (usage on stdout, rc 0) and no other argument (rc 2 +
+// the reason); an unknown command or flag = rc 2 with an `offload: ` reason, never the flag package's
+// own unprefixed lines.
+func TestUsageErrorsOfStatusCommandsAndFlags(t *testing.T) {
+	t.Setenv("OFFLOAD_CONFIG", "/nonexistent/pool.toml") // a status that runs would fail with rc 2 too: the reason tells
+	for _, c := range []struct {
+		args           []string
+		rc             int
+		stdout, stderr string
+	}{
+		{[]string{"status", "-h"}, 0, "Usage:", ""},
+		{[]string{"status", "--help"}, 0, "Usage:", ""},
+		{[]string{"status", "extra"}, ExitUsage, "", "offload: status takes no arguments\n"},
+		{[]string{"bogus"}, ExitUsage, "", "offload: unknown command \"bogus\"\n"},
+		{[]string{"run", "--bogus", "--", "true"}, ExitUsage, "", "offload: flag provided but not defined: -bogus\n\nUsage:"},
+	} {
+		var out, errOut bytes.Buffer
+		rc := Main(c.args, &out, &errOut)
+		if rc != c.rc || !strings.HasPrefix(out.String(), c.stdout) || !strings.HasPrefix(errOut.String(), c.stderr) ||
+			(c.stdout != "" && errOut.Len() != 0) || strings.Contains(errOut.String(), "Usage of") {
+			t.Errorf("%q: rc %d stdout %.40q stderr %.120q", c.args, rc, out.String(), errOut.String())
+		}
+	}
+}
+
+// K8: `__ctr-init` reaches the container init (outside a container it refuses: rc 125 + why), not the
+// unknown-command path.
+func TestCtrInitIsDispatched(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if rc := Main([]string{"__ctr-init", "true"}, &out, &errOut); rc != 125 || !strings.Contains(errOut.String(), "__ctr-init runs inside") {
+		t.Fatalf("rc %d stderr %q", rc, errOut.String())
+	}
+}
