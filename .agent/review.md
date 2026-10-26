@@ -8,25 +8,25 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
-| B1 | full gate `offload run -- .agent/gate` on 41fd3c0: rc 0, per-step rc + seconds, 10 slowest tests | unknown | | | open |
-| B2 | fast gate `.agent/gate fast` (+ one `[pkg…]` form) | unknown | | | open |
-| B3 | GitHub: latest `Gate`, `CodeQL`, `pins` runs on `main` green; open code-scanning + Dependabot alerts | unknown | | | open |
-| B4 | `offload status` (controller slots + every pool host row) | unknown | | | open |
-| B5 | `offload run -- <cmd>` default placement: pool first, stderr names placement, rc passed through (0 + nonzero) | unknown | | | open |
-| B6 | `offload run --local -- <cmd>` (heavy slot, owner line visible to `heavy --status`) | unknown | | | open |
-| B7 | `offload run --pool` + `--host nixbox` + unknown `--host` | unknown | | | open |
-| B8 | `offload run --gpu` (no NVIDIA pool host) | unknown | | | open |
-| B9 | `offload run --no-sync` | unknown | | | open |
-| B10 | `offload run --get PATH` (ignored path fetched back) | unknown | | | open |
-| B11 | run from a subdir + from a linked git worktree + from a non-git dir | unknown | | | open |
-| B12 | `offload ctr` fixture = a non-git scratch dir outside the repo (sync root = cwd) holding a minimal `.devcontainer/Containerfile`: `offload ctr -- <cmd>` with `OFFLOAD_CTR` set + unset, `--layers`, `--check`, and the consumer form `offload run -- offload ctr -- <cmd>` | unknown | | | open |
-| B13 | run log: start + end records for B5–B11 runs in `~/.local/state/offload/runs.jsonl` (README `See past runs` recipe) | unknown | | | open |
-| B14 | `heavy` (`heavy --status`, `heavy <cmd>`) beside offload's local slots | unknown | | | open |
+| B1 | full gate `offload run -- .agent/gate` on 41fd3c0: rc 0, per-step rc + seconds, 10 slowest tests | pass | `offload run -- .agent/gate` on 41fd3c0 (nixbox slot 1/2): rc 0, 13 steps rc 0 (test 46.2 s of 53.2 s run; next fmt/lint/vuln ≤ 2.6 s), 475 tests, 10 slowest printed (max TestCancelEndsWholeSession 14.3 s); run log `run` 53.21 s | – | closed |
+| B2 | fast gate `.agent/gate fast` (+ one `[pkg…]` form) | pass | `.agent/gate fast` rc 0 (controller, uncached: test 111.7 s under 6 reviewers' load); `.agent/gate fast ./internal/pool/` rc 0 (test 0.7 s) | – | closed |
+| B3 | GitHub: latest `Gate`, `CodeQL`, `pins` runs on `main` green; open code-scanning + Dependabot alerts | pass | `gh run list` main: Gate + CodeQL success on 41fd3c0 (+ e071c9a, ebfb7b4); Pins: no `main` run yet (schedule Tue, last dispatch 6040e73 success); open alerts: code-scanning 0, Dependabot 0, secret-scanning 0; origin/main = 41fd3c0 | – | closed |
+| B4 | `offload status` (controller slots + every pool host row) | pass | `offload status` rc 0: `local heavy slots: 0/2 held` + nixbox row up 1/2 8 CPUs load/busy/mem/GPUs | – | closed |
+| B5 | `offload run -- <cmd>` default placement: pool first, stderr names placement, rc passed through (0 + nonzero) | pass | git fixture `/tmp/offload-cr/proj`: `offload: nixbox slot 1/2 (8 CPUs, 79% busy) → ~/offload/proj-5a649768`, `exit 3` → rc 3, `uname -n` → nixbox rc 0 | – | closed |
+| B6 | `offload run --local -- <cmd>` (heavy slot, owner line visible to `heavy --status`) | pass | `--local`: `offload: local slot 1/2`, `heavy --status` + `offload status` during it list `slot 1: <pid> since 14:38:49: sh -c 'sleep 3; …'`; rc 0 | – | closed |
+| B7 | `offload run --pool` + `--host nixbox` + unknown `--host` | pass | `--pool`, `--host nixbox` → nixbox rc 0; `--host nope` → `no host named nope in …/pool.toml` rc 2 | – | closed |
+| B8 | `offload run --gpu` (no NVIDIA pool host) | pass | `--gpu` (nixbox 0 GPUs, up) → `offload: no pool host has an NVIDIA GPU` rc 125 (L4) | – | closed |
+| B9 | `offload run --no-sync` | pass | `--no-sync -- sh -c 'pwd; ls'` → existing workdir, rc 0, run log upload/download null | – | closed |
+| B10 | `offload run --get PATH` (ignored path fetched back) | pass | `--get out/` (ignored `out/`) → local `out/res` = `res`, rc 0 | – | closed |
+| B11 | run from a subdir + from a linked git worktree + from a non-git dir | pass | subdir `sub` → remote cwd `…/proj-5a649768/sub`; linked worktree → `~/offload/proj-wt-a39c9572`, `A  w.txt` staged + branch `wt` seen; plain dir → rsync mirror, ignored `ign/` stayed, `made.txt` came back; usage forms (`--local --pool`, empty) rc 2, missing command rc 127 | – | closed |
+| B12 | `offload ctr` fixture = a non-git scratch dir outside the repo (sync root = cwd) holding a minimal `.devcontainer/Containerfile`: `offload ctr -- <cmd>` with `OFFLOAD_CTR` set + unset, `--layers`, `--check`, and the consumer form `offload run -- offload ctr -- <cmd>` | pass | non-git `/tmp/offload-cr/img` (`FROM scratch` + `COPY hello /hello`, static `hello`): OFFLOAD_CTR=1 builds `localhost/offload-ctr:1ebf291404d18ece`, `./hello 7` → pid 7 HOME `/.offload/home` rc 7; `/hello 0` rc 0; =0 / unset → native pid, rc 5/6; =2 → rc 2; missing → 127; `--layers` → 1 digest; `--check` → `nixbox: same (1 layers)` rc 0 (nixbox built it); `offload run -- offload ctr -- ./hello 4` → rc 4 in nixbox's image; `--layers --check` rc 2; no definition → rc 2 | – | closed |
+| B13 | run log: start + end records for B5–B11 runs in `~/.local/state/offload/runs.jsonl` (README `See past runs` recipe) | pass | runs.jsonl: start+end per placed run (14), end-only for never-placed rc 2/125/127 runs, nothing for usage errors (J1); README recipes (last 10, rc 125) rc 0 with expected fields | – | closed |
+| B14 | `heavy` (`heavy --status`, `heavy <cmd>`) beside offload's local slots | pass | `heavy sh -c '…; exit 4'` rc 4; `heavy --status` rc 0; `heavy` → usage rc 2; HEAVY_SLOTS=x → rc 2; offload with HEAVY_SLOTS=0 → rc 2 (heavy's message) | – | closed |
 | B15 | `tools/install` (at close when a shipped change landed) + `offload ctr --check` after it | unknown | | | open |
-| B16 | `.agent/pins` | unknown | | | open |
-| B17 | `pool.example.toml` parses (`OFFLOAD_CONFIG=pool.example.toml offload status`) | unknown | | | open |
-| B18 | `machines/nixbox/deploy` (+ its `check`) | unknown | | | open |
-| B19 | `machines/nixbox/{install,tpm-bind}`, installer ISO, firmware: driven where non-destructive (usage/arg paths, evaluation); destructive runs named `not run` | unknown | | | open |
+| B16 | `.agent/pins` | finding | `.agent/pins` rc 1: `mutago | 2.10.37 | 2.10.38 | behind` (other 12 pins current) → R1 | minor | open |
+| B17 | `pool.example.toml` parses (`OFFLOAD_CONFIG=pool.example.toml offload status`) | pass | `OFFLOAD_CONFIG=pool.example.toml offload status` rc 0, nixbox row up | – | closed |
+| B18 | `machines/nixbox/deploy` (+ its `check`) | pass | box `/etc/nixos/*.nix` = 41fd3c0 bytes (cmp ×8); `machines/nixbox/deploy dry-activate` rc 0, built config = `/run/current-system` (qg85bjd6…, nothing to activate); `machines/nixbox/check` → `check: ok` rc 0. A real `switch` runs only if a `machines/` change lands | – | closed |
+| B19 | `machines/nixbox/{install,tpm-bind}`, installer ISO, firmware: driven where non-destructive (usage/arg paths, evaluation); destructive runs named `not run` | pass | `efi-entry` dry run on the box (`DRY_RUN=1`) rc 0: delete Boot0000 + create one `Linux Boot Manager`; installer ISO evaluates on nixbox with dummy `wifi.env` + `installer_host_key` (`nix-instantiate` → `…-nixos-minimal-26.05….iso.drv`, rc 0); usage paths: `install` (no disk) rc 1 `usage: install /dev/<disk>`, `tpm-bind --bogus` rc 2, `check --bogus` rc 2. Not run (destructive / boot-security state): `install /dev/nvme0n1` (wipes the disk), `tpm-bind` (re-seals LUKS), ISO build, firmware update | – | closed |
 
 ## C — Correctness (`Engineering` code diff lens): each function with its callers + callees; guards + anchors; classic pitfalls of the language (Go: error shadowing, nil maps, defer in loops, goroutine/ctx/fd leaks, races, integer conversion, close errors; bash: quoting, `set -e` traps, subshells, pipefail; Nix: option semantics); wrappers route to the wrapped instance; defaults intended; test setup ↔ teardown symmetric
 
@@ -133,8 +133,8 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | V10 | m10 shell | unknown | | | open |
 | V11 | m11 e2e harness self-tests (fake ssh X5 refusal, `-n`, markers) | unknown | | | open |
 | V12 | m12 tools (`pooladdrs` test; `heavy` + `install` coverage) | unknown | | | open |
-| V13 | m13 gate: every step fires on its `gate-checks.md` seed (replanted) | unknown | | | open |
-| V14 | m14 machines: `check` fires on every `machines.md` planted fact | unknown | | | open |
+| V13 | m13 gate: every step fires on its `gate-checks.md` seed (replanted) | pass | replanted in a disposable worktree with each step's own gate command (`/tmp/offload-cr/src/plant.sh`): fmt 1, lint 1, tidy 1, test 1, build 1 (vet + race on the same file 0/0), vuln 3, secrets 1 (clean history 0), actionlint 1, zizmor 14, shell 1 (file listed by the gate's shebang scan), nix 1, statix 1 (`[10] Warning: Found empty pattern`), deadnix 1 (clean tree statix/deadnix 0/0), spec-lint 1, `.agent/tool` wrong sha256 → `tool: sha256 mismatch … refusing it` rc 2; `.agent/pins`: go-version 1.27.2 → `differs from go.mod` rc 1, `runs-on: ubuntu-22.04` → `behind` rc 1, unknown repo → `lookup failed` rc 2 (go-version + runs-on rc confounded by R1's live `behind` → rerun at R1's fix); extra: bare `//nolint` → nolintlint rc 1 | – | closed |
+| V14 | m14 machines: `check` fires on every `machines.md` planted fact | pass | `check --dump` (46 facts) → `--facts`: live 0 `check: ok`; + `wrapper pkexec /bin/sh` 1, + `wrapper ping -` 1, + `wrapper doas ?` 1, − `wrapper umount -` 1, upgrades → `done <now−10 d>` 1 (240 h), + `failed <now−1 h>` 1, no upgrade 1, + `failed foo.service` 1, `sshd passwordauthentication yes` 1, + `listen tcp 0.0.0.0:8080 python3` 1, `fw temp-ports 1` 1, `fw input-policy accept` 1, `secret psk-files 1` 1, last success 71 h → 0; PSK scan positive control on the box: the pre-fix `…-lan` path → 1 file | – | closed |
 
 ## SF — spec fit: behavior vs `Intent` + `Decisions`
 
@@ -208,3 +208,4 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 
 | id | finding | sev | `file:line` + proof | fix | acceptance | state |
 |----|---------|-----|---------------------|-----|------------|-------|
+| R1 | `mutago` pin 2.10.37 behind its latest release 2.10.38 (B16) | minor | `.agent/tool` `mutago) v=2.10.37` · `.agent/pins` rc 1 `behind` | | `.agent/pins` rc 0 | open |
