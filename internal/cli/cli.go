@@ -301,10 +301,14 @@ func remoteRun(ctx context.Context, o options, t mirror.Tree, target remote.Targ
 	ran := runlog.Time(ledger.Command)
 	rc, err := r.Run(ctx)
 	ran()
+	// Under a signal Run skips X6's lookup ⇒ 125/255 stay ambiguous; any other status is the
+	// command's own, returned through its torn-down watcher (J2).
+	if err == nil && (ctx.Err() == nil || (rc != ExitFailure && rc != 255)) {
+		runlog.CommandStatus(rc)
+	}
 	if err != nil || ctx.Err() != nil {
 		return rc, err
 	}
-	runlog.CommandStatus(rc)
 	if r.Mode == "nosync" && len(gets) == 0 {
 		return rc, nil
 	}

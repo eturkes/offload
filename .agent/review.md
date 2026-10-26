@@ -43,7 +43,7 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | C9 | m9 ledger | finding | reviewer-1 + reviewer-4 independently: `End` returns a second `final()` read → R11 | minor | open |
 | C10 | m10 shell | finding | reviewer-1, -4, -6 independently: `filepath.SplitList("")` = no entries; bash searches cwd → R13 | minor | open |
 | C11 | m11 e2e harness | finding | reviewer-1: fake ssh `*loadavg*|*nproc*` matches command words; reviewer-3: `fakePodman` resolves real podman before writing a full fake → R22, R23 | minor | open |
-| C12 | m12 tools | finding | `tools/heavy` + `pooladdrs` pass (reviewer-2); MAIN: `tools/install` prints sums, never compares them; its ssh lacks `StrictHostKeyChecking=accept-new` (reviewer-6 register) → R27, R28 | minor | open |
+| C12 | m12 tools | finding | `tools/heavy` + `pooladdrs` pass (reviewer-2); MAIN: `tools/install` prints sums, never compares them; its ssh lacks `StrictHostKeyChecking=accept-new` (MAIN, from reviewer-6's unassessed lead) → R27, R28 | minor | open |
 | C13 | m13 gate | pass | reviewer-2: step rc captured per step, aggregate rc; `.agent/tool` digest refusal; pins rc precedence; plant revert | – | closed |
 | C14 | m14 machines | finding | reviewer-2: `efi-entry` listing rc masked by sed; collector pipelines fail open (MAIN rules); reviewer-6: deploy runs `check` after `switch` alone; reviewer-3: deploy/tpm-bind ssh without forwarding/batch options → R16, R17, R26, R27 | minor | open |
 
@@ -122,13 +122,13 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | id | check | verdict | evidence / ruling | sev | state |
 |----|-------|---------|-------------------|-----|-------|
 | V1 | m1 cli (`internal/cli` + e2e `cli_test.go`) | finding | reviewer-5 `.agent/archive/review/cr-reviewer-5.md`: 4 cli unit tests without red or mutation record → R31, R8 | minor | open |
-| V2 | m2 run (unit + e2e execution/close/failures/locks) | finding | reviewer-5: 9 run tests uncredited, 7 selected-plant-only; environment skips (`requireScope`) without a deferred row + approval → R32, R35, R37, R8 | minor | open |
+| V2 | m2 run (unit + e2e execution/close/failures/locks) | finding | reviewer-5: 9 run tests uncredited, 7 selected-plant-only (environment skips = accepted prior rulings, R37) → R32, R35, R8 | minor | open |
 | V3 | m3 mirror (unit + mutation + e2e sync) | finding | reviewer-5: 2 selected-plant-only (`TestY5GlobalExcludesReachTheHost`, `TestReviewer9ExcludesRecordIsNotAnUploadPath`) → R35, R8 | minor | open |
 | V4 | m4 slots | finding | reviewer-5 E1: 85e2c60 MakeDirs survivors without an independent ruling → R36, R8 | minor | open |
 | V5 | m5 pool | pass | reviewer-5: 6 tests, 5 mutation + 1 red | – | closed |
 | V6 | m6 probe | pass | reviewer-5: 6 tests, 5 mutation + 1 red | – | closed |
 | V7 | m7 remote | finding | reviewer-5: `TestTargetCarriesOptions`, `TestMultiplex`, `TestReviewer9MultiplexFallbackOnceAcrossHosts` selected-plant-only (mutago finds no source in `internal/remote`: `ssh.go` has no `ssh_test.go`) → R35, R8 | minor | open |
-| V8 | m8 ctr (unit + real-podman e2e) | finding | reviewer-5: 80 tests credited; `requirePodman` local skip without a deferred row + approval → R37, R8 | minor | open |
+| V8 | m8 ctr (unit + real-podman e2e) | finding | reviewer-5: 80 tests credited (`requirePodman` skip = accepted prior ruling, R37) → R8 | minor | open |
 | V9 | m9 ledger (unit + e2e `ledger_test.go`) | finding | reviewer-5: 13197df's 13 survivors ruled by the test author alone → R36 | minor | open |
 | V10 | m10 shell | finding | reviewer-5: `TestLookMatchesBash` uncredited → R33, R8 | minor | open |
 | V11 | m11 e2e harness self-tests (fake ssh X5 refusal, `-n`, markers) | finding | reviewer-5: harness self-tests credited; ids missing on review tests → R8 | minor | open |
@@ -244,4 +244,4 @@ Modules (rows = lens × module): m1 cli = `cmd/offload`, `internal/cli` · m2 ru
 | R34 | pooladdrs test lacks verification credit | minor | reviewer-5 R5-F4 | | | open |
 | R35 | 12 tests credited by selected plants alone (no default-operator sweep of their Go files) | minor | reviewer-5 R5-F6 | | | open |
 | R36 | survivors ruled by the test author alone: 13197df (13, ledger), 85e2c60 (slots MakeDirs) | minor | reviewer-5 R5-F7 + E1 | | | open |
-| R37 | environment-conditional skips (no user manager / no podman) carry no deferred row + owner approval | minor | reviewer-5 E2: `requireScope`, `requirePodman`, `locks_test.go:63` (owner ruling) | | | open |
+| R37 | environment-conditional skips (no user manager / no podman) carry no deferred row + owner approval | – | reviewer-5 E2 (register, unconfirmed waiver text) | accepted | prior rulings hold: ctr-reviewer-4 V4 (pool-run-environment ledger: podman skips fatal under `OFFLOAD_REQUIRE_PODMAN`, prebuild failure always fatal) + reviewer-8 K8 (`OFFLOAD_REQUIRE_SCOPE` fatal, CI sets both); owner confirmation rides the closing question | closed |

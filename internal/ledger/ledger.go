@@ -210,14 +210,18 @@ func (r *Run) Time(phase Phase) func() {
 func (r *Run) CommandStatus(rc int) { r.rec.CmdRC = &rc }
 
 // End appends the end record and returns offload's exit status. final (rc; signal = "" unless HUP,
-// INT or TERM ended offload) builds the record once its lock is held and gives the status after the
-// write, so a signal arriving during the wait counts in both (C3).
+// INT or TERM ended offload) is read once the log's lock is held, and that status is both the
+// record's and the one returned (J2): a signal during the lock wait counts in both, a later one in
+// neither. A write that never got its lock returns final's status as of then (J4).
 func (r *Run) End(final func() (rc int, signal string)) int {
 	if len(r.partial) > 0 {
 		r.rec.Messages, r.partial = append(r.rec.Messages, string(r.partial)), nil
 	}
+	rc, fixed := 0, false
 	r.write(func() any {
-		rc, sig := final()
+		var sig string
+		rc, sig = final()
+		fixed = true
 		rec := r.rec
 		rec.Event, rec.End, rec.RC = "end", stamp(time.Now()), rc
 		if sig != "" {
@@ -225,7 +229,9 @@ func (r *Run) End(final func() (rc int, signal string)) int {
 		}
 		return rec
 	})
-	rc, _ := final()
+	if !fixed {
+		rc, _ = final()
+	}
 	return rc
 }
 
