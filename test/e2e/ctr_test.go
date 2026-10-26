@@ -651,11 +651,14 @@ func TestK3ColonInPathIs125(t *testing.T) {
 // real podman for the rest.
 func fakePodman(t *testing.T, s *sandbox, cases string) {
 	t.Helper()
-	podmanPath, err := exec.LookPath("podman")
-	must(t, err)
+	// Cases ending in a catch-all never fall through ⇒ those tests need no installed podman.
+	fallback := "echo 'fake podman: no real podman to fall through to' >&2; exit 127"
+	if podmanPath, err := exec.LookPath("podman"); err == nil {
+		fallback = "exec " + podmanPath + ` "$@"`
+	}
 	dir := filepath.Join(s.base, "fakepodman")
 	must(t, os.MkdirAll(dir, 0o700))
-	must(t, os.WriteFile(filepath.Join(dir, "podman"), []byte("#!/bin/bash\ncase \"$1 $2\" in\n"+cases+"\nesac\nexec "+podmanPath+" \"$@\"\n"), 0o755))
+	must(t, os.WriteFile(filepath.Join(dir, "podman"), []byte("#!/bin/bash\ncase \"$1 $2\" in\n"+cases+"\nesac\n"+fallback+"\n"), 0o755))
 	s.setenv("PATH", dir+":"+filepath.Join(s.base, "bin")+":"+os.Getenv("PATH"))
 }
 

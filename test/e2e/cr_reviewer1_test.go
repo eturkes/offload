@@ -81,3 +81,13 @@ func TestReviewR1X2ExportedErrexitPreservesStatus(t *testing.T) {
 	s.setenv("SHELLOPTS", "errexit")
 	s.run("run", "--local", "--", "true").requireCode(t, 0)
 }
+
+// Harness: only the probe script is a probe, not an arbitrary CMD word containing its tokens.
+func TestReviewR1HarnessProbeWordsStayCommandData(t *testing.T) {
+	s := newSandbox(t, false)
+	r := s.run("run", "--no-sync", "--", "printf", "%s", "literal-nproc")
+	r.requireCode(t, 0)
+	if r.stdout != "literal-nproc" {
+		t.Fatalf("fake ssh returned probe fields instead of executing printf: stdout=%q", r.stdout)
+	}
+}

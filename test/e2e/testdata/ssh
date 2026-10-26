@@ -32,8 +32,9 @@ if [[ ! -d $home ]]; then
 fi
 printf '%s\0' "${original[@]}" > "$home/.ssh-call-$$"
 command=$*
+# The probe = probe.Script exactly (a prefix match): command words naming nproc stay command data.
 case "$command" in
-    *loadavg*|*nproc*)
+    "nproc; cut -d' ' -f1 /proc/loadavg;"*)
         if [[ -f $home/.probe-hang ]]; then
             exec sleep 30
         fi
