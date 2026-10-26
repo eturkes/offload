@@ -25,6 +25,7 @@ const (
 
 type placer struct {
 	opts    options
+	local   bool // local heavy slots eligible (L1)
 	heavy   slots.Dir
 	hosts   []pool.Host
 	targets map[string]remote.Target
@@ -68,7 +69,7 @@ func (p *placer) place(ctx context.Context) (placement, error) {
 		if ctx.Err() != nil {
 			return placement{}, ctx.Err()
 		}
-		if !p.opts.pool {
+		if p.local {
 			s, ok, err := p.heavy.TryAcquire(ownerText(p.opts.argv))
 			if err != nil || ok {
 				return placement{local: s}, err
@@ -179,7 +180,7 @@ func (p *placer) noGPUAnywhere() bool {
 
 func (p *placer) occupancy() string {
 	var parts []string
-	if !p.opts.pool {
+	if p.local {
 		parts = append(parts, fmt.Sprintf("local %d/%d held", len(p.heavy.Holders()), p.heavy.Total))
 	}
 	for _, h := range p.hosts {

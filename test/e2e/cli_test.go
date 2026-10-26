@@ -366,3 +366,32 @@ func TestL4NoGPU(t *testing.T) {
 	r.requireCode(t, 125)
 	assertAbsent(t, filepath.Join(s.root, "must-not-run"), filepath.Join(s.workdir("alpha"), "must-not-run"), filepath.Join(s.workdir("beta"), "must-not-run"))
 }
+
+// L1 + X2: a command missing here keeps a hybrid run off the local slots alone — no pool → 127 before
+// any slot, a busy pool → the run waits for the pool and its waiting line names no local slots.
+func TestL1MissingLocalCommandUsesThePoolAlone(t *testing.T) {
+	t.Parallel()
+	t.Run("no-pool-file", func(t *testing.T) {
+		s := newSandbox(t, false)
+		must(t, os.Remove(s.config))
+		r := s.run("run", "--", "offload-e2e-command-that-does-not-exist")
+		r.requireCode(t, 127)
+		requireContains(t, r.stderr, "command not found")
+		assertAbsent(t, filepath.Join(s.runtime, "heavy", "slot1"), filepath.Join(s.runtime, "heavy", "slot2"))
+	})
+	t.Run("busy-pool", func(t *testing.T) {
+		s := newSandbox(t, false)
+		s.holdSlot("alpha", 1)
+		s.holdSlot("alpha", 2)
+		p := s.start("run", "--", "offload-e2e-command-that-does-not-exist")
+		p.await("waiting message", func() bool { return strings.Contains(p.output().stderr, "offload: waiting") })
+		p.signal(syscall.SIGTERM)
+		r := p.wait(3 * time.Second)
+		r.requireCode(t, 143)
+		requireContains(t, r.stderr, "command not found; pool hosts only", "alpha 2/2 held")
+		if strings.Contains(r.stderr, "local ") {
+			t.Errorf("waiting line names local slots though the command cannot run here: %q", r.stderr)
+		}
+		assertAbsent(t, filepath.Join(s.runtime, "heavy", "slot1"))
+	})
+}

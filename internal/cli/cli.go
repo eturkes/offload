@@ -237,9 +237,16 @@ func runLogged(ctx context.Context, signalStatus func() int, o options, cwd stri
 			return ExitUsage
 		}
 	}
-	if !o.pool {
-		if _, rc, ok := checkLocalCommand(o.argv[0], stderr); !ok {
-			return rc
+	local := !o.pool
+	if local {
+		// X2 + L1: a command this machine cannot run leaves the pool, whose login PATH may have it.
+		if _, rc, msg := lookLocal(o.argv[0]); rc != 0 {
+			if o.local || len(hosts) == 0 {
+				fmt.Fprintln(stderr, msg)
+				return rc
+			}
+			fmt.Fprintf(stderr, "%s; pool hosts only\n", msg)
+			local = false
 		}
 	}
 
@@ -248,7 +255,7 @@ func runLogged(ctx context.Context, signalStatus func() int, o options, cwd stri
 		fmt.Fprintf(stderr, "offload: %v\n", err)
 		return ExitUsage
 	}
-	p := placer{opts: o, heavy: heavy, hosts: hosts, targets: targets(hosts, stderr), tree: t, stderr: stderr}
+	p := placer{opts: o, local: local, heavy: heavy, hosts: hosts, targets: targets(hosts, stderr), tree: t, stderr: stderr}
 	pl, err := p.place(ctx)
 	switch {
 	case ctx.Err() != nil:
@@ -360,18 +367,17 @@ func upload(ctx context.Context, o options, t mirror.Tree, target remote.Target,
 	return nil
 }
 
-// checkLocalCommand mirrors the shell's 127/126 before any slot is taken (X2); path = what to exec.
-func checkLocalCommand(name string, stderr io.Writer) (path string, rc int, ok bool) {
+// lookLocal mirrors the shell's 127/126 before any slot is taken (X2); path = what to exec, msg =
+// the shell's complaint when rc != 0.
+func lookLocal(name string) (path string, rc int, msg string) {
 	path, rc, err := shell.Look(name)
-	if rc == 0 {
-		return path, 0, true
+	switch rc {
+	case 0:
+		return path, 0, ""
+	case shell.NotFound:
+		return "", rc, fmt.Sprintf("offload: %s: command not found", name)
 	}
-	if rc == shell.NotFound {
-		fmt.Fprintf(stderr, "offload: %s: command not found\n", name)
-	} else {
-		fmt.Fprintf(stderr, "offload: %s: %v\n", path, err)
-	}
-	return "", rc, false
+	return "", rc, fmt.Sprintf("offload: %s: %v", path, err)
 }
 
 // targets resolves each host's transport once (X5): multiplexed hosts share one socket directory; when

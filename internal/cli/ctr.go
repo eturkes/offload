@@ -86,8 +86,9 @@ func ctrCommand(args []string, stdout, stderr io.Writer) int {
 
 // execNative replaces offload with argv (K2): the switch is off, so the command runs as if typed.
 func execNative(argv []string, stderr io.Writer) int {
-	path, rc, ok := checkLocalCommand(argv[0], stderr)
-	if !ok {
+	path, rc, msg := lookLocal(argv[0])
+	if rc != 0 {
+		fmt.Fprintln(stderr, msg)
 		return rc
 	}
 	err := syscall.Exec(path, argv, os.Environ()) //nolint:gosec // G204: the caller's own command, as given
