@@ -178,3 +178,11 @@ Ruler = MAIN (not the author of the tests credited; survivors of MAIN-authored t
 | `96ffcc03` | `slots.go:252` | statement/return | Replaces a return value with its zero value | killed: TestWaitLockEndsWithItsContext (exact diff confirmed) |
 | `45b9e900` | `slots.go:262` | statement/return | Replaces a return value with its zero value | equivalent: TryLock's one caller (placer) has just run MakeDirs on the same hosts/<name> dir via TryAcquire |
 
+## pooladdrs
+
+13 mutants (main.go); before c44837d: 3 killed, 10 escaped; after the new run-error + main exit/message tests: 12 killed (mutago rerun).
+
+| id | site | mutator | change | ruling |
+|----|------|---------|--------|--------|
+| `a1666792` | `main.go:16` | numbers/incrementer | `os.Exit(1)` → `os.Exit(2)` | contract-open: install needs a nonzero status (`go run` reports exit 1 for any) |
+
