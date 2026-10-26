@@ -212,6 +212,7 @@ func TestKilledHolderFreesSlot(t *testing.T) { // S2 + R2: the kernel frees the 
 	s.Release()
 }
 
+// S2 + S3 (/tmp fallback): slot + owner opens never follow a planted symlink.
 func TestSlotFilesNeverFollowSymlinks(t *testing.T) { // security: /tmp fallback symlink plant
 	for _, planted := range []string{"slot1", "slot1.owner"} {
 		dir := t.TempDir()
@@ -233,6 +234,7 @@ func TestSlotFilesNeverFollowSymlinks(t *testing.T) { // security: /tmp fallback
 	}
 }
 
+// S2 + S3 + K5 (/tmp fallback): a planted FIFO = an open error, never a hang.
 func TestSlotFilesNeverBlockOnPlantedFIFO(t *testing.T) { // security: /tmp fallback FIFO plant
 	for _, planted := range []string{"slot1", "slot1.owner", "wait.lock"} {
 		dir := t.TempDir()

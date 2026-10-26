@@ -7,6 +7,7 @@ import (
 )
 
 // A fully stubbed podman command must not depend on an installed real podman.
+// K11 (harness): a podman fake ending in a catch-all needs no installed podman.
 func TestR3FullFakePodmanNeedsNoInstalledPodman(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	s := newSandbox(t, false)

@@ -2,7 +2,7 @@
 # gate — the repo's check chain (`.claude/rules/gate.md`): each step's rc + wall-clock, then the 10
 # slowest tests; rc 0 only when every step passes.
 #   .agent/gate                 full gate (CI runs exactly this)
-#   .agent/gate fast [pkg…]     iteration: fmt + lint + cached tests of pkg… (default ./...) + spec-lint
+#   .agent/gate fast [pkg…]     iteration: fmt + lint + cached tests of pkg… (default ./...) + law + spec-lint
 set -u
 cd "$(dirname "$0")/.." || exit 2
 names=() rcs=() secs=()
@@ -52,6 +52,7 @@ else
   mapfile -t nix < <(git ls-files '*.nix' ':!:machines/*/hardware-configuration.nix')
   step nixlint nixlint "${nix[@]}"
 fi
+step law .agent/law
 step spec-lint .agent/spec-lint
 printf '\n%-10s %4s %9s\n' step rc seconds
 fail=0

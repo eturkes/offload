@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// X5: a socket dir refusing new files → plain connections.
 func TestReviewer9UnwritableSocketDirectoryRefused(t *testing.T) {
 	rt, err := os.MkdirTemp("/tmp", "r9mux-")
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// K8 (harness): a failing process probe never reads as "process gone".
 func TestReviewV6ProbeFailureIsNotAbsence(t *testing.T) {
 	if os.Getenv("OFFLOAD_REVIEW_V6_CHILD") == "1" {
 		dir := t.TempDir()

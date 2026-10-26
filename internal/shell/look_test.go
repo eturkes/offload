@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// X2 + K2: lookup = bash's (127 / 126).
 func TestLookMatchesBash(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name string, mode os.FileMode) string {

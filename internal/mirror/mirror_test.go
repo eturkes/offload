@@ -211,6 +211,7 @@ func TestWorkdirName(t *testing.T) { // Y2
 	}
 }
 
+// Y5: the controller's global excludes, as the host gets them.
 func TestGlobalExcludes(t *testing.T) {
 	root := repo(t)
 	cfg := t.TempDir()

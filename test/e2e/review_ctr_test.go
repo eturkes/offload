@@ -18,6 +18,7 @@ import (
 
 // TestReviewG6TerminalStdinCompletes: offload ctr on a terminal returns CMD's status after a Ctrl-C
 // (podman once sat in a background process group of that terminal and never returned).
+// K8: podman in its own session ⇒ a terminal stdin never stalls offload ctr.
 func TestReviewG6TerminalStdinCompletes(t *testing.T) {
 	t.Parallel()
 	s := ctrSandbox(t, false, "")

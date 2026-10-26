@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// X8: a directory at the run-script name → 125, nothing runs.
 func TestReviewer9BootDestinationDirectoryFailsClosed(t *testing.T) {
 	for _, symlink := range []bool{false, true} {
 		name := "directory"
@@ -55,6 +56,7 @@ func TestReviewer9BootDestinationDirectoryFailsClosed(t *testing.T) {
 	}
 }
 
+// X1 + X6: TERM/HUP to the watcher = EOF; the status record still lands.
 func TestReviewer9WatcherSignalsRecordStatus(t *testing.T) {
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP} {
 		t.Run(sig.String(), func(t *testing.T) {
@@ -99,6 +101,7 @@ func TestReviewer9WatcherSignalsRecordStatus(t *testing.T) {
 	}
 }
 
+// X2 + X8: caller variables named like script variables reach CMD unchanged.
 func TestReviewer9RemoteKeepsCallerVariables(t *testing.T) {
 	h := newHost(t)
 	names := []string{"f", "d", "rest", "comp", "wd", "meta", "sub", "mode", "nonce", "count", "excludes", "cmd", "n", "first", "rc"}

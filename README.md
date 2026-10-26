@@ -308,7 +308,7 @@ Run the full check chain before you commit:
 .agent/gate
 ```
 
-The chain checks formatting, lint, tests (with the race detector), the build, known vulnerabilities, secrets in the git history, the CI workflows, shell scripts and Nix files.
+The chain checks formatting, lint, tests (with the race detector), the build, known vulnerabilities, secrets in the git history, the CI workflows, shell scripts, Nix files and the rules of the repository for its own text.
 The tests of `offload ctr` use Podman. Without Podman, these tests are skipped.
 
 ## License

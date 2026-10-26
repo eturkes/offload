@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -649,5 +650,75 @@ func TestExportedShelloptsReachTheCommandAlone(t *testing.T) {
 				t.Fatalf("rc %d err %v opts %q after-exists %v", rc, err, opts, statErr == nil)
 			}
 		})
+	}
+}
+
+// X2 + X8 (code.md): every variable the scripts set is `__…` — a local or global shadowing a name the
+// caller exported is exported with the script's value into CMD's environment. Static over every
+// path (assignments, local, read, for, wait -p), not just the ones a run executes. Allowed: names the
+// scripts set for a child or restore for CMD on purpose.
+func TestScriptVariablesAreReserved(t *testing.T) {
+	allowed := map[string]string{
+		"IFS":             "`IFS= read` prefix",
+		"LC_ALL":          "`LC_ALL=C sort|comm` prefix",
+		"XDG_RUNTIME_DIR": "systemd-run's manager, restored for CMD",
+		"INVOCATION_ID":   "restored for CMD",
+		"SHELLOPTS":       "`env SHELLOPTS=` hands CMD the caller's value",
+	}
+	comment := regexp.MustCompile(`(?m)(^|\s)#.*$`)
+	// Simple-command boundaries; a `bash -c '…'` body counts as script text too.
+	sep := regexp.MustCompile(`[;&|(){}\n]|\bbash\s+-l?c\b|\b(?:then|do|else|elif|if|while|until|exec)\b`)
+	ident := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*`)
+	scripts := map[string]string{"watch.bash": watchScript, "local.bash": localScript, "remote.bash": remoteScript, "boot": boot}
+	for file, text := range scripts {
+		var names []string
+		text = strings.NewReplacer("'", " ", `"`, " ").Replace(comment.ReplaceAllString(text, "$1"))
+		for _, seg := range sep.Split(text, -1) {
+			words := strings.Fields(seg)
+			i := 0
+			for ; i < len(words); i++ { // leading NAME=… words
+				n := ident.FindString(words[i])
+				if n == "" || !strings.HasPrefix(words[i][len(n):], "=") {
+					break
+				}
+				names = append(names, n)
+			}
+			if i == len(words) {
+				continue
+			}
+			switch words[i] {
+			case "local", "export", "read", "for":
+				for _, w := range words[i+1:] {
+					if strings.HasPrefix(w, "-") {
+						continue
+					}
+					n := ident.FindString(w)
+					if n == "" || n == "in" {
+						break
+					}
+					names = append(names, n)
+					if words[i] == "for" {
+						break
+					}
+				}
+			case "wait":
+				for k := i + 1; k+1 < len(words); k++ {
+					if words[k] == "-p" {
+						names = append(names, ident.FindString(words[k+1]))
+					}
+				}
+			}
+		}
+		// Positive controls: names each script does set must surface, or the scan broke.
+		for _, want := range map[string][]string{"watch.bash": {"__p", "__so", "__cg"}, "remote.bash": {"__wd", "__f"}, "boot": {"__f"}}[file] {
+			if !slices.Contains(names, want) {
+				t.Errorf("%s: scan missed %s (found %q)", file, want, names)
+			}
+		}
+		for _, n := range names {
+			if _, ok := allowed[n]; !ok && !strings.HasPrefix(n, "__") {
+				t.Errorf("%s sets %q: name it __%s", file, n, n)
+			}
+		}
 	}
 }

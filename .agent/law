@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# law — repo rules a tool can decide, beyond the linters (gate step `law`; seeds in
+# .claude/rules/gate-checks.md). One `law: <file>:<line>: …` line per finding; rc 0 = clean, 1 = findings.
+#   frontmatter  .claude/rules/*.md: none, or `paths:` + double-quoted globs alone (CLAUDE.md
+#                `Authoring`: quoted globs, a parse CC accepts)
+#   filler       human-facing text (README.md, CLI + heavy usage) without simply / robust / seamless /
+#                leverage (CLAUDE.md `Authoring` `Human-facing`)
+#   deferred     each .agent/deferred.md entry carries its acceptance check (`Accept:`)
+#   test-ids     each Go test under cmd/ internal/ test/e2e/ cites a contract id (`.agent/contract.md`
+#                `- <ID> `) in its name or its comment (code.md)
+set -u
+cd "$(dirname "$0")/.." || exit 2
+bad=0
+report() { # report <check> <awk/grep output>: findings → stdout, rc 1
+  [ -z "$2" ] && return
+  printf '%s\n' "$2" | sed "s/^/law: $1: /"
+  bad=1
+}
+
+for f in .claude/rules/*.md; do
+  report frontmatter "$(awk -v f="$f" '
+    NR == 1 { if ($0 != "---") exit; st = 1; next }
+    st == 1 { if ($0 == "paths:") { st = 2; next } print f ":" NR ": frontmatter holds `paths:` alone"; exit }
+    st == 2 && $0 == "---" { if (!n) print f ":" NR ": `paths:` lists no glob"; st = 0; exit }
+    st == 2 { if ($0 ~ /^  - "[^"]+"$/) n++; else print f ":" NR ": glob = a double-quoted list item (`  - \"…\"`)" }
+    END { if (st == 2) print f ":" NR ": frontmatter never closes (`---`)" }' "$f")"
+done
+
+report filler "$(grep -n -i -w -E 'simply|robust(ly)?|seamless(ly)?|leverag(e|es|ed|ing)' README.md internal/cli/cli.go tools/heavy)"
+
+report deferred "$(awk '
+  function done() { if (at && !acc) print FILENAME ":" at ": entry without `Accept:` (its acceptance check)" }
+  /^- / { done(); at = FNR; acc = 0 }
+  /Accept( \([^)]*\))?:/ { acc = 1 }
+  END { done() }' .agent/deferred.md)"
+
+mapfile -t tests < <(git ls-files -co --exclude-standard 'cmd/*_test.go' 'internal/*_test.go' 'test/e2e/*_test.go')
+report test-ids "$(sed -n 's/^- \([CPRSLYXJK][0-9][0-9]*\) .*/\1/p' .agent/contract.md | awk '
+  NR == FNR { ids[$0]; next }
+  function cites(text,   id, p, i, j) { # an id, not followed by a digit (K1 ≠ K10)
+    for (id in ids)
+      for (p = 1; (i = index(substr(text, p), id)) > 0; p = j) {
+        j = p + i - 1 + length(id)
+        if (substr(text, j, 1) !~ /[0-9]/) return 1
+      }
+    return 0
+  }
+  /^\/\// { cmt = cmt $0; next }
+  /^func Test[A-Za-z0-9_]*\(/ {
+    name = $2; sub(/\(.*/, "", name)
+    if (name != "TestMain" && !cites(name " " cmt " " $0)) print FILENAME ":" FNR ": " name " cites no contract id"
+  }
+  { cmt = "" }' - "${tests[@]}")"
+
+exit "$bad"

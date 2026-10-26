@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// X2: CMD words survive `bash -lc` quoting.
 func TestJoinRoundTripsThroughBash(t *testing.T) {
 	words := []string{"plain", "", "a b", "it's", `"dq"`, "$HOME", "`x`", "a\nb", "-n", "*", "~", "\\", "é", "x;y|z&"}
 	out, err := exec.Command("bash", "-c", "printf '%s\\0' "+Join(words)).Output()

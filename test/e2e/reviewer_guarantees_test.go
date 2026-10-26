@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// X1: EOF before the leader's setsid still ends the command.
 func TestG1CancellationBeforeSetsidKillsSession(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, false)
@@ -64,6 +65,7 @@ func TestG1CancellationBeforeSetsidKillsSession(t *testing.T) {
 	}
 }
 
+// Y6 + Y10: a failed output listing → 125, never rc 0 with nothing fetched.
 func TestG3DownloadListFailureIsNotSuccess(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)
@@ -71,6 +73,7 @@ func TestG3DownloadListFailureIsNotSuccess(t *testing.T) {
 	r.requireCode(t, 125)
 }
 
+// Y4: a local file where the host keeps a dir of ignored files fails, never deletes them.
 func TestG5UploadTypeChangeKeepsIgnoredRemoteFile(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)
@@ -88,6 +91,7 @@ func TestG5UploadTypeChangeKeepsIgnoredRemoteFile(t *testing.T) {
 	}
 }
 
+// X3 + X6: a signal during the status lookup cancels it.
 func TestG7SignalDuringStatusLookupCancels(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)
@@ -112,6 +116,7 @@ func TestG7SignalDuringStatusLookupCancels(t *testing.T) {
 	}
 }
 
+// C3: a signal during inspection outranks the failure it causes.
 func TestG7SignalDuringInspectionWins(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)

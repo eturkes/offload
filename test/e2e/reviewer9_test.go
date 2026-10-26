@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// Y5: a NUL in the global excludes leaves the upload list whole.
 func TestReviewer9GlobalExcludesNULPreservesUpload(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)
@@ -26,6 +27,7 @@ func TestReviewer9GlobalExcludesNULPreservesUpload(t *testing.T) {
 	}
 }
 
+// Y5: the excludes record never counts as an upload path.
 func TestReviewer9ExcludesRecordIsNotAnUploadPath(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true)
@@ -41,6 +43,7 @@ func TestReviewer9ExcludesRecordIsNotAnUploadPath(t *testing.T) {
 	}
 }
 
+// X5: one multiplex fallback note per run, across hosts.
 func TestReviewer9MultiplexFallbackOnceAcrossHosts(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, true,

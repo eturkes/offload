@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// C1 + C4: help on stdout, rc 0.
 func TestHelpPrintsUsageOnStdout(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if rc := Main([]string{"--help"}, &out, &errOut); rc != 0 {
@@ -17,6 +18,7 @@ func TestHelpPrintsUsageOnStdout(t *testing.T) {
 	}
 }
 
+// C3 + C4: no command = a usage error (2) on stderr.
 func TestNoArgumentsIsAUsageError(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if rc := Main(nil, &out, &errOut); rc != ExitUsage {

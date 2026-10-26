@@ -362,6 +362,7 @@ var x5 = []string{
 	"-o", "ForwardAgent=no", "-o", "ForwardX11=no", "-o", "ClearAllForwardings=yes",
 }
 
+// X5: the fake refuses a call missing an X5 option and honors -n.
 func TestHarnessFakeSSH(t *testing.T) {
 	t.Parallel()
 	s := newSandbox(t, false)
