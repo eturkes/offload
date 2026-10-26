@@ -52,3 +52,25 @@ func TestReviewR1L2HybridCommandExistsOnlyOnHost(t *testing.T) {
 		t.Errorf("hybrid stdout = %q, want host-only", r.stdout)
 	}
 }
+
+// R2: an unreadable-for-write but unlocked slot is not evidence of a live holder.
+func TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder(t *testing.T) {
+	s := newSandbox(t, false)
+	slot := filepath.Join(s.runtime, "heavy", "slot1")
+	s.write(slot, "")
+	must(t, os.Chmod(slot, 0o400))
+	defer func() { _ = os.Chmod(slot, 0o600) }()
+	if f, err := os.OpenFile(slot, os.O_WRONLY, 0); err == nil {
+		_ = f.Close()
+		t.Fatal("fixture must refuse write-open")
+	}
+	// Positive control: Linux flock does not require write-open; the lock is free.
+	f, err := os.Open(slot)
+	must(t, err)
+	must(t, syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB))
+	must(t, f.Close())
+	r := s.run("status")
+	if r.code == 0 && strings.Contains(r.stdout, "local heavy slots: 1/2 held") {
+		t.Fatalf("unlocked file's I/O error reported as a held slot: %q", r.stdout)
+	}
+}

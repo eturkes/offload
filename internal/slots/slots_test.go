@@ -395,3 +395,67 @@ func assertAbsentPath(t *testing.T, path string) {
 		t.Errorf("%s exists (lstat err=%v)", path, err)
 	}
 }
+
+// R2 + S6 class (/tmp fallback plants): Holders reads a held slot's owner text without following a
+// planted symlink or waiting on a planted FIFO.
+func TestR2HoldersNeverFollowOrWaitOnOwnerFiles(t *testing.T) {
+	for _, plant := range []string{"symlink", "fifo"} {
+		t.Run(plant, func(t *testing.T) {
+			dir := t.TempDir()
+			slot := filepath.Join(dir, "slot1")
+			f, err := os.OpenFile(slot, os.O_WRONLY|os.O_CREATE, 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = f.Close() }()
+			if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+				t.Fatal(err)
+			}
+			owner := slot + ".owner"
+			if plant == "symlink" {
+				target := filepath.Join(dir, "elsewhere")
+				if err := os.WriteFile(target, []byte("not-an-owner-line"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, owner); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := syscall.Mkfifo(owner, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan []string, 1)
+			go func() { done <- Dir{Path: dir, Total: 1}.Holders() }()
+			select {
+			case got := <-done:
+				if len(got) != 1 || got[0] != "slot 1: " {
+					t.Fatalf("holders = %q, want the held slot with no owner text", got)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("Holders blocked on a planted owner FIFO")
+			}
+		})
+	}
+}
+
+// R2 + S1: a slot file's mode decides held vs free as in heavy --status (flock(1) opens read-only:
+// 0400 = free, 0000 = an open error = held).
+func TestR2HoldersAgreeWithHeavyOnUnwritableSlots(t *testing.T) {
+	for _, mode := range []os.FileMode{0o400, 0o000} {
+		runtime := t.TempDir()
+		dir := filepath.Join(runtime, "heavy")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "slot1"), nil, mode); err != nil {
+			t.Fatal(err)
+		}
+		out, err := heavyCmd(t, runtime, "1", "--status").Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		heavyHeld := strings.Count(string(out), "slot 1:")
+		if got := len((Dir{Path: dir, Total: 1}).Holders()); got != heavyHeld {
+			t.Errorf("mode %o: Holders = %d held, heavy --status = %d (%q)", mode, got, heavyHeld, out)
+		}
+	}
+}

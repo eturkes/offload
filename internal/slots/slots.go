@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -152,15 +153,39 @@ func (d Dir) Holders() []string {
 		if _, err := os.Lstat(p); errors.Is(err, os.ErrNotExist) {
 			continue // never created ⇒ never held
 		}
-		f, held, err := tryLock(p)
-		if err == nil && held {
-			_ = f.Close()
+		if free(p) {
 			continue
 		}
-		text, _ := os.ReadFile(p + ".owner") //nolint:gosec // G304: path built from the runtime dir, not input
-		out = append(out, fmt.Sprintf("slot %d: %s", i, strings.TrimRight(string(text), "\n")))
+		out = append(out, fmt.Sprintf("slot %d: %s", i, strings.TrimRight(readOwner(p+".owner"), "\n")))
 	}
 	return out
+}
+
+// free = the slot's lock is takeable now, probed through a read-only open as heavy's `flock -n` does:
+// a slot file offload cannot open for writing is still free to it; one it cannot open at all counts
+// as held, as in heavy.
+func free(path string) bool {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0) //nolint:gosec // G304: runtime dir path
+	if err != nil {
+		return false
+	}
+	defer func() { _ = f.Close() }()
+	return syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) == nil
+}
+
+// readOwner = an owner file's text; "" for anything but a regular file (O_NOFOLLOW + O_NONBLOCK: a
+// planted symlink or FIFO under the /tmp fallback is never followed or waited on, as for the slots).
+func readOwner(path string) string {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0) //nolint:gosec // G304: runtime dir path
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return ""
+	}
+	text, _ := io.ReadAll(f)
+	return string(text)
 }
 
 // writeOwner never follows a symlink: under the /tmp fallback another user could plant one at a
