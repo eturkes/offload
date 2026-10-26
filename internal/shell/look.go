@@ -25,7 +25,11 @@ func Look(name string) (path string, status int, err error) {
 		return name, check(name), describe(name)
 	}
 	lose := ""
-	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+	dirs := filepath.SplitList(os.Getenv("PATH"))
+	if len(dirs) == 0 { // an empty or unset PATH: bash searches the current directory alone
+		dirs = []string{""}
+	}
+	for _, dir := range dirs {
 		if dir == "" {
 			dir = "."
 		}
