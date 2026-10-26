@@ -1,6 +1,6 @@
 # Mutation credit — MAINTAIN code review
 
-Ruler = MAIN (not the author of the tests credited); every row then independently ruled by reviewer-7 (`cr-reviewer-7-m.md`: 129 agree, 3 n/a, 34 disagree → M1–M6 = new killing tests, M7–M9 = the domain ruling). Reachable domain = the filesystems these machines run (bcachefs, ext4, tmpfs); FUSE/NFS + fault-injected I/O errors out of domain; per-process limits (EMFILE), signals, concurrent + same-user/tmp-fallback plants in domain. Sweeps at 508e0dc (disposable worktree + stub `place_test.go`, `ctr_test.go`, `ssh_test.go`; recipe `.claude/rules/code.md`), unit tests per package; escapes replayed through e2e (`patch` the agentic diff, run the regex, revert). Rows = every survivor after the replay.
+Ruler = MAIN (not the author of the tests credited); every row then independently ruled by reviewer-7 (`cr-reviewer-7-m.md`: 129 agree, 3 n/a, 34 disagree → M1–M6 = new killing tests, M7–M9 = the domain ruling). Reachable domain (owner-approved) = the filesystems these machines run (bcachefs, ext4, tmpfs); FUSE/NFS + fault-injected I/O errors out of domain; per-process limits (EMFILE), signals, concurrent + same-user/tmp-fallback plants in domain. Sweeps at 508e0dc (disposable worktree + stub `place_test.go`, `ctr_test.go`, `ssh_test.go`; recipe `.claude/rules/code.md`), unit tests per package; escapes replayed through e2e (`patch` the agentic diff, run the regex, revert). Rows = every survivor after the replay.
 
 ## shell
 

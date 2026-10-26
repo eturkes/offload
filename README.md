@@ -105,6 +105,7 @@ The command then runs in the same subdirectory on the host.
 - The `.git` directory goes to the host, so the command can read the history.
 - Ignored files, for example virtual environments, caches and build output, stay on each side. Each host keeps its own copy and builds it again when necessary.
 - Files that you deleted here are also deleted on the host. Ignored files on the host are never deleted.
+- A file that git ignores only after offload copied it stays on the host. To remove it, delete it on the host.
 
 After the command stops, files that git does not ignore come back.
 A regular file that is newer here than on the host stays as it is here. A symbolic link, or a path whose type changed, takes the version from the host.
