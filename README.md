@@ -49,7 +49,7 @@ Make sure that `~/.local/bin` is in the `PATH` of each machine, also for login s
 
 ## Configure the pool
 
-Write one `[[host]]` table for each pool host in `~/.config/offload/pool.toml`:
+Write one `[[host]]` table for each pool host in `~/.config/offload/pool.toml`, or in `$XDG_CONFIG_HOME/offload/pool.toml` when `XDG_CONFIG_HOME` is set:
 
 ```toml
 [[host]]
@@ -91,7 +91,7 @@ Use these options to limit the choice:
 | `--pool` | Use the pool hosts only. |
 | `--host NAME` | Use this pool host only. |
 | `--gpu` | Use pool hosts with an NVIDIA GPU only. For GPU work on this machine, use your local GPU tools instead. |
-| `--no-sync` | Do not copy files to or from the host. |
+| `--no-sync` | Do not sync the project with the host. `--get` still copies its paths back. |
 | `--get PATH` | After the run, also copy `PATH` back. Use this option for outputs that git ignores. A path that ends with `/` copies the directory contents. You can give this option more than once. |
 
 `--host`, `--gpu`, `--no-sync` and `--get` also select `--pool`.

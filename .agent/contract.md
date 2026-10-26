@@ -8,7 +8,7 @@ Scope: one controller (this machine) drives the pool; pool hosts are distinct ma
 
 - C1 `offload run [--local|--pool] [--host NAME] [--gpu] [--no-sync] [--get PATH]… [--] CMD [ARG…]`; `offload status`; `-h`/`--help` on both. Flags parse up to `--` or the first non-flag word; everything after belongs to CMD.
 - C2 `--local` with any of `--pool`, `--host`, `--gpu`, `--no-sync`, `--get` → usage error. `--host`, `--gpu`, `--no-sync`, `--get` imply `--pool`.
-- C3 Exit status precedence (`run`; `ctr` = K2, K7, K10): offload got HUP/INT/TERM → 129/130/143; else an offload failure → 125 (sync up/down failed, remote setup failed, worktree or unsupported repo layout under `--pool`, every host up and none with a GPU under `--gpu`); else the command's status unchanged (any value, 2/125/255 included; 128+n when signal n killed it; 127 = not found, 126 = not executable). Usage errors, an invalid pool file, an unknown `--host` → 2 before any work.
+- C3 Exit status precedence (`run`; `ctr` = K2, K7, K10): offload got HUP/INT/TERM → 129/130/143; else an offload failure → 125 (sync up/down failed, remote setup failed, an unsupported repo layout (Y3) under `--pool`, every host up and none with a GPU under `--gpu`); else the command's status unchanged (any value, 2/125/255 included; 128+n when signal n killed it; 127 = not found, 126 = not executable). Usage errors, an invalid pool file, an unknown `--host` → 2 before any work.
 - C4 stderr carries every offload message, prefixed `offload: `; stdout carries the command's output alone (`status` prints to stdout).
 - C5 Placement line on stderr before the command starts: `offload: local slot <i>/<n>` | `offload: <host> slot <i>/<n> (<cpus> CPUs, <busy>% busy) → ~/<workdir>` (busy = 100 × load/nproc, rounded).
 
@@ -35,7 +35,7 @@ Scope: one controller (this machine) drives the pool; pool hosts are distinct ma
 ## Placement loop — tier kernel
 
 - L1 Eligibility: local unless pool-only (`--pool` or implied) or CMD fails X2's lookup here with an eligible pool host (stderr: the shell's complaint + `; pool hosts only`); pool unless `--local`, missing pool file, or remote-ineligible tree (Y3).
-- L2 Round, pool first (the controller stays free for the owner): among eligible hosts (`--host` = that one) with a free slot + free workdir lock, probe (≤ 8 s), keep up hosts (with ≥ 1 GPU under `--gpu`), pick the lowest load/nproc (ties → pool-file order), acquire its slot non-blocking (lost race → next round); else a local slot. A signal during the round → no local slot taken.
+- L2 Round, pool first (the controller stays free for the owner): on each eligible host (`--host` = that one) take a free slot + the free workdir lock non-blocking, probe those hosts in parallel (≤ 8 s), keep up hosts (with ≥ 1 GPU under `--gpu`), keep the lowest load/nproc (ties → pool-file order) and release the rest; none → a local slot. A signal during the round → no local slot taken.
 - L3 Nothing acquired → one `offload: waiting …` line naming held/total per place; next round 2 s after the previous ends; a down host is re-probed at most every 30 s. INT/TERM/HUP while waiting → 130/143/129, nothing held.
 - L4 `--gpu` with every eligible host up and none showing a GPU → 125. Hosts down or busy → keep waiting.
 

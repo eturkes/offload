@@ -52,7 +52,7 @@ Run options:
   --pool       Use the pool hosts only.
   --host NAME  Use this pool host only.
   --gpu        Use pool hosts with an NVIDIA GPU only.
-  --no-sync    Do not copy files to or from the host.
+  --no-sync    Do not sync the project with the host. --get still copies its paths back.
   --get PATH   After the run, also copy PATH back, even if git ignores it. Repeat for more paths.
 
 Ctr options:
@@ -60,7 +60,8 @@ Ctr options:
   --check      Compare the image layers and the offload binary of this machine
                with each pool host. Waits for a free slot on each host.
 
-The pool file is $OFFLOAD_CONFIG, else ~/.config/offload/pool.toml.
+The pool file is $OFFLOAD_CONFIG, else $XDG_CONFIG_HOME/offload/pool.toml, else
+~/.config/offload/pool.toml.
 `
 
 type options struct {

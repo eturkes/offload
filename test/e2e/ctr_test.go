@@ -464,7 +464,8 @@ func TestK8GroupWideSignalStillOnce(t *testing.T) {
 	t.Parallel()
 	s := ctrSandbox(t, false, "")
 	p, log := trapRun(t, s)
-	// offload + podman (its own group, offload's session), as X1's `pkill -s` reaches both.
+	// TERM to offload + podman directly, as a group-wide signal would hit both (podman has a session of
+	// its own, K8): CMD still gets one.
 	kids, err := exec.Command("pgrep", "-P", strconv.Itoa(p.cmd.Process.Pid)).Output()
 	must(t, err)
 	for _, pid := range append(strings.Fields(string(kids)), strconv.Itoa(p.cmd.Process.Pid)) {

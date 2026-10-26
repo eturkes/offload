@@ -16,7 +16,8 @@ import (
 	"time"
 )
 
-// Slot is one held lock. Release frees it; the kernel frees it if offload dies first.
+// Slot is one held lock. Release frees it; at offload's death the kernel frees it unless a child holds
+// its fd (the local watcher, S5).
 type Slot struct {
 	Index, Total int
 	file         *os.File
