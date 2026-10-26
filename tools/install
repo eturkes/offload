@@ -10,13 +10,16 @@ trap 'rm -rf "$tmp"' EXIT
 (cd "$root" && CGO_ENABLED=0 go build -trimpath -o "$tmp/offload" ./cmd/offload)
 cp "$root/tools/heavy" "$tmp/heavy"
 chmod 755 "$tmp/heavy"
-sum() { sha256sum "$1" | cut -d' ' -f1; }
+sum() { s=$(sha256sum <"$1") && echo "${s%% *}"; } # fails with sha256sum (a pipe into cut would hide it)
 bad=0
-report() { # report <side> <file> <sum>: the sum, flagged when it is not the built file's
-  if [ "$3" = "$(sum "$tmp/$2")" ]; then
+want_offload=$(sum "$tmp/offload")
+want_heavy=$(sum "$tmp/heavy")
+report() { # report <side> <file> <sum>: the sum, flagged when it is not the built file's (or absent)
+  case $2 in offload) want=$want_offload ;; heavy) want=$want_heavy ;; esac
+  if [ -n "$3" ] && [ "$3" = "$want" ]; then
     echo "$1 $2: $3"
   else
-    echo "$1 $2: ${3:-?} (differs from the built $(sum "$tmp/$2"))"
+    echo "$1 $2: ${3:-?} (differs from the built $want)"
     bad=1
   fi
 }
@@ -24,7 +27,7 @@ mkdir -p "$HOME/.local/bin"
 for f in offload heavy; do
   cp "$tmp/$f" "$HOME/.local/bin/$f.new"
   mv "$HOME/.local/bin/$f.new" "$HOME/.local/bin/$f" # one rename: running copies keep theirs
-  report here "$f" "$(sum "$HOME/.local/bin/$f")"
+  report here "$f" "$(sum "$HOME/.local/bin/$f" || true)"
 done
 if [ $# -eq 0 ]; then
   addresses=$(cd "$root" && go run ./tools/pooladdrs) # offload's own pool parser; no whitespace in an address (P2)
