@@ -5,6 +5,8 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
 [ -f "$here/wifi.env" ] || { echo "deploy: $here/wifi.env missing" >&2; exit 2; } # network.nix needs it
-rsync -q --chmod=F600 --rsync-path="sudo rsync" "$here"/*.nix "$here/wifi.env" "offload@$ip:/etc/nixos/"
-ssh "offload@$ip" "sudo nixos-rebuild ${1:-switch}"
+o="-o BatchMode=yes -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes"
+rsync -q --chmod=F600 -e "ssh $o" --rsync-path="sudo rsync" "$here"/*.nix "$here/wifi.env" "offload@$ip:/etc/nixos/"
+# shellcheck disable=SC2086 # $o = one word per option
+ssh $o "offload@$ip" "sudo nixos-rebuild ${1:-switch}"
 "$here/check"

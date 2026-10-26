@@ -16,7 +16,8 @@ case ${1-} in
   *) echo "usage: tpm-bind [--open]" >&2; exit 2 ;;
 esac
 [ -s "$rk" ] || { echo "tpm-bind: no recovery key at $rk" >&2; exit 2; }
-tr -d '\n' < "$rk" | ssh "offload@$ip" "set -eu
+tr -d '\n' < "$rk" | ssh -o BatchMode=yes -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes \
+  "offload@$ip" "set -eu
   dev=\$(sudo cryptsetup status cryptroot | sed -n 's/^ *device: *//p')
   [ -n \"\$dev\" ]
   sudo systemd-cryptenroll --unlock-key-file=/dev/stdin $wipe --tpm2-device=auto --tpm2-pcrs=$pcrs \"\$dev\"

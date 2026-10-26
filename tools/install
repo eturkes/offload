@@ -24,7 +24,8 @@ fi
 for address; do
   for f in offload heavy; do
     printf '%s %s: ' "$address" "$f"
-    ssh -o BatchMode=yes -o ConnectTimeout=5 -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes \
+    ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o ForwardAgent=no \
+      -o ForwardX11=no -o ClearAllForwardings=yes \
       -T -- "$address" \
       "mkdir -p ~/.local/bin && cat >~/.local/bin/$f.new && chmod 755 ~/.local/bin/$f.new &&
        mv ~/.local/bin/$f.new ~/.local/bin/$f && sha256sum ~/.local/bin/$f | cut -d' ' -f1" \
