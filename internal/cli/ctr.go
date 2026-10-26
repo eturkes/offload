@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -226,12 +225,14 @@ func ctrCheck(stdout, stderr io.Writer) int {
 }
 
 // parseCheck reads remoteLayers' lines framed with nonce; ok = its offload-check line was there.
+// Split, not bufio.Scanner: a login banner line past Scanner's 64 KiB token limit would end the scan
+// early and drop the layers after it.
 func parseCheck(out, nonce string) (sum string, layers []string, ok bool) {
-	sc := bufio.NewScanner(strings.NewReader(out))
-	for sc.Scan() {
-		if v, found := strings.CutPrefix(sc.Text(), "offload-check "+nonce+" "); found {
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSuffix(line, "\r") // as Scanner's ScanLines
+		if v, found := strings.CutPrefix(line, "offload-check "+nonce+" "); found {
 			sum, ok = v, true
-		} else if v, found := strings.CutPrefix(sc.Text(), "layer "+nonce+" "); found {
+		} else if v, found := strings.CutPrefix(line, "layer "+nonce+" "); found {
 			layers = append(layers, v)
 		}
 	}
