@@ -1,9 +1,6 @@
 .scratch/
 .claude/settings.local.json
 CLAUDE.local.md
-__pycache__/
-.venv/
-*.pyc
 result
 machines/*/wifi.env
 machines/*/installer_host_key
