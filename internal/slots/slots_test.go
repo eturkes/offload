@@ -461,3 +461,64 @@ func TestR2HoldersAgreeWithHeavyOnUnwritableSlots(t *testing.T) {
 		}
 	}
 }
+
+// R2 + S15 class (/tmp fallback plants): Holders probes a slot without following a planted symlink
+// (an unverifiable slot counts as held, as heavy's failed `flock -n`) or waiting on a planted FIFO.
+func TestR2HoldersNeverFollowOrWaitOnSlotFiles(t *testing.T) {
+	for _, plant := range []string{"symlink", "fifo"} {
+		t.Run(plant, func(t *testing.T) {
+			dir := t.TempDir()
+			slot := filepath.Join(dir, "slot1")
+			if plant == "symlink" {
+				target := filepath.Join(dir, "elsewhere")
+				if err := os.WriteFile(target, nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, slot); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := syscall.Mkfifo(slot, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan []string, 1)
+			go func() { done <- Dir{Path: dir, Total: 1}.Holders() }()
+			select {
+			case got := <-done: // a FIFO opens nonblocking + flocks: free, as long as nothing waited
+				if plant == "symlink" && (len(got) != 1 || !strings.HasPrefix(got[0], "slot 1:")) {
+					t.Fatalf("holders = %q, want the planted symlink counted as held", got)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("Holders blocked on a planted slot FIFO")
+			}
+		})
+	}
+}
+
+// K5 + J4: WaitLock on a held lock returns once its context ends.
+func TestWaitLockEndsWithItsContext(t *testing.T) {
+	base := t.TempDir()
+	path := filepath.Join(base, "locks", "x.lock")
+	held, err := WaitLock(context.Background(), base, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = held.Close() }()
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		f, err := WaitLock(ctx, base, path)
+		if f != nil {
+			_ = f.Close()
+		}
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("err %v, want the context's", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("WaitLock outlived its context")
+	}
+}

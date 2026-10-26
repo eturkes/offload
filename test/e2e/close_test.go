@@ -155,3 +155,14 @@ func TestX5MultiplexOptIn(t *testing.T) {
 		})
 	}
 }
+
+// X6: a status record left by an earlier run (another nonce) never vouches for this run's 255 — the
+// transport failed ⇒ 125, not the command's 255.
+func TestX6StaleStatusRecordIsNotTheCommands(t *testing.T) {
+	t.Parallel()
+	s := newSandbox(t, true)
+	s.run("run", "--pool", "--", "true").requireCode(t, 0) // leaves `<nonce> 0` in the meta dir
+	s.write(filepath.Join(s.hosts, "alpha", ".run-fail"), "")
+	r := s.run("run", "--pool", "--", "true")
+	r.requireCode(t, 125)
+}

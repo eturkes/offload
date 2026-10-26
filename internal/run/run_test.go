@@ -722,3 +722,15 @@ func TestScriptVariablesAreReserved(t *testing.T) {
 		}
 	}
 }
+
+// C3: the process supervise waits on (the watcher, ssh) killed by signal n → 128+n, as a shell
+// reports it.
+func TestSuperviseReportsAKilledProcessAs128PlusN(t *testing.T) {
+	for sig, want := range map[string]int{"KILL": 137, "TERM": 143} {
+		cmd := remote.Command(context.Background(), "bash", "-c", "kill -"+sig+" $$")
+		rc, err := supervise(context.Background(), cmd, nil)
+		if err != nil || rc != want {
+			t.Errorf("killed by %s: rc %d err %v, want %d", sig, rc, err, want)
+		}
+	}
+}
