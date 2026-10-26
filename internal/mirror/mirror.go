@@ -63,11 +63,8 @@ func Locate(ctx context.Context, cwd string) (Location, error) {
 	if len(f) != 4 {
 		return Location{}, fmt.Errorf("git rev-parse printed %d lines, want 4", len(f))
 	}
-	l := Location{Root: f[0], Sub: filepath.Clean(strings.TrimSuffix(f[3], "/")), Git: true, GitDir: f[1], CommonDir: f[2]}
-	if l.Sub == "" {
-		l.Sub = "."
-	}
-	return l, nil
+	// --show-prefix = "" at the root; filepath.Clean("") = ".".
+	return Location{Root: f[0], Sub: filepath.Clean(strings.TrimSuffix(f[3], "/")), Git: true, GitDir: f[1], CommonDir: f[2]}, nil
 }
 
 // Inspect finds the sync root of cwd (Y1) and its remote eligibility (Y3).

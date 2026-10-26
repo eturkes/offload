@@ -223,6 +223,14 @@ func TestGlobalExcludes(t *testing.T) {
 	if got, err := GlobalExcludes(context.Background(), root); err != nil || got != "*.swp\n" {
 		t.Fatalf("xdg: %q %v", got, err)
 	}
+	// git's default without XDG_CONFIG_HOME: ~/.config/git/ignore.
+	home := t.TempDir()
+	write(t, filepath.Join(home, ".config", "git", "ignore"), "*.bak\n")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", home)
+	if got, err := GlobalExcludes(context.Background(), root); err != nil || got != "*.bak\n" {
+		t.Fatalf("home default: %q %v", got, err)
+	}
 	custom := filepath.Join(t.TempDir(), "ex")
 	write(t, custom, ".idea/\n")
 	run(t, root, "git", "config", "core.excludesFile", custom)

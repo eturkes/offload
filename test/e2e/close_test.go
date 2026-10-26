@@ -1,7 +1,9 @@
 package e2e_test
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -85,8 +87,19 @@ func TestS4SameTreeRunsSerializeAtController(t *testing.T) {
 
 func TestY1HomeDirectoryNeverGoesToAHost(t *testing.T) {
 	t.Parallel()
+	for _, git := range []bool{false, true} { // a home that is a git repository (dotfiles) stays local too
+		t.Run(fmt.Sprintf("git=%v", git), func(t *testing.T) { homeStaysLocal(t, git) })
+	}
+}
+
+func homeStaysLocal(t *testing.T, git bool) {
 	s := newSandbox(t, false)
 	s.cwd = filepath.Join(s.base, "home")
+	if git {
+		if out, err := exec.Command("git", "init", "-q", s.cwd).CombinedOutput(); err != nil {
+			t.Fatalf("git init: %v %s", err, out)
+		}
+	}
 	r := s.run("run", "--pool", "--", "true")
 	r.requireCode(t, 125)
 	requireContains(t, r.stderr, "home directory")

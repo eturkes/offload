@@ -186,3 +186,41 @@ Ruler = MAIN (not the author of the tests credited; survivors of MAIN-authored t
 |----|------|---------|--------|--------|
 | `a1666792` | `main.go:16` | numbers/incrementer | `os.Exit(1)` → `os.Exit(2)` | contract-open: install needs a nonzero status (`go run` reports exit 1 for any) |
 
+## mirror
+
+343 mutants, 281 killed by unit tests (TMPDIR outside any git repo), 62 escaped; replay of 44 (Y1–Y11/Reviewer9/G3/G5/ReviewY/Mirror/X6/C3/J2) → 31 killed (credible: sync tests); 19 unreachable guards ruled by reading, not replayed.
+
+| id | site | mutator | change | ruling |
+|----|------|---------|--------|--------|
+| `60afc5d1` | `mirror.go:130` | branch/case | Changes: `return "", err` → `_ = err` | equivalent: `git ls-files --stage` after rev-parse succeeded on the same repo cannot fail |
+| `5340ebf8` | `mirror.go:68` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | code removed: Locate's `Sub == ""` branch was dead (filepath.Clean("") = ".") |
+| `eb6105d2` | `mirror.go:125` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | equivalent: a linked worktree whose common dir is no directory fails git first |
+| `84237ffe` | `mirror.go:181` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | contract-open: a tracked path now a plain directory (Y3 refuses nested repos; one still refuses through its `dir/` entry) |
+| `d867ce34` | `mirror.go:344` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `7cb23cf9` | `mirror.go:381` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `130e8980` | `mirror.go:391` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `dbe07346` | `mirror.go:403` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `eec782a4` | `mirror.go:302` | composite/field-clear | Changes: `return out, &gitError{args: args, code: ee.ExitCode(), stderr: stderr.String()}` → `return out, &git | contract-open: error wording (git args) |
+| `324a2b25` | `mirror.go:343` | expression/error-guard | Removes an error-guard block so the function continues even on error | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `d49ebda3` | `mirror.go:380` | expression/error-guard | Removes an error-guard block so the function continues even on error | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `a6e257ca` | `mirror.go:390` | expression/error-guard | Removes an error-guard block so the function continues even on error | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `23fca1ea` | `mirror.go:402` | expression/error-guard | Removes an error-guard block so the function continues even on error | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `986ab9cf` | `mirror.go:80` | expression/remove | Removes an expression statement entirely, dropping its side effect | killed: e2e TestY1HomeDirectoryNeverGoesToAHost/git=true (new; exact diff confirmed) |
+| `07b1eede` | `mirror.go:84` | expression/remove | Changes: `if t.LocalOnly == "" && err == nil && l.GitDir != l.CommonDir {` → `if t.LocalOnly == "" && true &&  | equivalent: Inspect returns localOnly's error, so Worktree/CommonDir never reach a caller |
+| `a67c7713` | `mirror.go:121` | expression/remove | Changes: `if id := filepath.Base(gitDir); !worktreeID.MatchString(id) \|\| id == "." \|\| id == ".." {` → `if  | equivalent: a worktree id = a directory name under worktrees/, never "." or ".." |
+| `7d2f677a` | `mirror.go:121` | expression/remove | Changes: `if id := filepath.Base(gitDir); !worktreeID.MatchString(id) \|\| id == "." \|\| id == ".." {` → `if  | equivalent: a worktree id = a directory name under worktrees/, never "." or ".." |
+| `cd5b66a4` | `mirror.go:124` | expression/remove | Removes an expression statement entirely, dropping its side effect | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `1b87f156` | `mirror.go:132` | expression/remove | Removes an expression statement entirely, dropping its side effect | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `322acb8a` | `mirror.go:200` | expression/remove | Changes: `if filepath.Base(p) == ".gitignore" && !strings.HasSuffix(p, "/") {` → `if filepath.Base(p) == ".git | equivalent: filepath.Base strips the slash, then Lstat finds no regular file; its replay "kill" came from TestY11LivePredecessorAfterControllerDeath alone (timing) = noise |
+| `2611be2b` | `mirror.go:68` | statement/remove | Removes a statement entirely, dropping its side effect or return value | code removed: as 5340ebf8 |
+| `0b026664` | `mirror.go:125` | statement/return | Replaces a return value with its zero value | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `918bf321` | `mirror.go:125` | statement/return | Replaces a return value with its zero value | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `2f6185e8` | `mirror.go:133` | statement/return | Replaces a return value with its zero value | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `f390bfd0` | `mirror.go:154` | statement/return | Replaces a return value with its zero value | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `3705d87a` | `mirror.go:158` | statement/return | Replaces a return value with its zero value | equivalent: stat of git's own dirs after rev-parse succeeded cannot fail |
+| `cb48a667` | `mirror.go:256` | statement/return | Replaces a return value with its zero value | killed: TestGlobalExcludes HOME default (new; exact diff confirmed) |
+| `d678c47d` | `mirror.go:344` | statement/return | Replaces a return value with its zero value | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `c853d3ef` | `mirror.go:381` | statement/return | Replaces a return value with its zero value | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `5e4f1df9` | `mirror.go:391` | statement/return | Replaces a return value with its zero value | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+| `39eb2930` | `mirror.go:403` | statement/return | Replaces a return value with its zero value | equivalent: t.check guards a root Inspect always gives absolute and never `/` (copiesEverything refuses it) |
+
