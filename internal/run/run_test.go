@@ -678,7 +678,7 @@ func TestScriptVariablesAreReserved(t *testing.T) {
 			i := 0
 			for ; i < len(words); i++ { // leading NAME=… words
 				n := ident.FindString(words[i])
-				if n == "" || !strings.HasPrefix(words[i][len(n):], "=") {
+				if n == "" || !strings.HasPrefix(strings.TrimPrefix(words[i][len(n):], "+"), "=") {
 					break
 				}
 				names = append(names, n)
@@ -687,7 +687,7 @@ func TestScriptVariablesAreReserved(t *testing.T) {
 				continue
 			}
 			switch words[i] {
-			case "local", "export", "read", "for":
+			case "local", "export", "declare", "typeset", "readonly", "read", "for":
 				for _, w := range words[i+1:] {
 					if strings.HasPrefix(w, "-") {
 						continue
