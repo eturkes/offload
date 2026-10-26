@@ -16,8 +16,9 @@
 #                              first): effective sshd settings, the nftables input policy + allow
 #                              rules + temporarily opened ports, non-loopback listeners, files in the
 #                              system closure holding the Wi-Fi PSK (read via a root-only temp file,
-#                              never argv), wifi.env's mode — any set other than config.reviewed's =
-#                              a finding.
+#                              never argv), wifi.env's mode, copies of the repo's secret files
+#                              (by name) under /home /root /tmp /var/tmp — any set other than
+#                              config.reviewed's = a finding.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
@@ -53,6 +54,7 @@ ports=$(nft -j list set inet nixos-fw temp-ports | jq '[.nftables[] | select(.se
 echo "fw temp-ports $ports"
 ss -Hltnup | awk '$5 !~ /^(127\.|\[::1\])/ { match($7, /"[^"]+"/); print "listen", $1, $5, substr($7, RSTART + 1, RLENGTH - 2) }'
 f=$(umask 077 && mktemp)
+trap 'rm -f "$f"' EXIT # also when a failing producer ends the collection
 sed -n 's/^WIFI_PSK=//p' /etc/nixos/wifi.env >"$f"
 if [ -s "$f" ]; then
   closure=$(nix-store -qR /run/current-system)
@@ -62,8 +64,11 @@ if [ -s "$f" ]; then
 else
   echo "secret psk-files ?"
 fi
-rm -f "$f"
 stat -c 'secret wifi.env %a %U' /etc/nixos/wifi.env
+# The repo's secret files outside their one place (a sync of the offload repo before their ignore rule
+# existed leaves an ignored copy in a workdir that no prune removes, Y5).
+copies=$(find /home /root /tmp /var/tmp -xdev \( -name wifi.env -o -name 'installer_host_key*' -o -name nixbox-recovery-key \) -print | wc -l)
+echo "secret copies $copies"
 EOF
 }
 case ${1-} in

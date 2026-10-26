@@ -26,6 +26,8 @@ fw temp-ports 0
 listen tcp 0.0.0.0:22 sshd
 listen tcp [::]:22 sshd
 listen udp [fe80::62f2:62ff:feb1:79c5]%wlo1:546 NetworkManager
-# The Wi-Fi PSK: no file of the running system's closure holds it; wifi.env root-only.
+# The Wi-Fi PSK: no file of the running system's closure holds it; wifi.env root-only; no copy of a
+# secret file (wifi.env, installer_host_key*, the recovery key) in a home or temp dir.
+secret copies 0
 secret psk-files 0
 secret wifi.env 600 root
