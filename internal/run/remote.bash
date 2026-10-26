@@ -59,10 +59,14 @@ if [ "$__mode" = git ]; then
   if [ "$__n" != "$((__count + 2))" ] || [ "$__first" != "$__nonce" ]; then
     fail "upload list framing mismatch ($__n of $((__count + 2)) records); nothing pruned"
   fi
-  head -z -n 2 "$__meta/upload" | tail -z -n 1 | tr -d '\0' >"$__meta/excludes"
+  # Each input of the prune list checked whole (pipefail in subshells, kept from CMD's options): a
+  # failed step otherwise yields a short or empty list that prunes uploaded files or keeps stale ones.
+  (set -o pipefail && head -z -n 2 "$__meta/upload" | tail -z -n 1 | tr -d '\0' >"$__meta/excludes") ||
+    fail "cannot write the excludes record in workdir $1; nothing pruned"
   git_list >"$__meta/remote" || fail "git ls-files failed in workdir $1; nothing pruned"
-  tail -z -n +3 "$__meta/upload" | LC_ALL=C sort -z >"$__meta/upload.sorted"
-  LC_ALL=C sort -z "$__meta/remote" | LC_ALL=C comm -z -23 - "$__meta/upload.sorted" >"$__meta/prune"
+  (set -o pipefail && tail -z -n +3 "$__meta/upload" | LC_ALL=C sort -z >"$__meta/upload.sorted" &&
+    LC_ALL=C sort -z "$__meta/remote" | LC_ALL=C comm -z -23 - "$__meta/upload.sorted" >"$__meta/prune") ||
+    fail "cannot compute the prune list in workdir $1; nothing pruned"
   while IFS= read -r -d '' __f; do
     prune_one "$__f" || fail "cannot prune $__f in workdir $1"
   done <"$__meta/prune"
@@ -72,11 +76,12 @@ cd "./$__sub" || fail "workdir $1 has no directory $__sub"
 offload_watch bash -lc "$__cmd"
 __rc=$?
 
-# A failed listing leaves no down list ⇒ offload's download fails (125) instead of fetching nothing.
+# A failed listing or write leaves no down list ⇒ offload's download fails (125) instead of fetching
+# nothing or a part.
 if [ "$__mode" = git ] && cd "$__wd" && git_list >"$__meta/down.all"; then
-  while IFS= read -r -d '' __f; do
-    if in_tree "$__f" && { [ -e "$__f" ] || [ -L "$__f" ]; }; then printf '%s\0' "$__f"; fi
-  done <"$__meta/down.all" >"$__meta/down"
+  (while IFS= read -r -d '' __f; do
+    if in_tree "$__f" && { [ -e "$__f" ] || [ -L "$__f" ]; }; then printf '%s\0' "$__f" || exit 1; fi
+  done <"$__meta/down.all") >"$__meta/down" || rm -f "$__meta/down"
 fi
 printf '%s %s\n' "$__nonce" "$__rc" >"$__meta/status"
 exit "$__rc"

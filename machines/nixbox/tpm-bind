@@ -18,5 +18,6 @@ esac
 [ -s "$rk" ] || { echo "tpm-bind: no recovery key at $rk" >&2; exit 2; }
 tr -d '\n' < "$rk" | ssh "offload@$ip" "set -eu
   dev=\$(sudo cryptsetup status cryptroot | sed -n 's/^ *device: *//p')
+  [ -n \"\$dev\" ]
   sudo systemd-cryptenroll --unlock-key-file=/dev/stdin $wipe --tpm2-device=auto --tpm2-pcrs=$pcrs \"\$dev\"
   sudo systemd-cryptenroll \"\$dev\""

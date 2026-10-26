@@ -23,9 +23,12 @@ here=$(cd "$(dirname "$0")" && pwd)
 ip=$(sed -n 's/.*address = "\(.*\)";/\1/p' "$here/host.nix")
 collect() {
   ssh -o BatchMode=yes -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes -T \
-    "offload@$ip" sudo sh -s <<'EOF'
-set -eu
-echo "now $(date +%s)"
+    "offload@$ip" sudo bash -s <<'EOF'
+# pipefail: a failing producer (systemctl, nft, nix-store…) ends the collection (rc 2) instead of
+# reading as a clean fact.
+set -euo pipefail
+now=$(date +%s)
+echo "now $now"
 journalctl -u nixos-upgrade.service JOB_TYPE=start -o json --no-pager |
   jq -r 'select(.JOB_RESULT != null) | "upgrade \(.JOB_RESULT) \(.__REALTIME_TIMESTAMP | tonumber / 1000000 | floor)"'
 systemctl --failed --no-legend --plain | awk '{ print "failed " $1 }'
@@ -36,20 +39,26 @@ for w in /run/wrappers/bin/*; do
   if [ -z "$src" ]; then
     echo "wrapper $n ?"
   else
-    hits=$(strings "$src" | grep -E '^/(usr/)?s?bin/' | sort -u || true)
+    s=$(strings "$src")
+    hits=$(printf '%s\n' "$s" | { grep -E '^/(usr/)?s?bin/' || true; } | sort -u)
     [ -n "$hits" ] || hits=-
     printf '%s\n' "$hits" | sed "s|^|wrapper $n |"
   fi
 done
 /run/current-system/sw/bin/sshd -T -f /etc/ssh/sshd_config | awk 'tolower($1) ~ /^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|permitemptypasswords|pubkeyauthentication|clientaliveinterval|clientalivecountmax|x11forwarding|allowagentforwarding|allowtcpforwarding|gatewayports|permituserenvironment)$/ { print "sshd", tolower($1), tolower($2) }'
-echo "fw input-policy $(nft -j list chain inet nixos-fw input | jq -r '.nftables[] | select(.chain) | .chain.policy')"
+policy=$(nft -j list chain inet nixos-fw input | jq -r '.nftables[] | select(.chain) | .chain.policy')
+echo "fw input-policy $policy"
 nft list chain inet nixos-fw input-allow | sed '1,/{/d; /^[[:space:]]*}/,$d; s/^[[:space:]]*//; s/ comment ".*"$//; /^$/d; s/^/fw allow /'
-echo "fw temp-ports $(nft -j list set inet nixos-fw temp-ports | jq '[.nftables[] | select(.set) | .set.elem // [] | length] | add')"
+ports=$(nft -j list set inet nixos-fw temp-ports | jq '[.nftables[] | select(.set) | .set.elem // [] | length] | add')
+echo "fw temp-ports $ports"
 ss -Hltnup | awk '$5 !~ /^(127\.|\[::1\])/ { match($7, /"[^"]+"/); print "listen", $1, $5, substr($7, RSTART + 1, RLENGTH - 2) }'
 f=$(umask 077 && mktemp)
 sed -n 's/^WIFI_PSK=//p' /etc/nixos/wifi.env >"$f"
 if [ -s "$f" ]; then
-  echo "secret psk-files $(nix-store -qR /run/current-system | xargs grep -rlF -f "$f" 2>/dev/null | wc -l)"
+  closure=$(nix-store -qR /run/current-system)
+  # xargs 123 = some grep found no match (rc 1), the normal case.
+  hits=$(printf '%s\n' "$closure" | { xargs grep -rlF -f "$f" 2>/dev/null || [ $? = 123 ]; } | wc -l)
+  echo "secret psk-files $hits"
 else
   echo "secret psk-files ?"
 fi

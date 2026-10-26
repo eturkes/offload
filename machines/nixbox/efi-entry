@@ -10,7 +10,10 @@ run() {
   if [ -n "${DRY_RUN:-}" ]; then echo "$*"; else "$@"; fi
 }
 # Active (`*`) and inactive (` `) entries alike; the label ends at a tab (device path) or the line end.
-stale=$("$efi" | sed -n 's/^Boot\([0-9A-F]\{4\}\)[* ] Linux Boot Manager\(\t.*\)\{0,1\}$/\1/p')
+# The listing on its own: inside a pipeline sed's status would hide its failure (then no stale entry
+# would go, and the new one would join them).
+list=$("$efi")
+stale=$(printf '%s\n' "$list" | sed -n 's/^Boot\([0-9A-F]\{4\}\)[* ] Linux Boot Manager\(\t.*\)\{0,1\}$/\1/p')
 for b in $stale; do
   run "$efi" -q -b "$b" -B
 done

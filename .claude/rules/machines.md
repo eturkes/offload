@@ -5,6 +5,7 @@ paths:
 # Pool machine configs
 
 - `machines/<host>/wifi.env` = Wi-Fi secret (`WIFI_SSID=`, `WIFI_PSK=`), gitignored → never commit, never print; regenerate from the controller's NetworkManager profile. It reaches the box as root-only `/etc/nixos/wifi.env` (`deploy`, `install`); config references it by string path alone: a Nix path value or an inline secret lands in the world-readable `/nix/store`.
+- `machines/nixbox/*_test.go` = Go tests of the host scripts (package `nixbox_test`: stub tools first on PATH, no host contact) ⇒ `go test ./...` + the gate's test step enter `machines/nixbox`.
 - Config change → `machines/<host>/deploy`, then confirm the box answers SSH; Wi-Fi + static IP (`network.nix`) = the only link, a bad network change strands the box (recovery = installer stick + `install`).
 - nixbox boot chain (lanzaboote, Secure Boot keys, firmware) changes can move TPM PCR 7 → LUKS stops auto-unlocking → recovery key at the console. Read `machines/nixbox/README.md` before touching `secureboot.nix`, `boot.*`, sbctl, fwupd or the LUKS tokens; re-seal = `machines/nixbox/tpm-bind`.
 - `machines/<host>/installer_host_key` = the installer ISO's sshd host key (private; `.pub` pinned by `install`), gitignored → never commit, never copy to a pool host (its store is world-readable); regenerate with `ssh-keygen` (runbook `Files`), then rebuild the ISO.
