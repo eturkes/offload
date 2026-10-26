@@ -38,8 +38,6 @@ func main() {
 		wd, err := os.Getwd()
 		check(err)
 		fmt.Println(wd)
-	case "id":
-		fmt.Println(os.Getuid(), os.Getgid())
 	case "write": // write PATH TEXT
 		check(os.WriteFile(arg(2), []byte(arg(3)), 0o644))
 	case "read": // read PATH

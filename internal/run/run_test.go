@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/eturkes/offload/internal/remote"
+	"github.com/eturkes/offload/internal/testenv"
 )
 
 func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
@@ -123,33 +124,6 @@ func TestLockReachesWatcherNotCommand(t *testing.T) { // S3 + S5
 	}
 }
 
-// requireScope skips where no user systemd manager starts a scope; OFFLOAD_REQUIRE_SCOPE=1 (CI with a
-// lingering user manager) turns that absence into a failure, so the scope tests never skip silently.
-func requireScope(t *testing.T) {
-	t.Helper()
-	if scopeWorks() {
-		return
-	}
-	if os.Getenv("OFFLOAD_REQUIRE_SCOPE") != "" {
-		t.Fatal("OFFLOAD_REQUIRE_SCOPE is set, but systemd-run --user --scope fails")
-	}
-	t.Skip("no user systemd manager: scope teardown is untestable here")
-}
-
-// scopeWorks finds the user manager the way the watcher does ($XDG_RUNTIME_DIR, else /run/user/<uid>)
-// and starts a scope there.
-func scopeWorks() bool {
-	for _, d := range []string{os.Getenv("XDG_RUNTIME_DIR"), "/run/user/" + strconv.Itoa(os.Getuid())} {
-		if fi, err := os.Stat(filepath.Join(d, "systemd", "private")); d == "" || err != nil || fi.Mode()&os.ModeSocket == 0 {
-			continue
-		}
-		c := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")
-		c.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+d)
-		return c.Run() == nil
-	}
-	return false
-}
-
 // ownCgroup = the test process's cgroup line: a command left out of a new scope shares it, also when
 // the suite itself runs inside an offload scope.
 func ownCgroup(t *testing.T) string {
@@ -198,7 +172,7 @@ func requireGone(t *testing.T, pid int) {
 }
 
 func TestScopeEndsEscapedDaemonWithLeader(t *testing.T) { // X1
-	requireScope(t)
+	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	t0 := time.Now()
 	rc, err := Local(context.Background(), []string{"bash", "-c", daemon, "_", pids}, nil)
@@ -209,7 +183,7 @@ func TestScopeEndsEscapedDaemonWithLeader(t *testing.T) { // X1
 }
 
 func TestScopeEndsEscapedDaemonOnCancel(t *testing.T) { // X1 + X3
-	requireScope(t)
+	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan int)
@@ -242,7 +216,7 @@ func TestRefusedScopeRunsCommandWithoutScope(t *testing.T) { // X1 fallback: CMD
 }
 
 func TestScopeHoldsCommand(t *testing.T) { // X1: CMD itself sits in the offload scope
-	requireScope(t)
+	testenv.RequireScope(t)
 	out := filepath.Join(t.TempDir(), "cgroup")
 	rc, err := Local(context.Background(), []string{"bash", "-c", `cat /proc/self/cgroup > "$1"`, "_", out}, nil)
 	cg, _ := os.ReadFile(out)
@@ -252,7 +226,7 @@ func TestScopeHoldsCommand(t *testing.T) { // X1: CMD itself sits in the offload
 }
 
 func TestScopeKeepsCommandEnvironment(t *testing.T) { // X1 + X2: XDG_RUNTIME_DIR + INVOCATION_ID as CMD had them
-	requireScope(t)
+	testenv.RequireScope(t)
 	for _, set := range []bool{true, false} {
 		out := filepath.Join(t.TempDir(), "out")
 		want := "unset unset"
@@ -338,7 +312,7 @@ func TestWatcherTermBeforeSetsidRunsNothing(t *testing.T) { // X1: TERM to the w
 }
 
 func TestScopeMarkLivesInRuntimeDirUntilTeardown(t *testing.T) { // X1: never /tmp; removed after the run
-	requireScope(t)
+	testenv.RequireScope(t)
 	out := filepath.Join(t.TempDir(), "mark")
 	// The mark holds CMD's cgroup line ⇒ CMD finds its own among other runs' marks.
 	cmd := `grep -lxF "$(cat /proc/self/cgroup)" /run/user/$UID/offload-mark.* > "$1"`
@@ -354,7 +328,7 @@ func TestScopeMarkLivesInRuntimeDirUntilTeardown(t *testing.T) { // X1: never /t
 }
 
 func TestScopeKillsTermIgnoringDaemonAfterGrace(t *testing.T) { // X1: KILL at 10 s (S5 lock: e2e local-kill-escalation)
-	requireScope(t)
+	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	cmd := `setsid -f bash -c 'trap "" TERM; echo $$ > "$0"; while :; do sleep 1; done' "$1"
 while [ ! -s "$1" ]; do sleep 0.01; done`
@@ -378,7 +352,7 @@ while [ ! -s "$1" ]; do sleep 0.01; done`
 }
 
 func TestEOFDuringScopeAdmissionRunsNothing(t *testing.T) { // X1 + X3: offload gone while systemd-run starts
-	requireScope(t)
+	testenv.RequireScope(t)
 	sdRun, err := exec.LookPath("systemd-run")
 	if err != nil {
 		t.Fatal(err)
@@ -659,7 +633,7 @@ func TestExportedShelloptsReachTheCommandAlone(t *testing.T) {
 	for _, scope := range []string{"scope", "refused-scope"} {
 		t.Run(scope, func(t *testing.T) {
 			if scope == "scope" {
-				requireScope(t)
+				testenv.RequireScope(t)
 			} else {
 				failingSystemdRun(t)
 			}

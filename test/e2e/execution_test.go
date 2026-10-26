@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/eturkes/offload/internal/testenv"
 )
 
 const sessionCommand = `set -m
@@ -129,30 +131,9 @@ exit 7`
 	}
 }
 
-// requireScope skips where no user systemd manager (found as the watcher finds it) starts a scope;
-// OFFLOAD_REQUIRE_SCOPE=1 (CI with a lingering user manager) turns that absence into a failure.
-func requireScope(t *testing.T) {
-	t.Helper()
-	for _, d := range []string{os.Getenv("XDG_RUNTIME_DIR"), "/run/user/" + strconv.Itoa(os.Getuid())} {
-		if fi, err := os.Stat(filepath.Join(d, "systemd", "private")); d == "" || err != nil || fi.Mode()&os.ModeSocket == 0 {
-			continue
-		}
-		c := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")
-		c.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+d)
-		if c.Run() == nil {
-			return
-		}
-		break
-	}
-	if os.Getenv("OFFLOAD_REQUIRE_SCOPE") != "" {
-		t.Fatal("OFFLOAD_REQUIRE_SCOPE is set, but systemd-run --user --scope fails")
-	}
-	t.Skip("no user systemd manager: scope teardown is untestable here")
-}
-
 func TestX1ScopeEndsDoubleForkedDaemon(t *testing.T) {
 	t.Parallel()
-	requireScope(t)
+	testenv.RequireScope(t)
 	daemon := `setsid -f bash -c 'echo $$ > "$0"; exec sleep 300' "$1"
 while [ ! -s "$1" ]; do sleep 0.01; done
 `
@@ -185,7 +166,7 @@ while [ ! -s "$1" ]; do sleep 0.01; done
 
 func TestX1RefusedScopeFallsBackQuietly(t *testing.T) {
 	t.Parallel()
-	requireScope(t) // a refusal needs a manager to ask: without one the watcher never tries
+	testenv.RequireScope(t) // a refusal needs a manager to ask: without one the watcher never tries
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, false)

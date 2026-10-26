@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/eturkes/offload/internal/testenv"
 )
 
 // Real-podman tests share one isolated storage (vfs under a temp dir): the user's own images stay
@@ -827,7 +829,7 @@ func TestK7ImagePathNonExecutableIs126(t *testing.T) {
 // KILL reach it (the container dies early or its record leaks); conmon must get its own scope.
 func TestK8UnderSystemdUnitConmonStaysOutOfX1Scope(t *testing.T) {
 	t.Parallel()
-	requireScope(t)
+	testenv.RequireScope(t)
 	s := ctrSandbox(t, false, "")
 	s.setenv("INVOCATION_ID", "0123456789abcdef0123456789abcdef")
 	marker := fmt.Sprintf("k8unit-%d", time.Now().UnixNano())
