@@ -23,6 +23,10 @@ var (
 	fixtureDir string
 )
 
+// coverEnv = a directory: the binary is built with -cover and each sandbox writes its counters to
+// <dir>/<top-level test>.<random> — the per-test coverage map behind .agent/mutation (code.md).
+const coverEnv = "OFFLOAD_E2E_COVERDIR"
+
 func TestMain(m *testing.M) {
 	// Fixture modes (WriteFile, git checkouts) pass through the umask, and an image's root-owned
 	// copy must stay readable + executable by the keep-id user: an agent session's umask 077 made
@@ -42,7 +46,11 @@ func TestMain(m *testing.M) {
 	binaryPath, helperPath = filepath.Join(tmp, "offload"), filepath.Join(tmp, "ctrhelper")
 	// Static, as installed: the binary is also the init inside `FROM scratch` test images (K11).
 	for out, pkg := range map[string]string{binaryPath: "./cmd/offload", helperPath: "./test/e2e/testdata/ctrhelper"} {
-		build := exec.Command("go", "build", "-o", out, pkg)
+		args := []string{"build", "-o", out}
+		if out == binaryPath && os.Getenv(coverEnv) != "" {
+			args = append(args, "-cover") // -coverpkg alone emits no counters (go 1.27)
+		}
+		build := exec.Command("go", append(args, pkg)...)
 		build.Dir = filepath.Clean(filepath.Join(cwd, "../.."))
 		build.Env = append(os.Environ(), "CGO_ENABLED=0")
 		build.Stdout, build.Stderr = os.Stdout, os.Stderr
@@ -102,6 +110,11 @@ func newSandbox(t *testing.T, git bool, hosts ...host) *sandbox {
 	ssh, err := os.ReadFile(filepath.Join(fixtureDir, "ssh"))
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(base, "bin", "ssh"), ssh, 0o700))
+	covdir := ""
+	if root := os.Getenv(coverEnv); root != "" {
+		covdir, err = os.MkdirTemp(root, strings.SplitN(t.Name(), "/", 2)[0]+".")
+		must(t, err)
+	}
 	s.env = replaceEnv(os.Environ(), map[string]string{
 		"HOME": filepath.Join(base, "home"), "XDG_CONFIG_HOME": filepath.Join(base, "config"),
 		"XDG_RUNTIME_DIR": s.runtime, "XDG_STATE_HOME": filepath.Join(base, "state"),
@@ -112,6 +125,7 @@ func newSandbox(t *testing.T, git bool, hosts ...host) *sandbox {
 		"GIT_COMMITTER_NAME": "e2e", "GIT_COMMITTER_EMAIL": "e2e@example.invalid",
 		"LC_ALL": "C", "TERM": "dumb",
 		"OFFLOAD_CTR": "", // the machine's own switch (K2) must not leak in; ctrSandbox turns it on
+		"GOCOVERDIR":  covdir,
 	})
 	if len(hosts) == 0 {
 		hosts = []host{{name: "alpha", cpus: 8, load: 2, slots: 2}}

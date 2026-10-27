@@ -1,0 +1,43 @@
+#!/usr/bin/env -S python3 -I
+"""plan AGENTIC COVDIR SRCROOT > PLAN — per escaped mutant (mutago's agentic JSON): its enclosing
+func + the e2e tests whose sandboxes executed its line, from COVDIR = an OFFLOAD_E2E_COVERDIR run
+(one counter dir per sandbox, <Test>.<random>). PLAN rows: id, file, line, func, mutator, n, tests
+('|'-joined) | FULL (line in no coverage block: package-level → whole suite) | NONE (no test ran it).
+Code that runs only inside a container (the init: cli.Main's __ctr-init dispatch) writes no
+counters ⇒ its rows under-select; rule those survivors by hand."""
+import collections, glob, json, os, re, subprocess, sys
+
+agentic, covdir, src = sys.argv[1:4]
+muts = json.load(open(agentic))['mutants']
+blocks = collections.defaultdict(list)  # file -> [(first line, last line, test, count)]
+for d in glob.glob(os.path.join(covdir, '*.*')):
+    if not os.path.isdir(d) or not os.listdir(d):
+        continue
+    text = subprocess.run(['go', 'tool', 'covdata', 'textfmt', '-i=' + d, '-o=/dev/stdout'],
+                          capture_output=True, text=True, check=True).stdout
+    test = os.path.basename(d).split('.')[0]
+    for ln in text.splitlines():
+        m = re.match(r'github\.com/eturkes/offload/(\S+\.go):(\d+)\.\d+,(\d+)\.\d+ \d+ (\d+)', ln)
+        if m:
+            blocks[m[1]].append((int(m[2]), int(m[3]), test, int(m[4])))
+
+def funcs(path):
+    out, name, start = [], None, 0
+    for i, ln in enumerate(open(os.path.join(src, path)), 1):
+        m = re.match(r'func (\([^)]*\) )?(\w+)', ln)
+        if m:
+            recv = (m[1] or '').strip('() ').split(' ')[-1].lstrip('*')
+            name, start = (recv + '.' if recv else '') + m[2], i
+        elif ln.startswith('}') and name:
+            out.append((start, i, name))
+            name = None
+    return out
+
+ranges = {p: funcs(p) for p in {m['file'] for m in muts}}
+for m in muts:
+    f, line = m['file'], m['line']
+    fn = next((n for a, b, n in ranges[f] if a <= line <= b), '(pkg)')
+    inb = [b for b in blocks[f] if b[0] <= line <= b[1]]
+    tests = sorted({b[2] for b in inb if b[3] > 0})
+    sel = 'FULL' if not inb else ('NONE' if not tests else '|'.join(tests))
+    print('\t'.join([m['id'], f, str(line), fn, m['mutator'], str(len(tests)), sel]))

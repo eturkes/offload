@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# replay WORKTREE AGENTIC PLAN OUT — per PLAN row (.agent/mutation/plan): apply the mutant, run its
+# covering e2e tests (-failfast; FULL = the suite, NONE = no run), confirm a kill by rerunning the
+# first failing test alone, revert. OUT rows (appended; rerun resumes): id, verdict (killed |
+# escaped | unconfirmed | nocover | patchfail), failing tests, seconds.
+set -u
+wt=$1 agentic=$2 plan=$3 out=$4
+umask 022
+cd "$wt" || exit 2
+while IFS=$'\t' read -r id file _ _ _ _ sel; do
+  grep -q "^$id"$'\t' "$out" 2>/dev/null && continue
+  t0=$EPOCHREALTIME
+  if [ "$sel" = NONE ]; then printf '%s\tnocover\t\t0\n' "$id" >> "$out"; continue; fi
+  jq -r --arg id "$id" '.mutants[] | select(.id==$id) | .diff' "$agentic" > /tmp/mut-$$.diff
+  if ! patch -s "$file" < /tmp/mut-$$.diff >/dev/null 2>&1; then
+    git checkout -q -- "$file"; printf '%s\tpatchfail\t\t0\n' "$id" >> "$out"; continue
+  fi
+  re=''; [ "$sel" = FULL ] || re="^($sel)\$"
+  log=$(go test -count=1 -failfast -timeout 15m ${re:+-run "$re"} ./test/e2e/ 2>&1); rc=$?
+  fails=$(printf '%s\n' "$log" | sed -n 's/^--- FAIL: \([^ /]*\).*/\1/p' | sort -u | paste -sd'|')
+  verdict=escaped
+  if [ "$rc" != 0 ]; then
+    if [ -n "$fails" ]; then
+      go test -count=1 -timeout 15m -run "^(${fails%%|*})\$" ./test/e2e/ >/dev/null 2>&1 && verdict=unconfirmed || verdict=killed
+    else
+      verdict=killed fails="(no FAIL line: rc $rc)"
+    fi
+  fi
+  git checkout -q -- "$file"
+  printf '%s\t%s\t%s\t%s\n' "$id" "$verdict" "$fails" "$(awk -v a="$t0" -v b="$EPOCHREALTIME" 'BEGIN{printf "%.0f", b-a}')" >> "$out"
+done < "$plan"
+rm -f /tmp/mut-$$.diff

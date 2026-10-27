@@ -1,0 +1,65 @@
+name: Mutation replay
+
+# Sharded e2e replay of mutago escapes (code.md mutation recipe): push a ci/mutation branch whose
+# .agent/mutation/run/ holds agentic.json + plan.tsv (.agent/mutation/plan); per-shard verdicts =
+# the out-<n> artifacts. CI runners = dedicated hosts, so a load flake cannot pass for a kill.
+
+on:
+  push:
+    branches:
+      - ci/mutation
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    name: Replay shard ${{ matrix.shard }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.3"
+          cache: false
+
+      - name: Start a user systemd manager (scope teardown tests)
+        shell: bash
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          for _ in $(seq 50); do
+            if [ -S "/run/user/$(id -u)/systemd/private" ]; then exit 0; fi
+            sleep 0.2
+          done
+          echo "no user manager socket under /run/user/$(id -u)" >&2
+          exit 1
+
+      - name: Replay the shard's mutants through e2e
+        env:
+          GOTOOLCHAIN: local
+          OFFLOAD_REQUIRE_SCOPE: "1"
+          OFFLOAD_REQUIRE_PODMAN: "1"
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p out
+          awk -v s="$SHARD" 'NR % 20 == s % 20' .agent/mutation/run/plan.tsv > "out/plan-$SHARD.tsv"
+          go test -count=1 -run '^TestK7StatusPassesThrough$' ./test/e2e/
+          .agent/mutation/replay "$PWD" "$PWD/.agent/mutation/run/agentic.json" "$PWD/out/plan-$SHARD.tsv" "$PWD/out/out-$SHARD.tsv"
+          git diff --exit-code
+
+      - name: Upload the verdicts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: out-${{ matrix.shard }}
+          path: out/

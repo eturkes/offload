@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# verify WORKTREE RULINGS AGENTIC OUT — checks survivor rulings (a markdown table whose 7th column
+# starts `new test` or `killed` and names Test… functions): per row, apply its mutant in WORKTREE →
+# the named tests must FAIL; revert; then every named test passes on the clean tree. OUT rows:
+# id, red | NOT-RED | PATCHFAIL | ERR(…), tests; last row GREEN rc=<rc> <failures>.
+set -u
+wt=$1 del=$2 A=$3 out=$4
+umask 022
+cd "$wt" || exit 2
+: > "$out"
+all=()
+while IFS=$'\t' read -r id tests; do
+  re="^($tests)\$"
+  pkgs=$(for t in ${tests//|/ }; do grep -rl --include='*_test.go' "func $t(" . | xargs -r -n1 dirname; done | sort -u | sed 's#^#./#; s#^\./\./#./#')
+  file=$(jq -r --arg p "$id" '.mutants[]|select(.id|startswith($p))|.file' "$A")
+  jq -r --arg p "$id" '.mutants[]|select(.id|startswith($p))|.diff' "$A" | patch -s "$file" || { echo -e "$id\tPATCHFAIL\t$tests" >> "$out"; git checkout -q -- "$file"; continue; }
+  if go test -count=1 -timeout 10m -run "$re" $pkgs >/tmp/verify-$$.log 2>&1; then v=NOT-RED; else grep -q -- '--- FAIL' /tmp/verify-$$.log && v=red || v="ERR($(tail -1 /tmp/verify-$$.log))"; fi
+  git checkout -q -- "$file"
+  echo -e "$id\t$v\t$tests" >> "$out"
+  all+=("$tests")
+done < <(awk -F' \\| ' '/^\| `/ && ($7 ~ /^new test/ || $7 ~ /^killed/) {id=$1; gsub(/[|` ]/,"",id); n=split($7,a,/Test[A-Za-z0-9_]+/,s); t=""; for(i=1;i<n;i++){if(index("|"t"|","|"s[i]"|")==0) t=t (t==""?"":"|") s[i]}; print id"\t"t}' "$del")
+u=$(printf '%s\n' "${all[@]}" | tr '|' '\n' | sort -u | paste -sd'|')
+pk=$(for t in ${u//|/ }; do grep -rl --include='*_test.go' "func $t(" . | xargs -r -n1 dirname; done | sort -u)
+go test -count=1 -timeout 15m -run "^($u)\$" $pk > /tmp/verify-green-$$.log 2>&1; echo -e "GREEN\trc=$?\t$(grep -c -- '--- FAIL' /tmp/verify-green-$$.log)" >> "$out"
+rm -f /tmp/verify-$$.log
