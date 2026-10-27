@@ -27,12 +27,14 @@ const grace = 10 * time.Second
 // socket and exits with it. Socket EOF = `offload ctr` is gone: exit at once, which KILLs the pid
 // namespace.
 func Init(argv []string, stderr io.Writer) int {
-	ctl := os.NewFile(3, "control")
 	// PID 1 alone: the teardown's kill(-1) outside a pid namespace would hit every process of the user.
-	if os.Getpid() != 1 || ctl == nil || len(argv) == 0 {
+	if os.Getpid() != 1 || len(argv) == 0 {
 		fmt.Fprintln(stderr, "offload: __ctr-init runs inside offload ctr's container only")
 		return 125
 	}
+	// Wrapped only once PID 1 is certain: an *os.File's finalizer closes its fd, and outside a
+	// container fd 3 belongs to someone else (a test process: the runtime's epoll fd).
+	ctl := os.NewFile(3, "control")
 	syscall.CloseOnExec(3) // podman passes it inheritable; CMD must not write the status channel
 	// Handlers, not signal.Ignore: an ignored disposition survives exec, so CMD would start deaf.
 	// Signals arriving as signals (podman's sig-proxy, a scope-wide kill) are dropped: the socket
