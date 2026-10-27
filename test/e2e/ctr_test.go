@@ -179,13 +179,13 @@ func ctrSandbox(t *testing.T, git bool, extra string) *sandbox {
 	// Runs before TempDir's removal (LIFO): a container that outlives offload (killed podman, X1)
 	// is cleaned up by conmon, whose crun recreates <runtime>/crun after a too-early RemoveAll.
 	t.Cleanup(func() {
-		for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(100 * time.Millisecond) {
+		for deadline := time.Now().Add(hang); ; time.Sleep(100 * time.Millisecond) { // K8 promises removal, not its latency
 			r := podman(t, s, "ps", "-a", "--format", "{{.Mounts}}")
 			if r.code == 0 && !strings.Contains(r.stdout, s.root) {
 				return
 			}
 			if time.Now().After(deadline) {
-				t.Errorf("a container of %s still exists 10 s after the test: %q %s", s.root, r.stdout, r.stderr)
+				t.Errorf("a container of %s still exists %s after the test: %q %s", s.root, hang, r.stdout, r.stderr)
 				return
 			}
 		}
