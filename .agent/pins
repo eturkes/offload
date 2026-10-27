@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # pins — every hand-moved version pin vs its latest upstream release (Dependabot moves none of
 # them): `.agent/tool --pins` (a git-built tool tracks its newest tag, or nixpkgs' revision), Go
-# (`go.mod` `go` line; each workflow's setup-go `go-version` must equal it), each distinct workflow
-# `runs-on` label (vs the newest GA x64 `ubuntu-NN.04` in actions/runner-images' README). Prints a
-# markdown table; rc 0 = all current, 1 = a pin behind or a Go copy off `go.mod`, 2 = a lookup
-# failed. Network ⇒ not a gate step; runs weekly in `.github/workflows/pins.yml`. GH_TOKEN, when set,
-# authenticates GitHub calls.
+# (`go.mod` `go` line; each workflow's setup-go `go-version` must equal it), nixbox's lanzaboote tag,
+# each distinct workflow `runs-on` label (vs the newest GA x64 `ubuntu-NN.04` in actions/runner-images'
+# README). Prints a markdown table; rc 0 = all current, 1 = a pin behind or a Go copy off `go.mod`,
+# 2 = a lookup failed. Network ⇒ not a gate step; runs weekly in `.github/workflows/pins.yml`.
+# GH_TOKEN, when set, authenticates GitHub calls.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 get() {
@@ -35,6 +35,10 @@ latest() { # latest <source> → newest stable release, without a leading v/go
 gomod=$(sed -n 's/^go //p' go.mod)
 pins=$(.agent/tool --pins)
 pins+=$'\n'"go $gomod golang"
+# nixbox's lanzaboote fetchTarball tag; the nixos-unstable rev beside it is frozen (gate.md).
+lanzaboote=$(sed -n 's#.*/lanzaboote/archive/v\([0-9][0-9.]*\)\.tar\.gz".*#\1#p' machines/nixbox/secureboot.nix)
+[ -n "$lanzaboote" ] || { echo "pins: no lanzaboote tag in machines/nixbox/secureboot.nix" >&2; exit 2; }
+pins+=$'\n'"lanzaboote $lanzaboote github:nix-community/lanzaboote"
 while read -r label; do
   pins+=$'\n'"runs-on $label runner-images"
 done < <(sed -n 's/^ *runs-on: *\([^ #]*\).*/\1/p' .github/workflows/*.yml | sort -u)
