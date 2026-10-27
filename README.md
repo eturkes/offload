@@ -192,6 +192,11 @@ The tag of the image is a checksum of the `.devcontainer` directory: the file co
 When you change a file in the directory, the next run builds a new image.
 offload shows `offload: building …` on stderr while it builds.
 
+`COPY` keeps the permissions of each file, and the copy in the image belongs to root.
+The command in the image runs with your user ID, so a copied file must be readable by all users, and a copied program must be executable by all users.
+A checkout made with umask `077` has files that only you can read.
+In that case, use `COPY --chmod=0755` for programs and `COPY --chmod=0644` for other files.
+
 offload builds with `podman build --timestamp 0`.
 Thus, if all the inputs of the image are fixed, each machine builds the same layers.
 To fix the inputs, follow these rules in the `Containerfile`:

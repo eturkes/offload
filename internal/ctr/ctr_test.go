@@ -3,6 +3,7 @@ package ctr
 import (
 	"crypto/sha1"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,6 +32,12 @@ func tree(t *testing.T, files map[string]string) string {
 		must(t, os.WriteFile(full, []byte(content), 0o644))
 		must(t, os.Chmod(full, 0o644)) // umask-independent
 	}
+	must(t, filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.IsDir() || path == dir {
+			return err
+		}
+		return os.Chmod(path, 0o755) // umask-independent: a 077 umask leaves 0700 = "dir mode"'s target
+	}))
 	return dir
 }
 

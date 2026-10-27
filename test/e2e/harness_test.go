@@ -24,6 +24,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// Fixture modes (WriteFile, git checkouts) pass through the umask, and an image's root-owned
+	// copy must stay readable + executable by the keep-id user: an agent session's umask 077 made
+	// the e2e image's ctrhelper 0700 → 126. offload's own files carry explicit modes.
+	syscall.Umask(0o022)
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
