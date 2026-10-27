@@ -103,7 +103,7 @@ while :; do sleep 0.02; done`
 	}
 	assertAbsent(t, filepath.Join(s.workdir("alpha"), "successor"))
 	s.write(filepath.Join(markers, "release"), "finish teardown\n")
-	second.wait(8*time.Second).requireCode(t, 0)
+	second.wait(hang).requireCode(t, 0)
 	requirePIDsGone(t, []int{pid}, time.Second)
 	if got := s.read("successor"); got != "successor" {
 		t.Errorf("successor did not complete: %q", got)

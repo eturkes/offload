@@ -214,7 +214,7 @@ func TestK10ReviewOrderedLayersAndHosts(t *testing.T) {
 		{"last-differs", "zeta: different (here 2, there 2 layers)", 1},
 	} {
 		s.write(filepath.Join(s.hosts, "zeta", "check-case"), tc.mode)
-		r := s.start("ctr", "--check").wait(30 * time.Second)
+		r := s.start("ctr", "--check").wait(hang)
 		r.requireCode(t, tc.code)
 		if want := tc.first + "\nalpha: same (2 layers)\n"; r.stdout != want {
 			t.Fatalf("%s: output=%q want=%q", tc.mode, r.stdout, want)
@@ -247,7 +247,7 @@ func TestK10ReviewHostsStartInParallel(t *testing.T) {
     done
   fi
   printf 'sha256:a\nsha256:b\n'; exit 0 ;;`)
-	r := s.start("ctr", "--check").wait(30 * time.Second)
+	r := s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 0)
 	if r.stdout != "zeta: same (2 layers)\nalpha: same (2 layers)\n" {
 		t.Fatalf("parallel host verdicts = %q", r.stdout)

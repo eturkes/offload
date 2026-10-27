@@ -41,7 +41,7 @@ func TestReviewG6TerminalStdinCompletes(t *testing.T) {
 		}
 		_ = cmd.Process.Kill()
 	}()
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(hang)
 	for !strings.HasPrefix(readOr(log), "ready\n") {
 		if time.Now().After(deadline) {
 			t.Fatalf("terminal command did not become ready: %s", readOr(out.Name()))

@@ -301,14 +301,20 @@ func (p *running) wait(timeout time.Duration) result {
 	}
 }
 
+// hang bounds a wait whose test claims no latency (readiness, completion): a hung run still fails,
+// a loaded host only waits longer (podman steps slow down 10-20x under CPU contention). Waits
+// that check a promised latency (signal response, X1's 10 s, J4's 2 s, K8's "at once") keep
+// their own bounds.
+const hang = 2 * time.Minute
+
 func (s *sandbox) run(args ...string) result {
 	s.t.Helper()
-	return s.start(args...).wait(20 * time.Second)
+	return s.start(args...).wait(hang)
 }
 
 func (p *running) await(what string, condition func() bool) {
 	p.t.Helper()
-	deadline := time.Now().Add(6 * time.Second)
+	deadline := time.Now().Add(hang)
 	for time.Now().Before(deadline) {
 		if condition() {
 			return
@@ -321,7 +327,7 @@ func (p *running) await(what string, condition func() bool) {
 		}
 	}
 	r := p.output()
-	p.t.Fatalf("no %s within 6s; stdout=%q stderr=%q", what, r.stdout, r.stderr)
+	p.t.Fatalf("no %s within %s; stdout=%q stderr=%q", what, hang, r.stdout, r.stderr)
 }
 
 func (p *running) signal(signal syscall.Signal) {

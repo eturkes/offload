@@ -79,7 +79,7 @@ func TestS4SameTreeRunsSerializeAtController(t *testing.T) {
 	b := s.run("run", "--pool", "--", "bash", "-c", "test -e "+first)
 	b.requireCode(t, 0) // the second run's command started only after the first finished
 	requireContains(t, b.stderr, "waiting for a free slot")
-	a.wait(10*time.Second).requireCode(t, 0)
+	a.wait(hang).requireCode(t, 0)
 	if _, err := os.Stat(first); err != nil {
 		t.Fatal(err)
 	}

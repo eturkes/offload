@@ -562,7 +562,7 @@ func TestY11RemoteLock(t *testing.T) {
 	default:
 	}
 	must(t, syscall.Flock(int(lock.Fd()), syscall.LOCK_UN))
-	p.wait(8*time.Second).requireCode(t, 0)
+	p.wait(hang).requireCode(t, 0)
 	if !exists(filepath.Join(remote, "command-ran")) || !exists(filepath.Join(remote, "tracked")) {
 		t.Error("successor did not proceed after predecessor released remote lock")
 	}

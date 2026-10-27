@@ -71,13 +71,25 @@ func requirePodman(t *testing.T) string {
 	return storageConf
 }
 
-// podmanBus points podman at the real user bus: a sandbox's own XDG_RUNTIME_DIR hides it, and
-// without one podman warns + falls back to cgroupfs on every call (CI sets no bus address).
-func podmanBus(s *sandbox) {
+// podmanEnv points a sandbox's podman at the shared storage conf, the real user bus (a sandbox's
+// own XDG_RUNTIME_DIR hides it, and without one podman warns + falls back to cgroupfs on every
+// call; CI sets no bus address) and the prebuild's pause process: rootless podman finds its pause
+// process through $XDG_RUNTIME_DIR/libpod/tmp/pause.pid, and a sandbox's fresh runtime dir lacks
+// one ⇒ podman joins the user namespace through another container's conmon.pid (fails, 125, when
+// that container is being removed) or starts a pause process nothing ever reaps.
+func podmanEnv(s *sandbox, conf string) {
+	s.setenv("CONTAINERS_STORAGE_CONF", conf)
 	if bus := busAddress(); bus != "" {
 		s.setenv("DBUS_SESSION_BUS_ADDRESS", bus)
 	}
+	dir := filepath.Join(s.runtime, "libpod", "tmp")
+	must(s.t, os.MkdirAll(dir, 0o700))
+	must(s.t, os.Symlink(pausePIDFile(), filepath.Join(dir, "pause.pid")))
 }
+
+// pausePIDFile = the pid file of the pause process the prebuild started (its XDG_RUNTIME_DIR =
+// storageDir).
+func pausePIDFile() string { return filepath.Join(storageDir, "libpod", "tmp", "pause.pid") }
 
 func busAddress() string {
 	if bus := os.Getenv("DBUS_SESSION_BUS_ADDRESS"); bus != "" {
@@ -93,10 +105,38 @@ func busAddress() string {
 	return "unix:path=" + path
 }
 
-// removeStorage deletes the shared storage; its files belong to subordinate ids ⇒ podman unshare.
+// endPause kills the pause process named by pausePIDFile once its argv[0] confirms it (catatonit,
+// or podman itself where catatonit is absent): the pid may have been reused.
+func endPause() error {
+	b, err := os.ReadFile(pausePIDFile())
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil {
+		return fmt.Errorf("pause pid file: %w", err)
+	}
+	argv, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid)) // empty once the process is gone
+	if name := filepath.Base(string(bytes.SplitN(argv, []byte{0}, 2)[0])); name != "catatonit" && name != "podman" {
+		return nil
+	}
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("end pause process %d: %w", pid, err)
+	}
+	return nil
+}
+
+// removeStorage ends the shared pause process and deletes the shared storage; its files belong to
+// subordinate ids ⇒ podman unshare.
 func removeStorage() error {
 	if storageDir == "" {
 		return nil
+	}
+	if err := endPause(); err != nil {
+		return err
 	}
 	rm := exec.Command("podman", "unshare", "rm", "-rf", storageDir)
 	rm.Env = append(os.Environ(), "CONTAINERS_STORAGE_CONF="+storageConf)
@@ -133,10 +173,9 @@ func ctrSandbox(t *testing.T, git bool, extra string) *sandbox {
 	conf := requirePodman(t)
 	s := newSandbox(t, git)
 	must(t, writeDefinition(s.root, extra))
-	s.setenv("CONTAINERS_STORAGE_CONF", conf)
+	podmanEnv(s, conf)
 	s.setenv("XDG_CACHE_HOME", filepath.Join(s.base, "cache"))
 	s.setenv("OFFLOAD_CTR", "1")
-	podmanBus(s)
 	// Runs before TempDir's removal (LIFO): a container that outlives offload (killed podman, X1)
 	// is cleaned up by conmon, whose crun recreates <runtime>/crun after a too-early RemoveAll.
 	t.Cleanup(func() {
@@ -156,7 +195,7 @@ func ctrSandbox(t *testing.T, git bool, extra string) *sandbox {
 
 func (s *sandbox) ctr(argv ...string) result {
 	s.t.Helper()
-	return s.start(append([]string{"ctr", "--"}, argv...)...).wait(60 * time.Second)
+	return s.start(append([]string{"ctr", "--"}, argv...)...).wait(hang)
 }
 
 func TestK1CtrUsage(t *testing.T) {
@@ -182,7 +221,7 @@ func TestK2SwitchOffExecsInPlace(t *testing.T) {
 	for _, v := range []string{"", "0"} {
 		s.setenv("OFFLOAD_CTR", v)
 		p := s.start("ctr", "--", "bash", "-c", `echo "$$ $HEAVY_SLOTS"; exit 9`)
-		r := p.wait(10 * time.Second)
+		r := p.wait(hang)
 		r.requireCode(t, 9)
 		if want := fmt.Sprintf("%d 2\n", p.cmd.Process.Pid); r.stdout != want || r.stderr != "" {
 			t.Errorf("OFFLOAD_CTR=%q: stdout %q (want %q: same pid, env kept), stderr %q", v, r.stdout, want, r.stderr)
@@ -243,7 +282,7 @@ func TestK5ConcurrentFirstRunsBuildOnce(t *testing.T) {
 	runs := []*running{s.start("ctr", "--", "ctrhelper", "exit", "0"), s.start("ctr", "--", "ctrhelper", "exit", "0")}
 	builds := 0
 	for _, p := range runs {
-		r := p.wait(60 * time.Second)
+		r := p.wait(hang)
 		r.requireCode(t, 0)
 		builds += strings.Count(r.stderr, "offload: building")
 	}
@@ -572,18 +611,18 @@ func TestK10CheckComparesHosts(t *testing.T) {
 	bin, err := os.ReadFile(binaryPath)
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(s.base, "bin", "offload"), bin, 0o755))
-	r := s.start("ctr", "--check").wait(90 * time.Second)
+	r := s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 0)
 	if !regexp.MustCompile(`^alpha: same \([0-9]+ layers\)\n$`).MatchString(r.stdout) {
 		t.Fatalf("stdout %q", r.stdout)
 	}
 	must(t, os.WriteFile(filepath.Join(s.base, "bin", "offload"), append(bin, 0), 0o755))
-	r = s.start("ctr", "--check").wait(90 * time.Second)
+	r = s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "alpha: same (", "; offload binary differs")
 	s.write(filepath.Join(s.base, "bin", "offload"), "#!/bin/sh\necho sha256:00\n")
 	must(t, os.Chmod(filepath.Join(s.base, "bin", "offload"), 0o755))
-	r = s.start("ctr", "--check").wait(90 * time.Second)
+	r = s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "alpha: different (here ", "there 1 layers)")
 }
@@ -596,9 +635,8 @@ func TestK10CheckReportsDownHost(t *testing.T) {
 	helper, err := os.ReadFile(helperPath)
 	must(t, err)
 	must(t, os.WriteFile(s.path(".devcontainer/ctrhelper"), helper, 0o755))
-	s.setenv("CONTAINERS_STORAGE_CONF", storageConf)
-	podmanBus(s)
-	r := s.start("ctr", "--check").wait(60 * time.Second)
+	podmanEnv(s, storageConf)
+	r := s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "gone: failed (down: ")
 }
@@ -750,7 +788,7 @@ func TestK10CheckIgnoresLoginBannerAndReportsMissingOffload(t *testing.T) {
 	must(t, os.WriteFile(filepath.Join(s.base, "bin", "offload"), bin, 0o755))
 	// A login shell's own output, even imitating the frame, must not count (nonce-framed lines, K10).
 	s.write(filepath.Join(s.hosts, "alpha", ".bash_profile"), "echo login-banner\necho layer sha256:fake\necho offload-check x 00\n")
-	r := s.start("ctr", "--check").wait(90 * time.Second)
+	r := s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 0)
 	if !regexp.MustCompile(`^alpha: same \([0-9]+ layers\)\n$`).MatchString(r.stdout) {
 		t.Fatalf("banner leaked into the comparison: %q", r.stdout)
@@ -758,7 +796,7 @@ func TestK10CheckIgnoresLoginBannerAndReportsMissingOffload(t *testing.T) {
 	must(t, os.Remove(filepath.Join(s.hosts, "alpha", ".bash_profile")))
 	must(t, os.Remove(filepath.Join(s.base, "bin", "offload")))
 	s.setenv("PATH", filepath.Join(s.base, "bin")+":"+pathWithout("offload")) // an installed offload (nixbox) must not leak in
-	r = s.start("ctr", "--check").wait(90 * time.Second)
+	r = s.start("ctr", "--check").wait(hang)
 	r.requireCode(t, 1)
 	requireContains(t, r.stdout, "alpha: failed (rc ")
 }
@@ -787,7 +825,7 @@ func TestK6RemoteWorktreeLayout(t *testing.T) {
 	s.cwd = wt
 	sum := sha1.Sum([]byte(wt))
 	repo := filepath.Join(s.hosts, "alpha", "offload", ".meta", fmt.Sprintf("wt-%x", sum[:4]), "repo")
-	r := s.start("run", "--host", "alpha", "--", "offload", "ctr", "--", "ctrhelper", "exists", filepath.Join(repo, "HEAD")).wait(60 * time.Second)
+	r := s.start("run", "--host", "alpha", "--", "offload", "ctr", "--", "ctrhelper", "exists", filepath.Join(repo, "HEAD")).wait(hang)
 	r.requireCode(t, 0)
 }
 
@@ -796,8 +834,7 @@ func TestK3DefinitionDirMustBeRealDirectory(t *testing.T) {
 	conf := requirePodman(t) // a regression would build: keep it in the isolated storage
 	s := newSandbox(t, true)
 	s.setenv("OFFLOAD_CTR", "1")
-	s.setenv("CONTAINERS_STORAGE_CONF", conf)
-	podmanBus(s)
+	podmanEnv(s, conf)
 	must(t, writeDefinition(filepath.Join(s.base, "elsewhere"), ""))
 	// Tag's walk never enters a symlinked root ⇒ every change behind it would keep the tag.
 	must(t, os.Symlink(filepath.Join(s.base, "elsewhere", ".devcontainer"), s.path(".devcontainer")))

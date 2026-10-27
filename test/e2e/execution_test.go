@@ -326,7 +326,7 @@ func TestX4ByteExactStreaming(t *testing.T) {
 				return bytes.Equal([]byte(r.stdout), first) && strings.Contains(r.stderr, string([]byte{2, 254, '\r', '\n'}))
 			})
 			s.write(release, "continue\n")
-			r := p.wait(5 * time.Second)
+			r := p.wait(hang)
 			r.requireCode(t, 0)
 			want := append(first, []byte("tail\x00")...)
 			if !bytes.Equal([]byte(r.stdout), want) {
