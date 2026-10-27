@@ -9,6 +9,7 @@ import (
 
 // X2 + R21: SHELLOPTS belongs to CMD; noexec/onecmd cannot stop the watcher before CMD starts.
 func TestR7X2ExportedShelloptsCannotSkipCommand(t *testing.T) {
+	t.Parallel()
 	touch, err := exec.LookPath("touch")
 	must(t, err)
 	for _, option := range []string{"noexec", "onecmd"} {

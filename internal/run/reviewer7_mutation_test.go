@@ -22,6 +22,7 @@ func TestR7LaunchErrorsAreReported(t *testing.T) {
 		r7LaunchWithNoDescriptors(t, mode)
 		return
 	}
+	t.Parallel()
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +64,7 @@ func TestR7CancellationClosesPipeDuringBlockedPreamble(t *testing.T) {
 			return
 		}
 	}
+	t.Parallel()
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

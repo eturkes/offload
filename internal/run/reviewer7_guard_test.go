@@ -15,6 +15,7 @@ func TestR7ReservationGuardFindsDeclarationsAndAppends(t *testing.T) {
 		TestScriptVariablesAreReserved(t)
 		return
 	}
+	t.Parallel()
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

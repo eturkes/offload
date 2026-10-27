@@ -38,6 +38,7 @@ func readPids(t *testing.T, path string, n int) []int {
 }
 
 func TestLocalStatus(t *testing.T) { // C3
+	t.Parallel()
 	for cmd, want := range map[string]int{"exit 0": 0, "exit 7": 7, "exit 255": 255, "kill -TERM $$": 143} {
 		rc, err := Local(context.Background(), []string{"sh", "-c", cmd}, nil)
 		if err != nil || rc != want {
@@ -47,6 +48,7 @@ func TestLocalStatus(t *testing.T) { // C3
 }
 
 func TestCommandOutlivesOpenStdin(t *testing.T) { // X1: only EOF or the leader's exit end the run
+	t.Parallel()
 	rc, err := Local(context.Background(), []string{"sh", "-c", "sleep 1.5; exit 4"}, nil)
 	if err != nil || rc != 4 {
 		t.Fatalf("rc %d err %v; want 4 (a teardown before EOF reads as 143)", rc, err)
@@ -70,6 +72,7 @@ func TestLocalArgvIsNotShellParsed(t *testing.T) { // X2, scope + plain paths
 }
 
 func TestCancelEndsWholeSession(t *testing.T) { // X1 + X3: setpgid child, TERM-ignoring leader
+	t.Parallel()
 	pids := filepath.Join(t.TempDir(), "pids")
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan int)
@@ -103,6 +106,7 @@ perl -e 'setpgrp(0,0); $SIG{TERM}="IGNORE"; sleep 300' & echo $$ $! > ` + pids +
 }
 
 func TestStragglersEndWithLeader(t *testing.T) { // X1
+	t.Parallel()
 	pids := filepath.Join(t.TempDir(), "pids")
 	rc, err := Local(context.Background(), []string{"bash", "-c", "sleep 300 & echo $! > " + pids + "; exit 3"}, nil)
 	p := readPids(t, pids, 1)
@@ -112,6 +116,7 @@ func TestStragglersEndWithLeader(t *testing.T) { // X1
 }
 
 func TestLockReachesWatcherNotCommand(t *testing.T) { // S3 + S5
+	t.Parallel()
 	lock, err := os.Create(filepath.Join(t.TempDir(), "slot1"))
 	if err != nil {
 		t.Fatal(err)
@@ -173,6 +178,7 @@ func requireGone(t *testing.T, pid int) {
 }
 
 func TestScopeEndsEscapedDaemonWithLeader(t *testing.T) { // X1
+	t.Parallel()
 	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	t0 := time.Now()
@@ -184,6 +190,7 @@ func TestScopeEndsEscapedDaemonWithLeader(t *testing.T) { // X1
 }
 
 func TestScopeEndsEscapedDaemonOnCancel(t *testing.T) { // X1 + X3
+	t.Parallel()
 	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	ctx, cancel := context.WithCancel(context.Background())
@@ -217,6 +224,7 @@ func TestRefusedScopeRunsCommandWithoutScope(t *testing.T) { // X1 fallback: CMD
 }
 
 func TestScopeHoldsCommand(t *testing.T) { // X1: CMD itself sits in the offload scope
+	t.Parallel()
 	testenv.RequireScope(t)
 	out := filepath.Join(t.TempDir(), "cgroup")
 	rc, err := Local(context.Background(), []string{"bash", "-c", `cat /proc/self/cgroup > "$1"`, "_", out}, nil)
@@ -275,6 +283,7 @@ func TestWatcherKeepsCallerVariables(t *testing.T) { // X2: watcher locals never
 }
 
 func TestWatcherTermBeforeSetsidRunsNothing(t *testing.T) { // X1: TERM to the watcher = EOF, even before setsid
+	t.Parallel()
 	sid, err := exec.LookPath("setsid")
 	if err != nil {
 		t.Fatal(err)
@@ -283,9 +292,9 @@ func TestWatcherTermBeforeSetsidRunsNothing(t *testing.T) { // X1: TERM to the w
 	if err = os.WriteFile(filepath.Join(bin, "setsid"), []byte("#!/bin/sh\nsleep 1\nexec "+sid+" \"$@\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
 	ran := filepath.Join(t.TempDir(), "ran")
 	c := exec.Command("bash", "-c", watchScript+localScript, "offload", "touch", ran)
+	c.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
 	in, err := c.StdinPipe() // held open: only the signal may end the watcher
 	if err != nil {
 		t.Fatal(err)
@@ -329,6 +338,7 @@ func TestScopeMarkLivesInRuntimeDirUntilTeardown(t *testing.T) { // X1: never /t
 }
 
 func TestScopeKillsTermIgnoringDaemonAfterGrace(t *testing.T) { // X1: KILL at 10 s (S5 lock: e2e local-kill-escalation)
+	t.Parallel()
 	testenv.RequireScope(t)
 	pids := filepath.Join(t.TempDir(), "pids")
 	cmd := `setsid -f bash -c 'trap "" TERM; echo $$ > "$0"; while :; do sleep 1; done' "$1"
@@ -384,12 +394,24 @@ type host struct {
 
 func newHost(t *testing.T) host {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	return host{t, t.TempDir()}
 }
 
 func (h host) path(p string) string { return filepath.Join(h.home, p) }
+
+// env = the host side's environment: HOME = the temp home, git isolated from the caller's config.
+func (h host) env() []string {
+	return append(os.Environ(), "HOME="+h.home, "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+}
+
+func (h host) git(args ...string) {
+	h.t.Helper()
+	c := exec.Command("git", args...)
+	c.Env = h.env()
+	if out, err := c.CombinedOutput(); err != nil {
+		h.t.Fatalf("git %q: %v %s", args, err, out)
+	}
+}
 
 func (h host) write(p, body string) {
 	h.t.Helper()
@@ -419,8 +441,7 @@ func (h host) boot(script string, stdin []byte, mode, nonce string, count int, c
 		"offload/w", "offload/.meta/w", ".", mode, nonce, strconv.Itoa(count), cmd,
 	})
 	c := exec.Command("bash", "-c", line)
-	c.Dir = h.home
-	c.Env = append(os.Environ(), "HOME="+h.home)
+	c.Dir, c.Env = h.home, h.env()
 	in, err := c.StdinPipe()
 	if err != nil {
 		h.t.Fatal(err)
@@ -456,14 +477,13 @@ func (h host) gitWorkdir() {
 	if err := os.MkdirAll(w, 0o755); err != nil {
 		h.t.Fatal(err)
 	}
-	if out, err := exec.Command("git", "-C", w, "init", "-q").CombinedOutput(); err != nil {
-		h.t.Fatalf("%v %s", err, out)
-	}
+	h.git("-C", w, "init", "-q")
 }
 
 func (h host) runFile() string { return h.path("offload/.meta/w/run-" + runSum[:16] + ".bash") }
 
 func TestBootRefusesShortOrCorruptScript(t *testing.T) { // X8: nothing runs from a bad copy
+	t.Parallel()
 	corrupt := []byte(runScript)
 	corrupt[len(corrupt)/2] ^= 1
 	for name, stdin := range map[string][]byte{
@@ -483,6 +503,7 @@ func TestBootRefusesShortOrCorruptScript(t *testing.T) { // X8: nothing runs fro
 }
 
 func TestBootReplacesWrongScriptFile(t *testing.T) { // X8: the verified copy wins over whatever sits there
+	t.Parallel()
 	h := newHost(t)
 	h.write("offload/.meta/w/run-"+runSum[:16]+".bash", "touch stale-ran; exit 99\n")
 	rc, stderr := h.run("nosync", "N", 0, nil, "exit 7", false)
@@ -493,6 +514,7 @@ func TestBootReplacesWrongScriptFile(t *testing.T) { // X8: the verified copy wi
 }
 
 func TestBootFailureNeverRunsAStaleScript(t *testing.T) { // X8: install failure → 125, old file untouched + unrun
+	t.Parallel()
 	h := newHost(t)
 	h.write("offload/.meta/w/run-"+runSum[:16]+".bash", "touch stale-ran\n")
 	h.write("offload/w/keep", "")
@@ -507,6 +529,7 @@ func TestBootFailureNeverRunsAStaleScript(t *testing.T) { // X8: install failure
 }
 
 func TestRemotePrune(t *testing.T) { // Y5
+	t.Parallel()
 	h := newHost(t)
 	h.gitWorkdir()
 	h.write("offload/w/.gitignore", "cache/\n")
@@ -522,10 +545,8 @@ func TestRemotePrune(t *testing.T) { // Y5
 		t.Fatal(err)
 	}
 	// link/file is listed by git through the symlink only if tracked: track it via the index.
-	if out, err := exec.Command("git", "-C", h.path("offload/w"), "update-index", "--add", "--cacheinfo",
-		"100644,e69de29bb2d1d6434b8b29ae775ad8c2e48c5391,link/file").CombinedOutput(); err != nil {
-		t.Fatalf("%v %s", err, out)
-	}
+	h.git("-C", h.path("offload/w"), "update-index", "--add", "--cacheinfo",
+		"100644,e69de29bb2d1d6434b8b29ae775ad8c2e48c5391,link/file")
 
 	rc, stderr := h.run("git", "N1", 3, frame("N1", ".gitignore", "keep.txt", "link"), "true", false)
 	if rc != 0 {
@@ -547,6 +568,7 @@ func TestRemotePrune(t *testing.T) { // Y5
 }
 
 func TestRemoteFramingMismatchPrunesNothing(t *testing.T) { // Y5
+	t.Parallel()
 	for name, tc := range map[string]struct {
 		nonce string
 		count int
@@ -574,6 +596,7 @@ func TestRemoteFramingMismatchPrunesNothing(t *testing.T) { // Y5
 }
 
 func TestRemoteRefusesMissingGit(t *testing.T) { // Y5
+	t.Parallel()
 	h := newHost(t)
 	h.write("offload/w/stale.txt", "s")
 	rc, stderr := h.run("git", "N3", 0, frame("N3"), "touch ran", false)
@@ -583,6 +606,7 @@ func TestRemoteRefusesMissingGit(t *testing.T) { // Y5
 }
 
 func TestRemoteDownList(t *testing.T) { // Y6: existing, in-tree, non-ignored paths only
+	t.Parallel()
 	h := newHost(t)
 	h.gitWorkdir()
 	h.write("offload/w/.gitignore", "*.log\n")
@@ -590,10 +614,8 @@ func TestRemoteDownList(t *testing.T) { // Y6: existing, in-tree, non-ignored pa
 	if err := os.Symlink("../victim", h.path("offload/w/link")); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := exec.Command("git", "-C", h.path("offload/w"), "update-index", "--add", "--cacheinfo",
-		"100644,e69de29bb2d1d6434b8b29ae775ad8c2e48c5391,gone.txt").CombinedOutput(); err != nil {
-		t.Fatalf("%v %s", err, out)
-	}
+	h.git("-C", h.path("offload/w"), "update-index", "--add", "--cacheinfo",
+		"100644,e69de29bb2d1d6434b8b29ae775ad8c2e48c5391,gone.txt")
 	rc, stderr := h.run("git", "N4", 2, frame("N4", ".gitignore", "link"), "echo o > out.txt; echo l > run.log; exit 9", false)
 	if rc != 9 {
 		t.Fatalf("rc %d: %s", rc, stderr)
@@ -610,6 +632,7 @@ func TestRemoteDownList(t *testing.T) { // Y6: existing, in-tree, non-ignored pa
 }
 
 func TestRemoteLockSerializes(t *testing.T) { // Y11
+	t.Parallel()
 	h := newHost(t)
 	if err := os.MkdirAll(h.path("offload/.meta/w"), 0o755); err != nil {
 		t.Fatal(err)

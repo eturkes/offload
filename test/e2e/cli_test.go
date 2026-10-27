@@ -70,6 +70,7 @@ func TestC3ExitPrecedence(t *testing.T) {
 	for _, place := range []string{"--local", "--pool"} {
 		for _, code := range []int{0, 2, 42, 125, 255} {
 			t.Run(fmt.Sprintf("%s/%d", place, code), func(t *testing.T) {
+				t.Parallel()
 				s := newSandbox(t, false)
 				r := s.run("run", place, "--", "bash", "-c", fmt.Sprintf("printf command-ran; exit %d", code))
 				r.requireCode(t, code)
@@ -83,11 +84,13 @@ func TestC3ExitPrecedence(t *testing.T) {
 			code int
 		}{{"INT", 130}, {"TERM", 143}, {"HUP", 129}} {
 			t.Run(place+"/command-"+signal.name, func(t *testing.T) {
+				t.Parallel()
 				s := newSandbox(t, false)
 				s.run("run", place, "--", "bash", "-c", "kill -"+signal.name+" $$").requireCode(t, signal.code)
 			})
 		}
 		t.Run(place+"/not-found", func(t *testing.T) {
+			t.Parallel()
 			s := newSandbox(t, false)
 			s.run("run", place, "--", "offload-e2e-command-that-does-not-exist").requireCode(t, 127)
 			if place == "--local" {
@@ -95,18 +98,21 @@ func TestC3ExitPrecedence(t *testing.T) {
 			}
 		})
 		t.Run(place+"/not-executable", func(t *testing.T) {
+			t.Parallel()
 			s := newSandbox(t, false)
 			s.write("noexec", "#!/bin/sh\nexit 0\n")
 			s.run("run", place, "--", "./noexec").requireCode(t, 126)
 		})
 	}
 	t.Run("bad-pool-before-command", func(t *testing.T) {
+		t.Parallel()
 		s := newSandbox(t, false)
 		s.write(s.config, "not toml")
 		s.run("run", "--", "touch", "must-not-run").requireCode(t, 2)
 		assertAbsent(t, filepath.Join(s.root, "must-not-run"), filepath.Join(s.runtime, "heavy", "slot1"))
 	})
 	t.Run("unknown-host-before-command", func(t *testing.T) {
+		t.Parallel()
 		s := newSandbox(t, false)
 		s.run("run", "--host", "unknown", "--", "touch", "must-not-run").requireCode(t, 2)
 		assertAbsent(t, s.workdir("alpha"), filepath.Join(s.root, "must-not-run"))

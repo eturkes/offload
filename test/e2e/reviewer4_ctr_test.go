@@ -240,7 +240,7 @@ func TestK10ReviewHostsStartInParallel(t *testing.T) {
   esac
   if [ -n "${own:-}" ]; then
     touch "$OFFLOAD_REVIEW_PARALLEL/$own"
-    deadline=$((SECONDS+5))
+    deadline=$((SECONDS+120)) # = hang: serial host runs deadlock here and still fail (44), later
     until [ -f "$OFFLOAD_REVIEW_PARALLEL/$other" ]; do
       [ "$SECONDS" -lt "$deadline" ] || exit 44
       sleep .01

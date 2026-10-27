@@ -11,6 +11,7 @@ import (
 
 // J2/X3: a status returned by the remote watcher remains known when offload itself was signaled.
 func TestReviewR1J2CancellationKeepsReturnedCommandStatus(t *testing.T) {
+	t.Parallel()
 	for _, place := range []string{"--local", "--pool"} {
 		t.Run(place, func(t *testing.T) {
 			s := newSandbox(t, true)
@@ -34,6 +35,7 @@ func TestReviewR1J2CancellationKeepsReturnedCommandStatus(t *testing.T) {
 
 // L1/L2/X2: a hybrid run can use the host's login PATH even when CMD is absent locally.
 func TestReviewR1L2HybridCommandExistsOnlyOnHost(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	const name = "offload-review-host-only-command"
 	path := filepath.Join(s.hosts, "alpha", ".local", "bin", name)
@@ -55,6 +57,7 @@ func TestReviewR1L2HybridCommandExistsOnlyOnHost(t *testing.T) {
 
 // R2: an unreadable-for-write but unlocked slot is not evidence of a live holder.
 func TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	slot := filepath.Join(s.runtime, "heavy", "slot1")
 	s.write(slot, "")
@@ -77,6 +80,7 @@ func TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder(t *testing.T) {
 
 // X1/X2/C3: inherited errexit must not make a successful command fail in watcher teardown.
 func TestReviewR1X2ExportedErrexitPreservesStatus(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, true)
 	s.setenv("SHELLOPTS", "errexit")
 	s.run("run", "--local", "--", "true").requireCode(t, 0)
@@ -84,6 +88,7 @@ func TestReviewR1X2ExportedErrexitPreservesStatus(t *testing.T) {
 
 // Harness: only the probe script is a probe, not an arbitrary CMD word containing its tokens.
 func TestReviewR1HarnessProbeWordsStayCommandData(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	r := s.run("run", "--no-sync", "--", "printf", "%s", "literal-nproc")
 	r.requireCode(t, 0)

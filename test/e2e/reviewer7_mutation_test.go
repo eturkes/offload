@@ -8,6 +8,7 @@ import (
 
 // C3 + X6 + J2: an unambiguous returned status needs no second working SSH connection.
 func TestR7ReturnedStatusSurvivesLaterTransportLoss(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	r := s.run("run", "--no-sync", "--", "sh", "-c", `touch "$HOME/.transport-fail"; exit 7`)
 	r.requireCode(t, 7)
@@ -17,6 +18,7 @@ func TestR7ReturnedStatusSurvivesLaterTransportLoss(t *testing.T) {
 
 // X1/X3 + J2: a terminal-style process-group INT must not bypass watcher teardown.
 func TestR7GroupInterruptKeepsWatcherTeardown(t *testing.T) {
+	t.Parallel()
 	s := newSandbox(t, false)
 	s.markPIDs(s.root)
 	p := s.start("run", "--local", "--", "bash", "-c", `printf '%s' $$ > command.pid; trap 'exit 17' TERM; printf ready; while :; do sleep 1; done`)

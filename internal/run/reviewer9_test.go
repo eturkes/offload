@@ -13,6 +13,7 @@ import (
 
 // X8: a directory at the run-script name → 125, nothing runs.
 func TestReviewer9BootDestinationDirectoryFailsClosed(t *testing.T) {
+	t.Parallel()
 	for _, symlink := range []bool{false, true} {
 		name := "directory"
 		if symlink {
@@ -58,6 +59,7 @@ func TestReviewer9BootDestinationDirectoryFailsClosed(t *testing.T) {
 
 // X1 + X6: TERM/HUP to the watcher = EOF; the status record still lands.
 func TestReviewer9WatcherSignalsRecordStatus(t *testing.T) {
+	t.Parallel()
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP} {
 		t.Run(sig.String(), func(t *testing.T) {
 			h := newHost(t)
@@ -67,7 +69,7 @@ func TestReviewer9WatcherSignalsRecordStatus(t *testing.T) {
 			}
 			line, preamble := r.command("review9-status")
 			c := exec.Command("bash", "-c", line)
-			c.Dir, c.Env = h.home, append(os.Environ(), "HOME="+h.home)
+			c.Dir, c.Env = h.home, h.env()
 			var stderr bytes.Buffer
 			c.Stderr = &stderr
 			in, err := c.StdinPipe()
