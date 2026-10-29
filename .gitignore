@@ -7,3 +7,4 @@ machines/*/installer_host_key
 machines/*/installer_host_key.pub
 .tools/
 .agent/mutation/run/
+.agent/local/
