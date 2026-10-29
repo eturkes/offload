@@ -1,4 +1,4 @@
-# reviewer-2 — code review @ 41fd3c0
+# reviewer-2 — code review @ 640f24f
 
 ## Verdict table
 
@@ -16,10 +16,10 @@
 
 ### R2-F1 — relative global excludes read from the wrong directory
 
-- Severity: major. Target: `internal/mirror/mirror.go:226–237` @ 41fd3c0 (`path := strings.TrimSpace(string(out))`, `data, err := os.ReadFile(path)`).
+- Severity: major. Target: `internal/mirror/mirror.go:226–237` @ 640f24f (`path := strings.TrimSpace(string(out))`, `data, err := os.ReadFile(path)`).
 - Y1/Y5: git runs with `-C <root>` and interprets relative `core.excludesFile` there; `GlobalExcludes` reads it relative to offload's invocation cwd instead. Running from a project subdirectory silently sends empty/different global excludes to the host. Remote prune can delete ignored host files, and output selection can return ignored files.
 - Positive control: repository config `core.excludesFile=global-ignore`, file at root containing `*.cache\n`; `git -C <root> check-ignore saved.cache` outputs `saved.cache`. Invocation cwd = `<root>/sub`.
-- Red test: `internal/mirror/cr_review_test.go:10`, `TestCRR2Y5RelativeExcludesFromSubdirectory`; committed on `wt/reviewer-2` as `2e94f4a` (production sources still 41fd3c0).
+- Red test: `internal/mirror/cr_review_test.go:10`, `TestCRR2Y5RelativeExcludesFromSubdirectory`; committed on `wt/reviewer-2` as `2e94f4a` (production sources still 640f24f).
 - Command (worktree): `go test -count=1 -run '^TestCRR2Y5RelativeExcludesFromSubdirectory$' ./internal/mirror` → rc 1.
 
 ```text
@@ -33,10 +33,10 @@ FAIL github.com/eturkes/offload/internal/mirror 0.022s
 
 ### R2-F2 — failed prune preparation still executes CMD
 
-- Severity: major. Target: `internal/run/remote.bash:64–65` @ 41fd3c0 (mirror's Y5 callee): `tail -z -n +3 "$__meta/upload" | LC_ALL=C sort -z >"$__meta/upload.sorted"` and `LC_ALL=C sort -z "$__meta/remote" | LC_ALL=C comm -z -23 - "$__meta/upload.sorted" >"$__meta/prune"`.
+- Severity: major. Target: `internal/run/remote.bash:64–65` @ 640f24f (mirror's Y5 callee): `tail -z -n +3 "$__meta/upload" | LC_ALL=C sort -z >"$__meta/upload.sorted"` and `LC_ALL=C sort -z "$__meta/remote" | LC_ALL=C comm -z -23 - "$__meta/upload.sorted" >"$__meta/prune"`.
 - Y5/Y10: the remote script uses `set -u` but neither checks these pipelines nor enables pipefail. A failing sort/comm (I/O/temp-space failure) leaves an invalid prune set yet CMD starts and may return success. Depending on which half fails, stale files stay or retained project files can be treated as absent from U.
 - Red test: `internal/run/cr_review_test.go:10`, `TestCRR2Y10PruneSortFailurePreventsCommand`; commit `c2ca6f8` on `wt/reviewer-2`. A PATH-local sort stub emits a marker and exits 23; the test requires that marker before checking behavior.
-- Command: `go test -count=1 -run '^TestCRR2Y10PruneSortFailurePreventsCommand$' ./internal/run` → rc 1 on 41fd3c0 production sources.
+- Command: `go test -count=1 -run '^TestCRR2Y10PruneSortFailurePreventsCommand$' ./internal/run` → rc 1 on 640f24f production sources.
 
 ```text
 --- FAIL: TestCRR2Y10PruneSortFailurePreventsCommand (1.83s)
@@ -49,10 +49,10 @@ FAIL github.com/eturkes/offload/internal/run 1.837s
 
 ### R2-F3 — EFI enumeration failure reported as successful repair
 
-- Severity: minor. Target: `machines/nixbox/efi-entry:13` @ 41fd3c0: `stale=$("$efi" | sed -n 's/^Boot\([0-9A-F]\{4\}\)[* ] Linux Boot Manager\(\t.*\)\{0,1\}$/\1/p')`.
+- Severity: minor. Target: `machines/nixbox/efi-entry:13` @ 640f24f: `stale=$("$efi" | sed -n 's/^Boot\([0-9A-F]\{4\}\)[* ] Linux Boot Manager\(\t.*\)\{0,1\}$/\1/p')`.
 - Acceptance contract = script `efi-entry:2–4` + runbook: leave exactly one Linux Boot Manager entry on the new ESP, deleting old ones. `set -eu` under sh sees only sed's successful status. If efibootmgr cannot enumerate entries, the script silently treats the stale set as empty, creates another entry, and returns 0 without knowing/removing old entries. Install proceeds toward reboot despite incomplete boot-entry repair.
 - Red test: `machines/nixbox/cr_review_test.go:12`, `TestCRR2EFIReadFailureStopsBeforeChanges`; commit `03324c3` on `wt/reviewer-2`. EFIBOOTMGR fixture only (no firmware access); positive control enumerates Boot0001 and observes delete-before-create. Failure fixture emits a marker and exits 23 only on enumeration, succeeding on mutation.
-- Command: `go test -count=1 -run '^TestCRR2EFIReadFailureStopsBeforeChanges$' ./machines/nixbox` → rc 1 on 41fd3c0 production sources.
+- Command: `go test -count=1 -run '^TestCRR2EFIReadFailureStopsBeforeChanges$' ./machines/nixbox` → rc 1 on 640f24f production sources.
 
 ```text
 --- FAIL: TestCRR2EFIReadFailureStopsBeforeChanges (0.09s)
@@ -72,10 +72,10 @@ FAIL github.com/eturkes/offload/machines/nixbox 0.097s
 
 ## Reproduction + limits
 
-- Worktree: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-2`; red commits only (`2e94f4a`, `c2ca6f8`, `03324c3`), production source bytes remain 41fd3c0. Run commands above from this worktree; no full gate, CI, live pool run, install/deploy/reseal, or production edit performed.
+- Worktree: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-2`; red commits only (`2e94f4a`, `c2ca6f8`, `03324c3`), production source bytes remain 640f24f. Run commands above from this worktree; no full gate, CI, live pool run, install/deploy/reseal, or production edit performed.
 - Selected source reads + package/targeted tests are the evidence; this is not a full-suite green claim. Retained prior accepted rulings (`ledger-implement-whole-product`, `ledger-pool-run-environment`, `ledger-maintain-security-review`); no accepted row reversed.
 - Six synthetic check fixtures exercise upgrade/unit assessment, not live fact collection. Nix live option observations + matching deployed module digests confirm selected settings, not a complete module reevaluation. Full static Nix lint/eval reserved to MAIN's gate.
 
-- Completion validation: positive-control unknown row count1/rc0; deliverable unknown count0/rc1 (grep no matches); adjudicated C rows7. `git diff --name-only 41fd3c0 HEAD` = the three red-test files alone; worktree clean; `gofmt -d` on all three = empty. Finding anchor bytes rematched against `git show 41fd3c0:<path>`.
+- Completion validation: positive-control unknown row count1/rc0; deliverable unknown count0/rc1 (grep no matches); adjudicated C rows7. `git diff --name-only 640f24f HEAD` = the three red-test files alone; worktree clean; `gofmt -d` on all three = empty. Finding anchor bytes rematched against `git show 640f24f:<path>`.
 
 reviewer-2-DONE-1

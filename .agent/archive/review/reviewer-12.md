@@ -1,4 +1,4 @@
-# reviewer-12 — survivor rulings, `internal/cli/ctr.go` (sweep at 09e9969, CI replay run 40534349336)
+# reviewer-12 — survivor rulings, `internal/cli/ctr.go` (sweep at b7645d8, CI replay run 40534349336)
 
 | id | site | func | mutator | change | replay | ruling |
 |----|------|------|---------|--------|--------|--------|
@@ -38,12 +38,12 @@
 
 ## Notes
 
-Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP server available for file type: .go`); references inspected with rg + enclosing source. Full gate not run by this reviewer; narrow tests below.
+Scope = the 33 seeded ctr.go survivors at 14994a8. Go LSP unavailable (`No LSP server available for file type: .go`); references inspected with rg + enclosing source. Full gate not run by this reviewer; narrow tests below.
 
 ### 72309683
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestC4CtrFlagErrorsUseOffloadPrefix`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestC4CtrFlagErrorsUseOffloadPrefix$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestC4CtrFlagErrorsUseOffloadPrefix$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestC4CtrFlagErrorsUseOffloadPrefix (0.01s)
     reviewer12_ctr_mutation_test.go:16: unprefixed ctr diagnostic: "flag provided but not defined: -bogus\nUsage of ctr:… [remaining CLI help omitted]
@@ -52,7 +52,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 59d50062
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK3LayersMissingDefinitionNamesPath`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK3LayersMissingDefinitionNamesPath$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK3LayersMissingDefinitionNamesPath$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK3LayersMissingDefinitionNamesPath (0.03s)
     reviewer12_ctr_mutation_test.go:25: "" does not contain "/tmp/TestK3LayersMissingDefinitionNamesPath469887219/001/project/.devcontainer/Containerfile"
@@ -61,7 +61,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 67f858df
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestS6LayersLockFailureNamesDirectory`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestS6LayersLockFailureNamesDirectory (0.04s)
     reviewer12_ctr_mutation_test.go:38: "" does not contain "/tmp/TestS6LayersLockFailureNamesDirectory3309127147/001/runtime/offload/ctr"
@@ -70,7 +70,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 1fb10618
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestS6LayersLockFailureNamesDirectory`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestS6LayersLockFailureNamesDirectory (0.01s)
     reviewer12_ctr_mutation_test.go:38: "" does not contain "/tmp/TestS6LayersLockFailureNamesDirectory4022721945/001/runtime/offload/ctr"
@@ -79,7 +79,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### d465d9c3
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestS6LayersLockFailureNamesDirectory`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestS6LayersLockFailureNamesDirectory$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestS6LayersLockFailureNamesDirectory (0.01s)
     reviewer12_ctr_mutation_test.go:38: "" does not contain "/tmp/TestS6LayersLockFailureNamesDirectory3175089669/001/runtime/offload/ctr"
@@ -88,7 +88,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### ee27fa2f
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK3CtrUnlinkedCwdFails`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK3CtrUnlinkedCwdFails$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK3CtrUnlinkedCwdFails$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK3CtrUnlinkedCwdFails (0.01s)
     reviewer12_ctr_mutation_test.go:60: exit = 0, want 125; stdout="" stderr="offload: getwd: no such file or directory\n"
@@ -97,7 +97,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 37f83a36
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK9LayersExistsFailureCannotBecomeSuccess`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK9LayersExistsFailureCannotBecomeSuccess$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK9LayersExistsFailureCannotBecomeSuccess$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK9LayersExistsFailureCannotBecomeSuccess (0.01s)
     reviewer12_ctr_mutation_test.go:48: exit = 0, want 125; stdout="sha256:a\n" stderr=""
@@ -106,7 +106,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 15552755
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.37s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=1 stdout="alpha: same (1 layers); offload binary differs\n" stderr="offload: alpha slot 1/2 (8 CPUs, 25% busy) → ~/offload/project-e6b4db89\n"
@@ -115,7 +115,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### eab3e0f9
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.37s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=1 stdout="alpha: same (1 layers); offload binary differs\n" stderr="offload: alpha slot 1/2 (8 CPUs, 25% busy) → ~/offload/project-9a035858\n"
@@ -124,7 +124,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 5253b31b
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.02s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=0 stdout="" stderr="offload: open /tmp/TestK10UnreadableBinaryDoesNotInventDifference2990326312/001/unreadable-offload: permission denied\n"
@@ -133,7 +133,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 3ae4ecd2
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.38s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=1 stdout="alpha: same (1 layers); offload binary differs\n" stderr="offload: alpha slot 1/2 (8 CPUs, 25% busy) → ~/offload/project-d52796f3\n"
@@ -142,7 +142,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### ab9eef05
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.35s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=1 stdout="alpha: same (1 layers); offload binary differs\n" stderr="offload: alpha slot 1/2 (8 CPUs, 25% busy) → ~/offload/project-1e942a9d\n"
@@ -151,7 +151,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### b6abca99
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10UnreadableBinaryDoesNotInventDifference`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10UnreadableBinaryDoesNotInventDifference$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10UnreadableBinaryDoesNotInventDifference (0.37s)
     reviewer12_ctr_mutation_test.go:81: unreadable identical binary: exit=1 stdout="alpha: same (1 layers); offload binary differs\n" stderr="offload: alpha slot 1/2 (8 CPUs, 25% busy) → ~/offload/project-3eb67bde\n"
@@ -160,7 +160,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 105cb513
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10CheckMissingFrameIsFailed`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckMissingFrameIsFailed$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckMissingFrameIsFailed$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10CheckMissingFrameIsFailed (0.35s)
     reviewer12_ctr_mutation_test.go:95: missing host frame is not a failed host verdict: "alpha: different (here 1, there 0 layers); offload binary differs\n"
@@ -169,7 +169,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 93f93f10
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10CheckMissingFrameIsFailed`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckMissingFrameIsFailed$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckMissingFrameIsFailed$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10CheckMissingFrameIsFailed (0.38s)
     reviewer12_ctr_mutation_test.go:95: missing host frame is not a failed host verdict: "\n"
@@ -178,7 +178,7 @@ Scope = the 33 seeded ctr.go survivors at f0246b8. Go LSP unavailable (`No LSP s
 ### 3062572d
 
 - Test = `test/e2e/reviewer12_ctr_mutation_test.go::TestK10CheckLaunchFailureNamesHost`. Severity = minor (coverage gap; HEAD behavior passes).
-- Exact agentic diff applied to f0246b8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckLaunchFailureNamesHost$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
+- Exact agentic diff applied to 14994a8; command `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-12 && umask 022 && go test -count=1 -run '^TestK10CheckLaunchFailureNamesHost$' ./test/e2e/)` → rc 1 twice; reverted command → rc 0.
 ```text
 --- FAIL: TestK10CheckLaunchFailureNamesHost (0.05s)
     reviewer12_ctr_mutation_test.go:114: launch failure lost its host verdict: "\n"

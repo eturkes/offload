@@ -83,7 +83,7 @@ Tests: successful plain/git/nosync + distinct META/WORKDIR/subdir; truncation at
 
 ## Evidence + coverage
 
-- Reviewed whole `/home/eturkes/Projects/offload/.agent/contract.md`; named execution/SSH/probe/pool sources, execution tests + fake-SSH harness; relevant mirror/CLI transport callers + current CI. Execution sources/contract were unchanged between initial `8742aa9` and observed HEAD `8e9b3673f671e47412098f225910652f14c4abcc`; that interval changed only `.agent/deferred.md`.
+- Reviewed whole `/home/eturkes/Projects/offload/.agent/contract.md`; named execution/SSH/probe/pool sources, execution tests + fake-SSH harness; relevant mirror/CLI transport callers + current CI. Execution sources/contract were unchanged between initial `b662879` and observed HEAD `2211330733a56efcf6f7c967ca1b42d8b437cd30`; that interval changed only `.agent/deferred.md`.
 - Read-only host query rc 0: systemd 260.5, OpenSSH 10.5p1, reachable user bus + slice placement. No remote writes outside the disposable `/tmp/offload-consult-2.*` inode model. Trap removed it; follow-up `find` rc 0 showed no matching directories, with `/tmp` itself as the positive control (expected one `tmp`, observed one).
 - No source/config/test edits, staging, commits, test-suite run, persistent mux master, scope creation, process kills or host configuration changes. Review deliverable is the sole repo write. Real mux/cgroup lifecycle + timings and CI bus provisioning remain unconfirmed as explicitly noted above. One WebSearch query used; source text read verbatim via webtext. Source queries were targeted excerpts, not audits of whole upstream repositories.
 

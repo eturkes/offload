@@ -1,11 +1,11 @@
 # reviewer-6 — post-review-fix re-review
 
-Target = `61de9f1..3e74210`; execution revision = `3e74210ee5c92fd29ca3c61898f2c1a9169173a0`. Check set Q1–Q5 fixed before target read. Primary tree + remote hosts read-only; tests ran in a disposable git-archive copy. MAIN edited primary files after the initial findings message; this verdict remains against **3e74210**, not those later edits.
+Target = `81a86d5..fa6936e`; execution revision = `fa6936eb99039adc837dd6b1e2cfe3e06bfc72a8`. Check set Q1–Q5 fixed before target read. Primary tree + remote hosts read-only; tests ran in a disposable git-archive copy. MAIN edited primary files after the initial findings message; this verdict remains against **fa6936e**, not those later edits.
 
 | id | check (acceptance) | verdict (pass / finding) | finding ids | evidence |
 |----|--------------------|---------------------------|-------------|----------|
 | Q1 | R21: `podmanCommand`/`scopeManager` — X1 isolation; plain fallback; failed-probe fallback; environment boundary | finding | F1, F2 | X1 kill, systemd-unit/conmon, slot barrier, terminal stdin, image-owned environment + failed-probe fallback passed. New probe is outside the cancellation context; scoped podman receives a newly generated invocation id. |
-| Q2 | R20: INVOCATION_ID dropped only for podman; regression red before the fix, green now | finding | F2 | R20 behavior independently red on `0ab413f` + green on `3e74210`; inherited id removed without mutating parent environment. Literal final-podman-env claim fails after `systemd-run` regenerates the variable. |
+| Q2 | R20: INVOCATION_ID dropped only for podman; regression red before the fix, green now | finding | F2 | R20 behavior independently red on `7a4a2d0` + green on `fa6936e`; inherited id removed without mutating parent environment. Literal final-podman-env claim fails after `systemd-run` regenerates the variable. |
 | Q3 | `run(find, …)` seam preserves K3–K8: signal-context lookup, UsageError → 2, record/125 paths | pass | — | Wrapper still calls `Find(ctx, cwd)` inside `run`'s signal context. Existing boundary/fault tests + added lookup-context/usage test passed; CLI lookup cancellation passed for run/layers/check. |
 | Q4 | R19 + e2e hygiene: storage version key, bus address, cleanup wait + removeStorage; checks/skip policy preserved | pass | — | Diff keeps existing assertions + failure/skip distinctions; adds pre-TempDir container wait, not relaxed assertions. Targeted real-podman tests passed with both REQUIRE switches set; test storage removed. Actual 4.9.3/5.8.8 execution not repeated; limits below. |
 | Q5 | K8 + code.md describe session, scope + INVOCATION_ID implementation accurately | finding | F2 | Session + scope descriptions match; `without INVOCATION_ID` does not describe the scoped path's actual environment. |
@@ -33,7 +33,7 @@ FAIL github.com/eturkes/offload/test/e2e 2.313s
 
 - Targets: `internal/ctr/ctr.go:301–308`; `.agent/contract.md:75`; `.claude/rules/code.md:12` (under `/home/eturkes/Projects/offload/`).
 - Wrong claim, **not an isolation failure**: removing the inherited `INVOCATION_ID` from `exec.Cmd.Env` does not leave the eventual scoped podman without that variable. `systemd-run --scope` creates its own id before it execs podman. Podman then sees the new scope's id, so conmon can remain with podman in that separate scope; this is still outside X1. The direct/plain branch does leave it unset.
-- Exact target text (`rg -Fn` matches): contract = ``with `INVOCATION_ID` dropped from its environment``; rule = ``without `INVOCATION_ID` (with it, podman keeps conmon``. Anchors verified in the archived 3e74210 files; later primary edits had already changed these bytes.
+- Exact target text (`rg -Fn` matches): contract = ``with `INVOCATION_ID` dropped from its environment``; rule = ``without `INVOCATION_ID` (with it, podman keeps conmon``. Anchors verified in the archived fa6936e files; later primary edits had already changed these bytes.
 - Red on target: the actual `podmanCommand` launches a PATH fixture through the real user manager, with the same `Setsid` as Run. Fixture prints its environment + cgroup. Command: `TMPDIR="$scratch/tmp" go test -count=1 -v -run '^TestReviewer6Q1RealScopePodmanEnvironment$' ./internal/ctr`; rc **1** (also observed in the combined `^TestReviewer6Q[13]` run).
 
 ```text
@@ -47,14 +47,14 @@ podman inherited a systemd-generated INVOCATION_ID: "INVOCATION_ID=20ba2aed0eb44
 
 ## Passing evidence
 
-All target tests used `go test -count=1 -v -run '<regex>'`; only the named packages/tests ran. Local toolchain = Go 1.27.3; Podman 6.1.4; systemd 262. Production `internal/ctr/ctr.go` in the test copy matched `git show 3e74210:internal/ctr/ctr.go` by SHA256 `948252f8e0b3057bb0194410f1247bdbd1567860fdb69b3d9b2b3aecf2f7819d`.
+All target tests used `go test -count=1 -v -run '<regex>'`; only the named packages/tests ran. Local toolchain = Go 1.27.3; Podman 6.1.4; systemd 262. Production `internal/ctr/ctr.go` in the test copy matched `git show fa6936e:internal/ctr/ctr.go` by SHA256 `948252f8e0b3057bb0194410f1247bdbd1567860fdb69b3d9b2b3aecf2f7819d`.
 
 - Unit regex `^(TestK3ReviewFind|TestK3ReviewFindFailures|TestK7ReviewRunBoundary|TestK5ReviewSignalAfterEnsure|TestK7ReviewSocketpairFailure)$`, `./internal/ctr` → rc 0, 0.080 s. Boundary includes record, missing record (podman success/failure), Ensure/Home/mount-path/binary-replacement/launch errors.
 - Real-container regex `^(TestK8UnderSystemdUnitConmonStaysOutOfX1Scope|TestK8UnderOffloadRunKillEndsContainer|TestK8SlotFreesAfterContainerLastWrite|TestK6MountsHomeAndOwnership|TestK6StreamsAndStdinByteExact|TestK7StatusPassesThrough|TestK7NoStatusRecordIs125)$`, `./test/e2e`, `OFFLOAD_REQUIRE_PODMAN=1 OFFLOAD_REQUIRE_SCOPE=1` → rc 0, 12.550 s. No skips. Slot freed **161.097314 ms after** the container's last write; teardown tests retained their 9 s lower bound.
 - Added `TestReviewer6Q1ProbeFailureFallsBack` → pass: a socket exists but fake systemd-run exits 1; direct podman selected, id unset there, original runtime preserved, parent id unchanged.
 - Added `TestReviewer6Q3LookupContextAndUsage` → pass: injected UsageError returns 2; injected lookup waits for supplied context cancellation and TERM returns 143.
 - Regex `^(TestReviewer6Q1ContainerEnvIsolation|TestReviewA3SignalCancelsProjectLookup|TestReviewG6TerminalStdinCompletes)$`, `./test/e2e`, both REQUIRE switches → rc 0, 5.308 s. No skips. Lookup cancellation passed run/layers/check subtests; PTY Ctrl-C returned CMD's 5 with one interrupt.
-- R20 red-green independently confirmed. Pre-fix = archive `0ab413f`, only `test/e2e/ctr_test.go` overlaid from `f8a3bcb` to supply the regression test. Command: same TMPDIR + both REQUIRE switches, `go test -count=1 -v -run '^TestK8UnderSystemdUnitConmonStaysOutOfX1Scope$' ./test/e2e` → rc 1, 17.149 s:
+- R20 red-green independently confirmed. Pre-fix = archive `7a4a2d0`, only `test/e2e/ctr_test.go` overlaid from `d8503a0` to supply the regression test. Command: same TMPDIR + both REQUIRE switches, `go test -count=1 -v -run '^TestK8UnderSystemdUnitConmonStaysOutOfX1Scope$' ./test/e2e` → rc 1, 17.149 s:
 
 ```text
 ctr_test.go:839: container record left after X1's KILL (conmon killed before --rm): "1f6716b64611743694e8690e89079cd78602fbbc0ee03641ef5b6bbd30db36c4 __ctr-init ctrhelper ignore k8unit-1792694696890588445 .../project/ready\n"
@@ -65,7 +65,7 @@ Same test on target → pass, 11.90 s, included in the real-container command ab
 
 ## Reproduce the two reds
 
-Create a fresh `/tmp/reviewer-6-*` directory, `repo/` + `tmp/` beneath it, then `git -C /home/eturkes/Projects/offload archive 3e74210 | tar -x -C "$scratch/repo"`. Add the following tests in that copy alone; package helpers are already committed. Run the commands above from the copy. Remove the copy after (subuid-owned remnants → `podman unshare rm -rf` using that test store's config).
+Create a fresh `/tmp/reviewer-6-*` directory, `repo/` + `tmp/` beneath it, then `git -C /home/eturkes/Projects/offload archive fa6936e | tar -x -C "$scratch/repo"`. Add the following tests in that copy alone; package helpers are already committed. Run the commands above from the copy. Remove the copy after (subuid-owned remnants → `podman unshare rm -rf` using that test store's config).
 
 `test/e2e/reviewer6_test.go`:
 

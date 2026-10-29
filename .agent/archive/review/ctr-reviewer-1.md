@@ -1,6 +1,6 @@
 # reviewer-1 — A: correctness / spec
 
-Target = `ef515f2..2c2744d` (`2c2744dba7cc99ca5e1d360cadc940242995ec90`). Check set fixed before source reads. **12/12 adjudicated: 3 pass; 9 finding rows; 6 distinct findings (4 major, 2 minor).** Red tests committed on `wt/reviewer-1`: `20aee9512f7594a92c10cf452d4667daf7b9e48c` + `d291d01d30b224b8b49f6ec382d6eaf8a3afcfef` (six added files; original source/tests unchanged; clean worktree). A2's initial pass reversed on new PATH-classification evidence from reviewer-2, independently reproduced below.
+Target = `5c11b58..57903b5` (`57903b5dafc3c4fb98b358bc2546af4285990c83`). Check set fixed before source reads. **12/12 adjudicated: 3 pass; 9 finding rows; 6 distinct findings (4 major, 2 minor).** Red tests committed on `wt/reviewer-1`: `20aee9512f7594a92c10cf452d4667daf7b9e48c` + `d291d01d30b224b8b49f6ec382d6eaf8a3afcfef` (six added files; original source/tests unchanged; clean worktree). A2's initial pass reversed on new PATH-classification evidence from reviewer-2, independently reproduced below.
 
 | id | check | verdict | finding ids | evidence |
 |----|-------|---------|-------------|----------|
@@ -99,7 +99,7 @@ TMPDIR="$PWD/.tmp" GOCACHE="$PWD/.cache/go-build" \
 **Limits / failed attempts:**
 
 - Full gate + full suite not run (brief: targeted tests only); no SSH, nixbox access, install, deployment, or shared image/container removal.
-- First new e2e filename collided with baseline `test/e2e/reviewer1_test.go`; restored from target, additions moved to `reviewer1_ctr_test.go`, red battery rerun with original tests intact (`git diff --exit-code 2c2744d --` → rc 0 before staging additions).
+- First new e2e filename collided with baseline `test/e2e/reviewer1_test.go`; restored from target, additions moved to `reviewer1_ctr_test.go`, red battery rerun with original tests intact (`git diff --exit-code 57903b5 --` → rc 0 before staging additions).
 - One private-storage cleanup raced conmon's asynchronous `--rm` and failed (`Directory not empty`). Fixture cleanup now synchronously removes containers in its private store before deleting storage; final targeted killed-client red still fails for F-A2 alone (9.845 s including builds), cleanup succeeds. Private `.tmp` + `.cache` removed at close; no matching review-temp process observed (`pgrep` rc 1).
 - Initial mirror controls under worktree-local TMPDIR failed because damaged fixtures fell back to enclosing worktree; rerun with Git ceiling passed. No target implementation change.
 - Existing real-podman shared prebuild fails before behavior when TMPDIR lies below this worktree: it locates the enclosing repository, not its plain fixture. One broad `TestK1` regex also selected K10 tests and hit that same fixture failure; corrected CLI-only selection passed. Custom real-podman F-A2 test uses an explicit git fixture + private storage and reproduces independently. Existing K5/K6/K8/K9/K10 e2e controls therefore not credited as passed.

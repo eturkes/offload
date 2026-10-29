@@ -1,4 +1,4 @@
-Target = 76d1d7c + `.scratch/review-8/row10.diff`, reconstructed at `.scratch/worktrees/reviewer-8`; primary working tree excluded. K1–K8 fixed before target read. Complete: 8/8 rows adjudicated; 4 pass, 4 finding rows; 3 distinct findings. Target tracked diff remains byte-identical to the brief's diff (`cmp` rc 0).
+Target = 3a17fa5 + `.scratch/review-8/row10.diff`, reconstructed at `.scratch/worktrees/reviewer-8`; primary working tree excluded. K1–K8 fixed before target read. Complete: 8/8 rows adjudicated; 4 pass, 4 finding rows; 3 distinct findings. Target tracked diff remains byte-identical to the brief's diff (`cmp` rc 0).
 
 | id | check | verdict | finding ids |
 |----|-------|---------|-------------|
@@ -15,7 +15,7 @@ Target = 76d1d7c + `.scratch/review-8/row10.diff`, reconstructed at `.scratch/wo
 
 - Target: `internal/run/watch.bash:24–25,40–41,53–59`.
 - X2 = env inherited. Bash locals inherit a pre-existing variable's export attribute. The new `unit`, `mark`, `rt`, `hx`, `vx`, `hi`, `vi`, `d` locals therefore replace caller-provided exported values in CMD. The scope wrapper's `read -r cg` also replaces an exported `cg`. Fallback has the same newly introduced local-variable corruption. No request/contract exception permits it.
-- Base 76d1d7c preserves the same selected variables; target changes them. With an ordinary environment, full `env -0` baseline/target comparison found no delta except intentionally distinct probe TMPDIRs; this defect is specifically the exported-name collision.
+- Base 3a17fa5 preserves the same selected variables; target changes them. With an ordinary environment, full `env -0` baseline/target comparison found no delta except intentionally distinct probe TMPDIRs; this defect is specifically the exported-name collision.
 - Red test added only in reviewer worktree: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-8/internal/run/reviewer8_test.go`.
 
 Command:
@@ -33,7 +33,7 @@ X2 inherited env changed: rc=0 err=<nil> read=<nil> got="\n\n\n1\n/run/user/1000
 FAIL
 ```
 
-Independent baseline/target probe = `python -I /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-8/review8-probe.py exported-env` (base watcher saved from `git show 76d1d7c:internal/run/watch.bash`). Initial eight-variable probe: baseline returns every `callers-…` value; target returns internals; assertion rc 1. Probe now also includes `cg`.
+Independent baseline/target probe = `python -I /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-8/review8-probe.py exported-env` (base watcher saved from `git show 3a17fa5:internal/run/watch.bash`). Initial eight-variable probe: baseline returns every `callers-…` value; target returns internals; assertion rc 1. Probe now also includes `cg`.
 
 Acceptance: preserve inherited exported values/presence for these names on both paths; rerun the red test. Renaming internals alone reduces collision probability, not X2's input domain.
 

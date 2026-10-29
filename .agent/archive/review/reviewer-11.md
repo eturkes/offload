@@ -1,4 +1,4 @@
-# reviewer-11 — survivor rulings, `internal/cli/place.go` (sweep at 09e9969, CI replay run 40534349336)
+# reviewer-11 — survivor rulings, `internal/cli/place.go` (sweep at b7645d8, CI replay run 40534349336)
 
 | id | site | func | mutator | change | replay | ruling |
 |----|------|------|---------|--------|--------|--------|
@@ -53,11 +53,11 @@
 
 ## Notes
 
-Read target = f0246b8204e893624d73b38dc8562a6a622eda08. Source-only equivalence/open rulings above apply to reachable CLI executions, not arbitrary forged placer states. Go LSP call returned “No LSP server available for file type: .go”; source reads + targeted executions supply evidence.
+Read target = 14994a8b6d9831e26e1dc060d6ea3d937110f24e. Source-only equivalence/open rulings above apply to reachable CLI executions, not arbitrary forged placer states. Go LSP call returned “No LSP server available for file type: .go”; source reads + targeted executions supply evidence.
 
 ### 150cbd04
 
-Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
+Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -81,7 +81,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 69b4ce86
 
-Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
+Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -105,7 +105,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### a91ef094
 
-Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
+Test `TestL3RetryAtTwoSeconds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3RetryAtTwoSeconds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -129,7 +129,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 236ae769
 
-Test `TestL3DownHostCooldownHasThirtySecondMinimum` drives `placer.place` through real rounds using `testing/synctest`; a delayed diagnostic writer represents an in-domain blocked stderr pipe. Fake ssh runs use real processes/files; the fake clock advances only between completed probes. Exact diff from `agentic.json` applied at f0246b8 + reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3DownHostCooldownHasThirtySecondMinimum$ ./internal/cli)`.
+Test `TestL3DownHostCooldownHasThirtySecondMinimum` drives `placer.place` through real rounds using `testing/synctest`; a delayed diagnostic writer represents an in-domain blocked stderr pipe. Fake ssh runs use real processes/files; the fake clock advances only between completed probes. Exact diff from `agentic.json` applied at 14994a8 + reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3DownHostCooldownHasThirtySecondMinimum$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -153,7 +153,7 @@ Green: unmutated `go test -race -count=1 -timeout=60s -run '^Test(L3DownHostCool
 
 ### 2474637f
 
-Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
+Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -177,7 +177,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### a806646b
 
-Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
+Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -201,7 +201,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### f22ca4f6
 
-Test `TestL2RoundReleasesUnselectedSlots`; predicate L2/S3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2RoundReleasesUnselectedSlots$ ./internal/cli)`.
+Test `TestL2RoundReleasesUnselectedSlots`; predicate L2/S3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2RoundReleasesUnselectedSlots$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -225,7 +225,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 3865b1b4
 
-Test `TestL2LaterHostAfterDownHost`; predicate L2. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterDownHost$ ./internal/cli)`.
+Test `TestL2LaterHostAfterDownHost`; predicate L2. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterDownHost$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -251,7 +251,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### a3e8fd0c
 
-Test `TestL2LaterHostAfterBusyWorkdir`; predicate S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
+Test `TestL2LaterHostAfterBusyWorkdir`; predicate S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -275,7 +275,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 3322aa31
 
-Test `TestL2LaterHostAfterBusyWorkdir`; predicate L2/S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
+Test `TestL2LaterHostAfterBusyWorkdir`; predicate L2/S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -299,7 +299,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 5db71380
 
-Test `TestL2LaterHostAfterBusyWorkdir`; predicate L2/S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
+Test `TestL2LaterHostAfterBusyWorkdir`; predicate L2/S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterBusyWorkdir$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -323,7 +323,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### cd10da7f
 
-Test `TestL2LaterHostAfterDownHost`; predicate L2. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterDownHost$ ./internal/cli)`.
+Test `TestL2LaterHostAfterDownHost`; predicate L2. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL2LaterHostAfterDownHost$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -349,7 +349,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 36fcaaea
 
-Test `TestL4RecoveredCPUHostEndsGPUWait` drives `placer.place` through real rounds using `testing/synctest`; a delayed diagnostic writer represents an in-domain blocked stderr pipe. Fake ssh runs use real processes/files; the fake clock advances only between completed probes. Exact diff from `agentic.json` applied at f0246b8 + reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL4RecoveredCPUHostEndsGPUWait$ ./internal/cli)`.
+Test `TestL4RecoveredCPUHostEndsGPUWait` drives `placer.place` through real rounds using `testing/synctest`; a delayed diagnostic writer represents an in-domain blocked stderr pipe. Fake ssh runs use real processes/files; the fake clock advances only between completed probes. Exact diff from `agentic.json` applied at 14994a8 + reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL4RecoveredCPUHostEndsGPUWait$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -373,7 +373,7 @@ Green: unmutated `go test -race -count=1 -timeout=60s -run '^Test(L3DownHostCool
 
 ### 1016409a
 
-Test `TestS4PlacementKeepsWorkdirLockedThroughGC`; predicate S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4PlacementKeepsWorkdirLockedThroughGC$ ./internal/cli)`.
+Test `TestS4PlacementKeepsWorkdirLockedThroughGC`; predicate S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4PlacementKeepsWorkdirLockedThroughGC$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -397,7 +397,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 0d100f50
 
-Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
+Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -421,7 +421,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### 7cd66ee2
 
-Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
+Test `TestL3WaitingLineOnceAcrossRounds`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingLineOnceAcrossRounds$ ./internal/cli)`.
 
 Run 1: rc 1.
 ```text
@@ -445,7 +445,7 @@ Green: targeted unmutated unit-test regex (all eight added tests) rc 0 before re
 
 ### a84dcbb0
 
-Test `TestS3PoolReleaseClearsOwner`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS3PoolReleaseClearsOwner$ ./test/e2e)`.
+Test `TestS3PoolReleaseClearsOwner`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS3PoolReleaseClearsOwner$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -469,7 +469,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### ea3948b7
 
-Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
+Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -495,7 +495,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 3bd2407a
 
-Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
+Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -521,7 +521,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 19abdc33
 
-Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
+Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S3/S4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -547,7 +547,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 3afd948b
 
-Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
+Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -573,7 +573,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 209c0e7d
 
-Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
+Test `TestS4AcquisitionErrorClearsEarlierCandidates`; predicate S2/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS4AcquisitionErrorClearsEarlierCandidates$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -599,7 +599,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### b57b381e
 
-Test `TestL3WaitingNamesEveryPlace`; predicate R1/L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
+Test `TestL3WaitingNamesEveryPlace`; predicate R1/L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -625,7 +625,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 67232af2
 
-Test `TestL3WaitingNamesEveryPlace`; predicate R1/L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
+Test `TestL3WaitingNamesEveryPlace`; predicate R1/L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -651,7 +651,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### ae331179
 
-Test `TestL3WaitingNamesEveryPlace`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
+Test `TestL3WaitingNamesEveryPlace`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -677,7 +677,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 07423c5b
 
-Test `TestL3WaitingNamesEveryPlace`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
+Test `TestL3WaitingNamesEveryPlace`; predicate L3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestL3WaitingNamesEveryPlace$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -701,7 +701,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### be934352
 
-Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
+Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -725,7 +725,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 369df7a7
 
-Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
+Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -749,7 +749,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### bf895ab1
 
-Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C4. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
+Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C4. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -775,7 +775,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 11773c4f
 
-Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
+Test `TestS1StatusRejectsInvalidHeavySlots`; predicate S1/C3. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestS1StatusRejectsInvalidHeavySlots$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -799,7 +799,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 241a4e88
 
-Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
+Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -823,7 +823,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### 37b44696
 
-Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
+Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text
@@ -847,7 +847,7 @@ Green: targeted unmutated e2e regex (all five added tests) rc 0 before replay; f
 
 ### f48dfbe3
 
-Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at f0246b8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
+Test `TestR2StatusContinuesAfterDownHost`; predicate R2. Exact JSON diff applied to `internal/cli/place.go` at 14994a8, then reverted. Red command (twice): `(cd /home/eturkes/Projects/offload/.scratch/worktrees/reviewer-11 && umask 022 && go test -count=1 -timeout=60s -run ^TestR2StatusContinuesAfterDownHost$ ./test/e2e)`.
 
 Run 1: rc 1.
 ```text

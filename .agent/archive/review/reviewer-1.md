@@ -1,6 +1,6 @@
-# reviewer-1 — correctness/spec — c32846f..47a8417
+# reviewer-1 — correctness/spec — fed6498..cac258b
 
-Fixed A1–A8 before target reads. Target = `47a8417b2bf241239d17824f45d285600ebece90`; tests-only worktree = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-1`. **8/8 adjudicated; 11 findings = 8 major + 3 minor.** Production unchanged. Tests committed on `wt/reviewer-1`: `df46bd66671ca4649221d512404c253173e3c56c`; worktree clean.
+Fixed A1–A8 before target reads. Target = `cac258b87885d725fbbf45d78afa10e1f9a1cd60`; tests-only worktree = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-1`. **8/8 adjudicated; 11 findings = 8 major + 3 minor.** Production unchanged. Tests committed on `wt/reviewer-1`: `df46bd66671ca4649221d512404c253173e3c56c`; worktree clean.
 
 | id | check | verdict | evidence |
 |----|-------|---------|----------|

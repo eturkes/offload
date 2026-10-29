@@ -1,6 +1,6 @@
 # reviewer-7 task 2 — independent rulings of MAIN's survivor rulings
 
-Fixed set = 135 original rows + 31 mirror rows (directive addendum), 166 total. Original target = `4cae2206b415054b1dc348ebb2a4fe9a2c9529d4`; mirror target = `0d887f7`. Source = `.agent/archive/review/mutation-code-review.md`; exact mutant diffs = `.scratch/mut/<pkg>.agentic.json`. Per row = independent contract ruling: `agree` | `disagree` (+ R7-M<n>, counterexample/proof) | `n/a`. `killed` rows receive source/test inspection + selected reruns, not a complete mutation sweep. Commands run from `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-7`; each applied production diff restored before the next. No full gate, pool, live nixbox, or nested agents.
+Fixed set = 135 original rows + 31 mirror rows (directive addendum), 166 total. Original target = `5f116e8ac45c2286abde109771a402298c08fc1b`; mirror target = `254f969`. Source = `.agent/archive/review/mutation-code-review.md`; exact mutant diffs = `.scratch/mut/<pkg>.agentic.json`. Per row = independent contract ruling: `agree` | `disagree` (+ R7-M<n>, counterexample/proof) | `n/a`. `killed` rows receive source/test inspection + selected reruns, not a complete mutation sweep. Commands run from `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-7`; each applied production diff restored before the next. No full gate, pool, live nixbox, or nested agents.
 
 Review boundary supplied by MAIN: controller state/runtime = bcachefs home + tmpfs `/run/user`; pool hosts = ext4 on LUKS + tmpfs `/tmp` and `/run/user`. FUSE/NFS/remote filesystems and the injection-only errors examined below are outside this review domain. Actual per-process limits (EMFILE/ENFILE), signals, concurrent processes, and FIFOs/symlinks planted by the same user or a `/tmp`-fallback actor remain in-domain. This scopes the review; it neither asserts impossibility on every filesystem nor edits the project contract.
 
@@ -23,16 +23,16 @@ Complete = 166/166 rows: **148 agree · 15 disagree · 3 n/a** (removed code). S
 | abb7c21b | ssh.go:104 | contract-open: own process group (C3/X3 outcomes unchanged) | disagree R7-M2 | Group INT reaches the watcher too: end.cmd_rc=130, actual CMD TERM handler returns17. Both exact replays red. |
 | 01b0f6cb | ssh.go:67 | equivalent: as b0941db1 | agree | Failed MkdirAll followed by CreateTemp still errors; X5 fallback + note remain. |
 | 25475cd5 | ssh.go:73 | contract-open: error wrapping/wording | agree | Same message; only errors.Unwrap differs and Multiplex caller uses nil/string alone. |
-| bf5b8ec8 | ssh.go:54 | killed: TestMultiplex (bound = X5's literal 49, fc031d9) | agree | Exact mutant replay: TestMultiplex rc1, 49-byte directory refused; HEAD rc0. |
-| 7cf80936 | ssh.go:54 | killed: TestMultiplex (fc031d9) | agree | 50-byte directory wrongly accepted; named bound+1 fixture tests literal49 (inspection). |
+| bf5b8ec8 | ssh.go:54 | killed: TestMultiplex (bound = X5's literal 49, 659a680) | agree | Exact mutant replay: TestMultiplex rc1, 49-byte directory refused; HEAD rc0. |
+| 7cf80936 | ssh.go:54 | killed: TestMultiplex (659a680) | agree | 50-byte directory wrongly accepted; named bound+1 fixture tests literal49 (inspection). |
 | 8851a05c | ssh.go:106 | contract-open: as 5a20c144 | agree | 29/31 s cancel fallback not fixed by a predicate; R1 overrides WaitDelay itself. |
 | ae40b356 | ssh.go:106 | contract-open: as 5a20c144 | agree | 29/31 s cancel fallback not fixed by a predicate; R1 overrides WaitDelay itself. |
 | db61c2a6 | ssh.go:104 | contract-open: as abb7c21b | disagree R7-M2 | Group INT reaches the watcher too: end.cmd_rc=130, actual CMD TERM handler returns17. Both exact replays red. |
 | 4d318e50 | ssh.go:106 | contract-open: as 5a20c144 | agree | This changes fallback delay to0 (disabled), not immediate KILL; no finite deadline predicate for this helper; R1 probe overrides it. |
 | 7724e72c | ssh.go:105 | contract-open: TERM vs KILL on cancel (C3/X3 outcomes unchanged) | disagree R7-M1 | K5 explicitly requires TERM; exact replay loses the TERM marker (immediate KILL / KILL after30s). |
-| 14da4c1d | ssh.go:68 | killed: TestMultiplex uncreatable dir (fc031d9) | agree | Uncreatable directory returns nil error; named fixture asserts rejection (inspection). |
+| 14da4c1d | ssh.go:68 | killed: TestMultiplex uncreatable dir (659a680) | agree | Uncreatable directory returns nil error; named fixture asserts rejection (inspection). |
 | 7aa26568 | ssh.go:105 | contract-open: as 7724e72c | disagree R7-M1 | K5 explicitly requires TERM; exact replay loses the TERM marker (immediate KILL / KILL after30s). |
-| 802566c8 | cli.go:106 | killed: TestCtrInitIsDispatched (fc031d9) | agree | Exact diff changes __ctr-init dispatch to usage; named test asserts rc125 + init refusal, inspection. |
+| 802566c8 | cli.go:106 | killed: TestCtrInitIsDispatched (659a680) | agree | Exact diff changes __ctr-init dispatch to usage; named test asserts rc125 + init refusal, inspection. |
 | 4d46e9ab | cli.go:86 | killed: TestUsageErrorsOfStatusCommandsAndFlags (status -h) | agree | Named table contains status -h/--help, expects help stdout rc0; mutant calls status instead. |
 | 73ad10cd | cli.go:106 | killed: TestK7StatusPassesThrough (.agent/plant) | agree | K7 init argv gains __ctr-init as CMD; TestK7StatusPassesThrough must see wrong status (inspection; no real-podman replay). |
 | 65f5e129 | cli.go:85 | killed: TestUsageErrorsOfStatusCommandsAndFlags (status extra) | agree | Named table contains status extra; reason assertion distinguishes accidental status execution. |
@@ -44,7 +44,7 @@ Complete = 166/166 rows: **148 agree · 15 disagree · 3 n/a** (removed code). S
 | 3db37409 | cli.go:127 | equivalent: callers read the error alone | agree | parseRun caller returns help/usage on nonnil err before reading options; zeroing them unobservable. |
 | 59f2f318 | cli.go:131 | equivalent: as 3db37409 | agree | parseRun caller returns help/usage on nonnil err before reading options; zeroing them unobservable. |
 | 9f816eb1 | cli.go:135 | equivalent: as 3db37409 | agree | parseRun caller returns help/usage on nonnil err before reading options; zeroing them unobservable. |
-| e47bc289 | ctr.go:235 | code removed (parseCheck CR trim, no CR source), fc031d9 | n/a | Mutation target line removed at HEAD; current parser has no CR trim. No general CR guarantee in K10. |
+| e47bc289 | ctr.go:235 | code removed (parseCheck CR trim, no CR source), 659a680 | n/a | Mutation target line removed at HEAD; current parser has no CR trim. No general CR guarantee in K10. |
 | ac657a13 | ledger.go:131 | equivalent: ReadBuildInfo is ok in every module build | agree | Module-built executable carries ReadBuildInfo; vcsVersion still returns nil without VCS revision. |
 | 3743e003 | ledger.go:270 | equivalent: record() = json.Marshal of fixed types, cannot fail | agree | Only record caller marshals head/tail: strings/bools/ints/finite durations and percentages; no failing custom MarshalJSON/cycles. |
 | 12d5ad7f | ledger.go:290 | contract-open: fd close on an error path (process exits; no predicate) | agree | One error-path descriptor until the one-run process exits; lock still deferred closed; no explicit fd-count predicate. |
@@ -223,7 +223,7 @@ Replay protocol (all below): read the unique `.mutants[]` id-prefix match from `
 - Test = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-7/internal/slots/reviewer7_mutation_test.go`, `go test -count=1 -run '^TestR7HoldersIgnoreFIFOWithConnectedWriter$' ./internal/slots/`. Parent holds the slot + opens its owner FIFO read/write; child calls actual Holders. Parent waits until `/proc/<child>/fd` shows the reader opened, then sends data + EOF. HEAD returns without consuming FIFO; mutants return the data.
 - HEAD rc0 (0.004s); both exact mutants rc1 (0.004/0.005s): `FIFO contents became holder text: ["slot 1: not-an-owner-line"]`. Failure is content, not a timing bound. No security adjudication beyond this I/O behavior.
 
-New counterexample tests for R7-M1–M6 = commit `2cb678a` on `wt/reviewer-7` (rebased with tests preserved onto mirror target `0d887f7`; original tests ran against `4cae220`).
+New counterexample tests for R7-M1–M6 = commit `2cb678a` on `wt/reviewer-7` (rebased with tests preserved onto mirror target `254f969`; original tests ran against `5f116e8`).
 
 ## Register
 

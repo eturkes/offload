@@ -1,8 +1,8 @@
-# reviewer-6 — code review @ 41fd3c0
+# reviewer-6 — code review @ 640f24f
 
 Result: 15/15 rows adjudicated; 10 pass, 5 finding rows; 4 unique findings (2 major behavior, 1 minor behavior, 1 minor Decision-text). Red tests committed `779fa9a` + `cb3f5d7` + `d4f708c`; production target unchanged.
 
-Scope = fixed SF1–SF15 below; subject 41fd3c016caf6ed2e7cbace6f14e7f316d57ac32 in `.scratch/worktrees/reviewer-6`. Decisions outrank contract predicates. Security posture carve-outs = MAIN, not adjudicated here. Prior accepted rulings in all three `ledger-*.md` read; any reversal requires new evidence.
+Scope = fixed SF1–SF15 below; subject 640f24f293d7c0f3da20b0761bd4b521d3be2e13 in `.scratch/worktrees/reviewer-6`. Decisions outrank contract predicates. Security posture carve-outs = MAIN, not adjudicated here. Prior accepted rulings in all three `ledger-*.md` read; any reversal requires new evidence.
 
 Validator seed: expected 15 unknown rows → 15 (rc 0); pass-only control expected 0 → 0 (grep rc 1). Evidence paths below are subject-root-relative unless stated otherwise. No full gate or real-pool run permitted; targeted tests + read-only live queries alone.
 
@@ -30,7 +30,7 @@ Validator seed: expected 15 unknown rows → 15 (rc 0); pass-only control expect
 
 ### R6-F1 — hybrid pool-first rejects a command available only on the pool
 
-Severity: **major**. Target: `internal/cli/cli.go:240–243` @ 41fd3c0 (`if !o.pool {` → `checkLocalCommand` before `p.place`). Decision: `User/Trigger` promises an available pool slot before any local fallback; `Remote run` resolves CMD in the host's login shell. A host-only tool is valid on an available host, yet the default hybrid command returns 127 from the controller without contacting the host. Explicit `--pool` succeeds with the same CMD + pool. Prior accepted R7 in `ledger-pool-run-environment.md` establishes 126/127 for local execution, not this extra eligibility condition on remote execution; no accepted ruling reversed.
+Severity: **major**. Target: `internal/cli/cli.go:240–243` @ 640f24f (`if !o.pool {` → `checkLocalCommand` before `p.place`). Decision: `User/Trigger` promises an available pool slot before any local fallback; `Remote run` resolves CMD in the host's login shell. A host-only tool is valid on an available host, yet the default hybrid command returns 127 from the controller without contacting the host. Explicit `--pool` succeeds with the same CMD + pool. Prior accepted R7 in `ledger-pool-run-environment.md` establishes 126/127 for local execution, not this extra eligibility condition on remote execution; no accepted ruling reversed.
 
 Red witness: `test/e2e/specfit_review_test.go:11` `TestSF1HybridRunsPoolOnlyCommand`; commit `779fa9a` on `wt/reviewer-6` (test alone; production = subject). Fake host login profile adds a tool absent on the controller. Explicit `--pool` is the positive control (rc 0 + exact `pool-only\n`), then hybrid must produce that output from alpha.
 
@@ -48,7 +48,7 @@ Acceptance: local command lookup gates only a local execution path; the red hybr
 
 ### R6-F2 — empty PATH is not Bash-compatible
 
-Severity: **major**. Target: `internal/shell/look.go:28` @ 41fd3c0, `for _, dir := range filepath.SplitList(os.Getenv("PATH")) {`. SF10 + K2/K7/X2 require Bash lookup. An explicitly empty PATH means cwd to Bash; Go's `filepath.SplitList("")` returns zero entries, so Look incorrectly returns 127 even when cwd contains an executable. This affects native `offload ctr` and image-init lookup, not only the helper's internal result. Prior accepted `ledger-pool-run-environment.md` R7 requires Bash-compatible 126/127 and has no exception for empty PATH.
+Severity: **major**. Target: `internal/shell/look.go:28` @ 640f24f, `for _, dir := range filepath.SplitList(os.Getenv("PATH")) {`. SF10 + K2/K7/X2 require Bash lookup. An explicitly empty PATH means cwd to Bash; Go's `filepath.SplitList("")` returns zero entries, so Look incorrectly returns 127 even when cwd contains an executable. This affects native `offload ctr` and image-init lookup, not only the helper's internal result. Prior accepted `ledger-pool-run-environment.md` R7 requires Bash-compatible 126/127 and has no exception for empty PATH.
 
 Red witness: `internal/shell/specfit_review_test.go:10` `TestSF10EmptyPathMatchesBash`, commit `cb3f5d7` on `wt/reviewer-6`. Creates an executable in cwd, sets PATH to `""`, runs Bash through its previously resolved absolute path as the positive control (rc 0), then calls Look with the same env/cwd.
 
@@ -66,7 +66,7 @@ Acceptance: empty PATH searches cwd; native + init callers keep their Bash-compa
 
 ### R6-F3 — Decision names Bash `%q`; documented owner text uses POSIX shell quoting
 
-Severity: **minor**. Text target: `.agent/spec.md:14` @ 41fd3c0, exact anchor `<cmd %q>`. The Decision describes the owner suffix as Bash's `%q` rendering, but `.agent/contract.md` S3 says `shell-quoted`, `internal/cli/cli.go:406` deliberately routes it through `remote.Join`, and `internal/remote/ssh.go:81–85` implements POSIX single-quote quoting. Space-bearing words become `'a b'`, not Bash `%q`'s `a\ b`; newline-bearing words can span physical lines, unlike `%q`. The held-slot/status interoperability passes; this finding is the stale exact-format wording, not a demand to redesign locking. Owner ruling required by the brief before changing a Decision.
+Severity: **minor**. Text target: `.agent/spec.md:14` @ 640f24f, exact anchor `<cmd %q>`. The Decision describes the owner suffix as Bash's `%q` rendering, but `.agent/contract.md` S3 says `shell-quoted`, `internal/cli/cli.go:406` deliberately routes it through `remote.Join`, and `internal/remote/ssh.go:81–85` implements POSIX single-quote quoting. Space-bearing words become `'a b'`, not Bash `%q`'s `a\ b`; newline-bearing words can span physical lines, unlike `%q`. The held-slot/status interoperability passes; this finding is the stale exact-format wording, not a demand to redesign locking. Owner ruling required by the brief before changing a Decision.
 
 Text proof (all matched, rc 0):
 
@@ -83,7 +83,7 @@ Acceptance: owner chooses (a) Decision says shell-quoted argv (matches S3 + curr
 
 ### R6-F4 — deploy skips check for successful non-switch actions
 
-Severity: **minor**. Behavior target: `machines/nixbox/deploy:10` @ 41fd3c0, exact anchor `[ "${1:-switch}" != switch ] || "$here/check"`. Decision `.agent/spec.md:26` says ``runs at every `deploy` ``. The script accepts a nixos-rebuild action but calls `check` only for `switch`; `test`, `boot` and `build` all complete without it. README:14 documents the same narrower behavior, but Decisions outrank it. MAIN directed this finding against deploy and owns the fix-side ruling; R6-F3 alone remains a Decision-text finding.
+Severity: **minor**. Behavior target: `machines/nixbox/deploy:10` @ 640f24f, exact anchor `[ "${1:-switch}" != switch ] || "$here/check"`. Decision `.agent/spec.md:26` says ``runs at every `deploy` ``. The script accepts a nixos-rebuild action but calls `check` only for `switch`; `test`, `boot` and `build` all complete without it. README:14 documents the same narrower behavior, but Decisions outrank it. MAIN directed this finding against deploy and owns the fix-side ruling; R6-F3 alone remains a Decision-text finding.
 
 Red witness: `test/e2e/specfit_review_test.go` `TestSF14DeployChecksNonSwitch`, commit `d4f708c` on `wt/reviewer-6`. The unchanged subject deploy is copied into a temp tree with fake ssh/rsync/check, fixture host.nix + inert wifi.env. Switch is the passing positive control; every action's log proves the transfer + requested rebuild mock ran, then requires one check. No real host contact or deploy/rebuild occurs.
 

@@ -1,6 +1,6 @@
 # Mutation credit — MAINTAIN code review
 
-Ruler = MAIN (not the author of the tests credited); every row then independently ruled by reviewer-7 (`cr-reviewer-7-m.md`: 129 agree, 3 n/a, 34 disagree → M1–M6 = new killing tests, M7–M9 = the domain ruling). Reachable domain (owner-approved) = the filesystems these machines run (bcachefs, ext4, tmpfs); FUSE/NFS + fault-injected I/O errors out of domain; per-process limits (EMFILE), signals, concurrent + same-user/tmp-fallback plants in domain. Sweeps at 508e0dc (disposable worktree + stub `place_test.go`, `ctr_test.go`, `ssh_test.go`; recipe `.claude/rules/code.md`), unit tests per package; escapes replayed through e2e (`patch` the agentic diff, run the regex, revert). Rows = every survivor after the replay.
+Ruler = MAIN (not the author of the tests credited); every row then independently ruled by reviewer-7 (`cr-reviewer-7-m.md`: 129 agree, 3 n/a, 34 disagree → M1–M6 = new killing tests, M7–M9 = the domain ruling). Reachable domain (owner-approved) = the filesystems these machines run (bcachefs, ext4, tmpfs); FUSE/NFS + fault-injected I/O errors out of domain; per-process limits (EMFILE), signals, concurrent + same-user/tmp-fallback plants in domain. Sweeps at 03b1e27 (disposable worktree + stub `place_test.go`, `ctr_test.go`, `ssh_test.go`; recipe `.claude/rules/code.md`), unit tests per package; escapes replayed through e2e (`patch` the agentic diff, run the regex, revert). Rows = every survivor after the replay.
 
 ## shell
 
@@ -30,14 +30,14 @@ Ruler = MAIN (not the author of the tests credited); every row then independentl
 | `abb7c21b` | `ssh.go:104` | composite/field-clear | Changes: `cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}` → `cmd.SysProcAttr = &syscall.SysProcAttr{}` | killed: e2e TestR7GroupInterruptKeepsWatcherTeardown (reviewer-7 R7-M2, exact diff; MAIN's earlier ruling overturned) |
 | `01b0f6cb` | `ssh.go:67` | expression/error-guard | Removes an error-guard block so the function continues even on error | equivalent: as b0941db1 |
 | `25475cd5` | `ssh.go:73` | expression/errorf-wrap | Changes: `return nil, fmt.Errorf("socket directory %s refuses new files: %w", dir, err)` → `return nil, fmt.Er | contract-open: error wrapping/wording |
-| `bf5b8ec8` | `ssh.go:54` | numbers/decrementer | Changes: `const maxControlDir = 49` → `const maxControlDir = 48` | killed: TestMultiplex (bound = X5's literal 49, fc031d9) |
-| `7cf80936` | `ssh.go:54` | numbers/incrementer | Changes: `const maxControlDir = 49` → `const maxControlDir = 50` | killed: TestMultiplex (fc031d9) |
+| `bf5b8ec8` | `ssh.go:54` | numbers/decrementer | Changes: `const maxControlDir = 49` → `const maxControlDir = 48` | killed: TestMultiplex (bound = X5's literal 49, 659a680) |
+| `7cf80936` | `ssh.go:54` | numbers/incrementer | Changes: `const maxControlDir = 49` → `const maxControlDir = 50` | killed: TestMultiplex (659a680) |
 | `8851a05c` | `ssh.go:106` | numbers/decrementer | Changes: `cmd.WaitDelay = 30 * time.Second` → `cmd.WaitDelay = 29 * time.Second` | contract-open: as 5a20c144 |
 | `ae40b356` | `ssh.go:106` | numbers/incrementer | Changes: `cmd.WaitDelay = 30 * time.Second` → `cmd.WaitDelay = 31 * time.Second` | contract-open: as 5a20c144 |
 | `db61c2a6` | `ssh.go:104` | statement/remove | Removes a statement entirely, dropping its side effect or return value | killed: e2e TestR7GroupInterruptKeepsWatcherTeardown (reviewer-7 R7-M2, exact diff; MAIN's earlier ruling overturned) |
 | `4d318e50` | `ssh.go:106` | statement/remove | Removes a statement entirely, dropping its side effect or return value | contract-open: as 5a20c144 |
 | `7724e72c` | `ssh.go:105` | statement/remove | Removes a statement entirely, dropping its side effect or return value | killed: TestR7CommandCancellationDeliversTERM (reviewer-7 R7-M1, exact diff; MAIN's earlier ruling overturned) |
-| `14da4c1d` | `ssh.go:68` | statement/return | Replaces a return value with its zero value | killed: TestMultiplex uncreatable dir (fc031d9) |
+| `14da4c1d` | `ssh.go:68` | statement/return | Replaces a return value with its zero value | killed: TestMultiplex uncreatable dir (659a680) |
 | `7aa26568` | `ssh.go:105` | statement/return | Replaces a return value with its zero value | killed: TestR7CommandCancellationDeliversTERM (reviewer-7 R7-M1, exact diff; MAIN's earlier ruling overturned) |
 
 ## cli
@@ -46,7 +46,7 @@ Ruler = MAIN (not the author of the tests credited); every row then independentl
 
 | id | site | mutator | change | ruling |
 |----|------|---------|--------|--------|
-| `802566c8` | `cli.go:106` | branch/case | Changes: `return ctr.Init(args[1:], stderr)` → `_, _, _ = ctr.Init, args, stderr` | killed: TestCtrInitIsDispatched (fc031d9) |
+| `802566c8` | `cli.go:106` | branch/case | Changes: `return ctr.Init(args[1:], stderr)` → `_, _, _ = ctr.Init, args, stderr` | killed: TestCtrInitIsDispatched (659a680) |
 | `4d46e9ab` | `cli.go:86` | branch/if | Removes an if-block body so the condition becomes a no-op, keeping a zero-value return when the branch was ter | killed: TestUsageErrorsOfStatusCommandsAndFlags (status -h) |
 | `73ad10cd` | `cli.go:106` | numbers/decrementer | Changes: `return ctr.Init(args[1:], stderr)` → `return ctr.Init(args[0:], stderr)` | killed: TestK7StatusPassesThrough (.agent/plant) |
 | `65f5e129` | `cli.go:85` | numbers/incrementer | Changes: `if len(args) > 1 {` → `if len(args) > 2 {` | killed: TestUsageErrorsOfStatusCommandsAndFlags (status extra) |
@@ -58,11 +58,11 @@ Ruler = MAIN (not the author of the tests credited); every row then independentl
 | `3db37409` | `cli.go:127` | statement/return | Replaces a return value with its zero value | equivalent: callers read the error alone |
 | `59f2f318` | `cli.go:131` | statement/return | Replaces a return value with its zero value | equivalent: as 3db37409 |
 | `9f816eb1` | `cli.go:135` | statement/return | Replaces a return value with its zero value | equivalent: as 3db37409 |
-| `e47bc289` | `ctr.go:235` | statement/remove | Removes a statement entirely, dropping its side effect or return value | code removed (parseCheck CR trim, no CR source), fc031d9 |
+| `e47bc289` | `ctr.go:235` | statement/remove | Removes a statement entirely, dropping its side effect or return value | code removed (parseCheck CR trim, no CR source), 659a680 |
 
 ## cli — sweep 2 (e2e-driven functions)
 
-Deferred row (cli survivor rulings) closed here. Sweep at `09e9969` (code.md recipe; stub `place_test.go` + `ctr_test.go`; mutago 2.10.38): 812 mutants, 100 killed by unit tests, 5 skipped, 707 escaped. Replay = per-test coverage map (`OFFLOAD_E2E_COVERDIR` run → `.agent/mutation/plan`) + CI shards (`.github/workflows/mutation.yml`, run 40534349336; dedicated runners, each kill confirmed by its first failing test alone): 560 killed, 118 escaped, 29 executed by no e2e test (local replay of 39 of them agreed 39/39). Rulers of the 147 survivors = reviewer-10 (`cli.go`), reviewer-11 (`place.go`), reviewer-12 (`ctr.go`), blind to each other; deliverables with red-test notes = `reviewer-10.md`, `reviewer-11.md`, `reviewer-12.md` here. MAIN check: all 87 `new test` + `killed` rows red with their mutant + green clean (`.agent/mutation/verify`, the reviewers' worktrees); every `equivalent` + `contract-open` row read against the code (the cancellation path's `fail` + `runCommand` End override, `placement.release`'s sole deferred caller, `localLayers`' Find errors). Counts: contract-open 27, equivalent 33, killed 2, new test 85. Coverage-map limit: lines run only inside a container (`cli.go:106` `__ctr-init`) under-select; reviewer-10 found its 2 kills.
+Deferred row (cli survivor rulings) closed here. Sweep at `b7645d8` (code.md recipe; stub `place_test.go` + `ctr_test.go`; mutago 2.10.38): 812 mutants, 100 killed by unit tests, 5 skipped, 707 escaped. Replay = per-test coverage map (`OFFLOAD_E2E_COVERDIR` run → `.agent/mutation/plan`) + CI shards (`.github/workflows/mutation.yml`, run 40534349336; dedicated runners, each kill confirmed by its first failing test alone): 560 killed, 118 escaped, 29 executed by no e2e test (local replay of 39 of them agreed 39/39). Rulers of the 147 survivors = reviewer-10 (`cli.go`), reviewer-11 (`place.go`), reviewer-12 (`ctr.go`), blind to each other; deliverables with red-test notes = `reviewer-10.md`, `reviewer-11.md`, `reviewer-12.md` here. MAIN check: all 87 `new test` + `killed` rows red with their mutant + green clean (`.agent/mutation/verify`, the reviewers' worktrees); every `equivalent` + `contract-open` row read against the code (the cancellation path's `fail` + `runCommand` End override, `placement.release`'s sole deferred caller, `localLayers`' Find errors). Counts: contract-open 27, equivalent 33, killed 2, new test 85. Coverage-map limit: lines run only inside a container (`cli.go:106` `__ctr-init`) under-select; reviewer-10 found its 2 kills.
 
 | id | site | mutator | change | replay | ruling |
 |----|------|---------|--------|--------|--------|
@@ -216,7 +216,7 @@ Deferred row (cli survivor rulings) closed here. Sweep at `09e9969` (code.md rec
 
 ## ledger
 
-195, 153 killed, 42 escaped; replay (TestJ*) killed 27 (13197df's 13 author-ruled sites included, re-ruled here).
+195, 153 killed, 42 escaped; replay (TestJ*) killed 27 (192f8bc's 13 author-ruled sites included, re-ruled here).
 
 | id | site | mutator | change | ruling |
 |----|------|---------|--------|--------|
@@ -334,7 +334,7 @@ Deferred row (cli survivor rulings) closed here. Sweep at `09e9969` (code.md rec
 
 ## pooladdrs
 
-13 mutants (main.go); before c44837d: 3 killed, 10 escaped; after the new run-error + main exit/message tests: 12 killed (mutago rerun).
+13 mutants (main.go); before 269d313: 3 killed, 10 escaped; after the new run-error + main exit/message tests: 12 killed (mutago rerun).
 
 | id | site | mutator | change | ruling |
 |----|------|---------|--------|--------|

@@ -1,4 +1,4 @@
-# reviewer-3 — code review @ 41fd3c0
+# reviewer-3 — code review @ 640f24f
 
 ## Verdict table
 
@@ -37,12 +37,12 @@
 
 ### R3-F1 — duplicate scope-availability prerequisite
 
-- Severity: **minor**. Row: U11. Subject: `41fd3c016caf6ed2e7cbace6f14e7f316d57ac32`.
+- Severity: **minor**. Row: U11. Subject: `640f24f293d7c0f3da20b0761bd4b521d3be2e13`.
 - Sites: `internal/run/run_test.go:128–152` (`requireScope` + `scopeWorks`) and `test/e2e/execution_test.go:134–151` (`requireScope`).
 - Law: `CLAUDE.md` Engineering → deduplicate; Cleanup → existing helpers reused, near-duplicate blocks merged.
 - Defect: one test prerequisite has two independently editable implementations: find the same manager socket, execute the same probe, interpret the same required-mode variable, then emit the same failure/skip. This is gate-coverage policy, not independent behavioral oracles. A change to scope prerequisites must currently be carried in both packages; source inspection finds two probe implementations + two required/optional policies where one suffices.
 - Fix shape: move the current test-only `requireScope`/`scopeWorks` mechanism into `internal/testutil.RequireScope(t)` (name illustrative); both packages call it. Delete their local copies. Keep this helper independent of production `ctr.scopeManager`/watcher code so a production regression cannot redefine the prerequisite. Preserve optional skip vs `OFFLOAD_REQUIRE_SCOPE` failure and current probe behavior.
-- Text proof (both files unchanged from subject; `git show 41fd3c0:<file>` rematched):
+- Text proof (both files unchanged from subject; `git show 640f24f:<file>` rematched):
 
 ```text
 rg -Fn 'c := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--", "true")' <worktree>/internal/run/run_test.go <worktree>/test/e2e/execution_test.go

@@ -36,7 +36,7 @@ Status: `red-ok` = failing for expected stub behavior; `red-other` = another fai
 
 ## Checks
 
-- Base = `d4d48284ca5d946c57fc1517e2379e7491079757`; branch `wt/tester-1`; test commit = `0b8eb3baeca8df043ae0e7bc9c871e6df3679ad8` (clean worktree).
+- Base = `282d82f39f884cb5bcc81eb6edb08ef4ef6dff87`; branch `wt/tester-1`; test commit = `0b8eb3baeca8df043ae0e7bc9c871e6df3679ad8` (clean worktree).
 - Worktree = `/home/eturkes/Projects/offload/.scratch/worktrees/tester-1`.
 - `go vet ./test/e2e/` → rc 0.
 - `/home/eturkes/Projects/offload/.agent/tool golangci-lint fmt ./test/e2e/...` → rc 0.

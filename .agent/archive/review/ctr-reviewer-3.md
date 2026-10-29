@@ -1,6 +1,6 @@
 # reviewer-3 — lens G: guarantee vs claim gaps
 
-Target = `ef515f2..2c2744d` (implementation revision `2c2744dba7cc99ca5e1d360cadc940242995ec90`). Check set G1–G9 frozen before target read. Verdict: 9/9 adjudicated; 3 pass, 6 finding rows; 6 distinct major findings. All reproduction writes = reviewer-3 worktree; no remote access or installer execution. Primary `internal/slots/slots.go` changed during review; target evidence uses the pinned worktree, not that edit.
+Target = `5c11b58..57903b5` (implementation revision `57903b5dafc3c4fb98b358bc2546af4285990c83`). Check set G1–G9 frozen before target read. Verdict: 9/9 adjudicated; 3 pass, 6 finding rows; 6 distinct major findings. All reproduction writes = reviewer-3 worktree; no remote access or installer execution. Primary `internal/slots/slots.go` changed during review; target evidence uses the pinned worktree, not that edit.
 
 | id | check | verdict (pass / finding) | finding ids | evidence (file:line, command + output) |
 |----|-------|---------------------------|-------------|----------------------------------------|
@@ -51,7 +51,7 @@ container wrote 248.633038ms after heavy slot freed while init was SIGSTOPed; no
 - Target: `internal/ctr/ctr.go:76–79`, `internal/ctr/tag.go:25–30`.
 - K3 checks only that `Containerfile` itself is regular. `.devcontainer` may be a symlink to a directory. `filepath.WalkDir` does not descend a symlink root, and `path == dir` skips even that entry ⇒ SHA256(empty), shared across every such project/definition. Editing Containerfile reuses the old image; unrelated definitions share its tag.
 - Anchor bytes: `p.Context = filepath.Dir(p.Definition)`; `if path == dir {`.
-- Red: `TMPDIR="$PWD/.tmp" go test ./internal/ctr -run '^TestReviewG4' -count=1 -v` → rc 1 on 2c2744d. Positive control checks `Lstat(link/Containerfile).Mode().IsRegular()`.
+- Red: `TMPDIR="$PWD/.tmp" go test ./internal/ctr -run '^TestReviewG4' -count=1 -v` → rc 1 on 57903b5. Positive control checks `Lstat(link/Containerfile).Mode().IsRegular()`.
 
 ```text
 Containerfile content changed, but symlinked context kept tag localhost/offload-ctr:e3b0c44298fc1c14

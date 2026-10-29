@@ -1,4 +1,4 @@
-# Review ledger — IMPLEMENT close (diff c32846f..HEAD)
+# Review ledger — IMPLEMENT close (diff fed6498..HEAD)
 
 Check sets fixed before reading: lenses A (correctness/spec, reviewer-1), B (claim soundness, reviewer-2), G (guarantee-vs-claim, reviewer-3), V (verification integrity, reviewer-4), M (CLAUDE.md conformance, reviewer-5) — row texts + evidence in `.agent/archive/review/reviewer-N.md`; S (security, MAIN alone). Row = verdict + MAIN's ruling; `open` rows block the phase close.
 
@@ -38,7 +38,7 @@ Check sets fixed before reading: lenses A (correctness/spec, reviewer-1), B (cla
 | R20 | L3 30 s down-host throttle + S4 controller workdir lock untested (V-F04) | fixed | TestL3DownHostProbedAtMostEvery30s (1 contact in ~6 s), TestS4SameTreeRunsSerializeAtController | closed |
 | R21 | TestRemoteLockSerializes timed its own fixture (V-F07) | fixed | elapsed measured before joining the holder | closed |
 | R22 | contract carried amendment provenance (M-F1) | fixed | line removed; history lives in commit bodies | closed |
-| R23 | gate-checks.md carried nixfmt adoption history + an undefined seed (M-F2) | fixed | history line removed (commit c9539b5 keeps it); nix seed = `{ a=1; }` → rc 1 | closed |
+| R23 | gate-checks.md carried nixfmt adoption history + an undefined seed (M-F2) | fixed | history line removed (commit be205eb keeps it); nix seed = `{ a=1; }` → rc 1 | closed |
 | R24 | 8/9 commit bodies name no red revision SHA (M-F3) | accepted | history stays unrewritten; this close commit records revision + command for every review red | closed |
 | R25 | pass rows: A-none; B6; G2; V3–V6; M2, M3, M7 | pass | see `.agent/archive/review/reviewer-N.md` (tags archive/reviewer-1…7) | closed |
 | R26 | mutation credit for tests never seen red (Mutago v2.10.35 package-scoped + `.agent/plant` hand plants) | ruled | 152 survivors: 37 killed by existing full-suite tests, 68 by tests added in review (reviewer-6: mirror 12 unit + 1 e2e; reviewer-7: pool/slots/probe), 27 contract-open (unprescribed error wording / I/O detail), 20 equivalent — every row in `.agent/archive/mutation-implement.md` with its proof | closed |

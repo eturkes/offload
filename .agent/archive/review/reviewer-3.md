@@ -1,6 +1,6 @@
-# reviewer-3 verdicts — closing diff c32846f..47a8417
+# reviewer-3 verdicts — closing diff fed6498..cac258b
 
-Check set frozen before target reads: G1–G7 below; acceptance = README.md + .agent/contract.md + .agent/spec.md Decisions on c32846f..47a8417. Verdict ∈ {pass, finding + ids}; unknown = in progress only. Findings = severity + file:line + red test committed on wt/reviewer-3; a nondeterministic gap names its interleaving + test limitation. Outside-set defects → register only. No production edits; no real hosts or shared slots.
+Check set frozen before target reads: G1–G7 below; acceptance = README.md + .agent/contract.md + .agent/spec.md Decisions on fed6498..cac258b. Verdict ∈ {pass, finding + ids}; unknown = in progress only. Findings = severity + file:line + red test committed on wt/reviewer-3; a nondeterministic gap names its interleaving + test limitation. Outside-set defects → register only. No production edits; no real hosts or shared slots.
 
 | id | check | verdict | evidence |
 |----|-------|---------|----------|
@@ -64,7 +64,7 @@ Check set frozen before target reads: G1–G7 below; acceptance = README.md + .a
 
 ## Reproduction + controls
 
-Target production revision = `47a8417b2bf241239d17824f45d285600ebece90`; test-only commit = `c76bc623338352b840db96f5c7a878cde009a039` on `wt/reviewer-3`. Production unchanged. All paths below resolve under `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-3` unless stated otherwise.
+Target production revision = `cac258b87885d725fbbf45d78afa10e1f9a1cd60`; test-only commit = `c76bc623338352b840db96f5c7a878cde009a039` on `wt/reviewer-3`. Production unchanged. All paths below resolve under `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-3` unless stated otherwise.
 
 Verdicts = 7/7 adjudicated; 1 pass (G2), 6 finding rows; 7 distinct findings = 5 major behavior defects + 2 minor README overclaims. Validator positive control: exactly 7 G-id rows (rc 0); unknown-cell validator → `0` (rc 1 = no matches).
 

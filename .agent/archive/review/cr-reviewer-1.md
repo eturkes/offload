@@ -1,4 +1,4 @@
-# reviewer-1 — code review @ 41fd3c0
+# reviewer-1 — code review @ 640f24f
 
 ## Verdict table
 
@@ -16,7 +16,7 @@
 
 ### R1-F1 — empty PATH prevents a valid current-directory command
 
-- Severity: minor. Anchor: `internal/shell/look.go:28` @ 41fd3c0 (`for _, dir := range filepath.SplitList(os.Getenv("PATH")) {`). Contract: X2 / K2 Bash-compatible lookup.
+- Severity: minor. Anchor: `internal/shell/look.go:28` @ 640f24f (`for _, dir := range filepath.SplitList(os.Getenv("PATH")) {`). Contract: X2 / K2 Bash-compatible lookup.
 - `filepath.SplitList("")` returns no entries; Bash treats explicit `PATH=''` as a current-directory search. Consequently native `ctr` and `run --local` reject a runnable command with 127. Nonempty PATHs containing an empty element are handled; the zero-byte whole value is not.
 - Red test: `internal/shell/cr_reviewer1_test.go`, `TestReviewR1X2EmptyPathMatchesBash`; absolute `/bin/bash` oracle resolves the same script with the same empty PATH (rc 0), then `Look` returns 127.
 - Command (cwd = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-1`): `go test -count=1 -run '^TestReviewR1X2EmptyPathMatchesBash$' ./internal/shell/` → rc 1 on target code.
@@ -28,7 +28,7 @@
 
 ### R1-F2 — hybrid placement rejects host-only commands before probing
 
-- Severity: major. Anchor: `internal/cli/cli.go:240–243` @ 41fd3c0 (`if _, rc, ok := checkLocalCommand(o.argv[0], stderr); !ok {`). Contract: L1/L2 pool-first placement + X2 remote login PATH.
+- Severity: major. Anchor: `internal/cli/cli.go:240–243` @ 640f24f (`if _, rc, ok := checkLocalCommand(o.argv[0], stderr); !ok {`). Contract: L1/L2 pool-first placement + X2 remote login PATH.
 - Every hybrid request checks the controller's PATH before `p.place`. A command installed only on an available pool host is rejected (127), although the same request with `--pool` succeeds. The local preflight must constrain local fallback, not invalidate eligible remote execution.
 - Red test: `test/e2e/cr_reviewer1_test.go`, `TestReviewR1L2HybridCommandExistsOnlyOnHost`; fake host `.bash_profile` prepends its `.local/bin`; `--pool` control succeeds with `host-only\n`; otherwise identical hybrid run fails.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1L2HybridCommandExistsOnlyOnHost$' ./test/e2e/` (also run in a two-test regex) → rc 1 on target code.
@@ -40,7 +40,7 @@
 
 ### R1-F3 — exported errexit terminates the watcher before normal completion
 
-- Severity: major. Anchor: `internal/run/watch.bash:56–58,86,99` @ 41fd3c0 (`pkill -TERM -s "$__p" 2>/dev/null`; unguarded `wait -n` likewise). Contract: C3 command status + X1 teardown + X2 inherited environment.
+- Severity: major. Anchor: `internal/run/watch.bash:56–58,86,99` @ 640f24f (`pkill -TERM -s "$__p" 2>/dev/null`; unguarded `wait -n` likewise). Contract: C3 command status + X1 teardown + X2 inherited environment.
 - Bash imports `SHELLOPTS` before executing the embedded watcher. With exported `SHELLOPTS=errexit`, normal nonzero control operations (`wait`, `pkill` when the session is empty) terminate the watcher instead of running its explicit status/teardown path. Even `true` exits 1. X2 reserves `__…` names, not SHELLOPTS. Preserve the command environment while isolating watcher control flow from imported shell options.
 - Red test: `test/e2e/cr_reviewer1_test.go`, `TestReviewR1X2ExportedErrexitPreservesStatus`; environment `SHELLOPTS=errexit`, command `true`, `--local` → 1 instead of 0.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1X2ExportedErrexitPreservesStatus$' ./test/e2e/` (also run in a two-test regex) → rc 1 on target code.
@@ -52,7 +52,7 @@
 
 ### R1-F4 — end-record status and returned status can disagree
 
-- Severity: minor. Anchor: `internal/ledger/ledger.go:215–229` @ 41fd3c0, especially `rc, _ := final()` after `r.write`. Contract: J2 fixes both record + exit status once the end write owns its lock.
+- Severity: minor. Anchor: `internal/ledger/ledger.go:215–229` @ 640f24f, especially `rc, _ := final()` after `r.write`. Contract: J2 fixes both record + exit status once the end write owns its lock.
 - `final()` is read once when encoding the end record, again after file open/write/close. A signal published between those reads produces recorded `rc=0, signal=null` while offload returns 143. Existing `TestJ2SignalDuringEndWriteCounts` covers the wait *before* lock acquisition, not this later interval.
 - Red test: `internal/ledger/cr_reviewer1_test.go`, `TestReviewR1J2EndStatusFrozenWithRecord`; existing `openLog` seam publishes the equivalent final-status change after record encoding, before the file operation.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1J2EndStatusFrozenWithRecord$' ./internal/ledger/` → rc 1 on target code.
@@ -64,7 +64,7 @@
 
 ### R1-F5 — long unrelated output silently truncates the layer list
 
-- Severity: major. Anchor: `internal/cli/ctr.go:228–237` @ 41fd3c0 (`sc := bufio.NewScanner(strings.NewReader(out))`, `return sum, layers, ok`). Contract: K10 complete ordered layer-list comparison; unrelated output never counts.
+- Severity: major. Anchor: `internal/cli/ctr.go:228–237` @ 640f24f (`sc := bufio.NewScanner(strings.NewReader(out))`, `return sum, layers, ok`). Contract: K10 complete ordered layer-list comparison; unrelated output never counts.
 - Scanner's default token bound is 64 KiB; `sc.Err()` is ignored. A valid header, then a long unframed output line, then differing framed layers returns `ok=true` and an empty layer list. An empty local image with the same binary is falsely reported `same`. This is new evidence beyond `ledger-pool-run-environment.md` R10's short-banner repair; no prior accepted limit excludes long banners.
 - Red test: `internal/cli/cr_reviewer1_test.go`, `TestReviewR1K10LongNoiseCannotTruncateLayers`; header + 65536-byte unrelated line + one framed differing layer.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1K10LongNoiseCannotTruncateLayers$' ./internal/cli/` → rc 1 on target code.
@@ -76,7 +76,7 @@
 
 ### R1-F6 — status labels an I/O error as an occupied slot
 
-- Severity: minor. Anchor: `internal/slots/slots.go:155–161` @ 41fd3c0 (`f, held, err := tryLock(p)`, then owner append for every result except successful acquisition). Contract: R2 a slot counts as held by its lock alone; S2 contention differs from I/O failure.
+- Severity: minor. Anchor: `internal/slots/slots.go:155–161` @ 640f24f (`f, held, err := tryLock(p)`, then owner append for every result except successful acquisition). Contract: R2 a slot counts as held by its lock alone; S2 contention differs from I/O failure.
 - An existing slot file that refuses write-open produces an error, not evidence of a flock holder. `Holders` nevertheless appends it and `status` exits 0 with `1/2 held`. This misreports occupancy rather than surfacing the inaccessible state.
 - Red test: `test/e2e/cr_reviewer1_test.go`, `TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder`; slot mode 0400; positive controls prove write-open fails and read-open/nonblocking exclusive flock succeeds, then releases it. Accepts a nonzero diagnostic or truthful no-holder status; rejects successful false occupancy.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1R2StatusDoesNotTurnIOErrorIntoHolder$' ./test/e2e/` (also run paired with harness red) → rc 1 on target code.
@@ -88,7 +88,7 @@
 
 ### R1-F7 — fake ssh interprets command words as a probe
 
-- Severity: minor. Anchor: `test/e2e/testdata/ssh:35–42` @ 41fd3c0, especially `*loadavg*|*nproc*)`. Contract/check: C11 wrapper routes to the requested operation; `.claude/rules/code.md` fake-host `.probe` = probe answer, not command replacement.
+- Severity: minor. Anchor: `test/e2e/testdata/ssh:35–42` @ 640f24f, especially `*loadavg*|*nproc*)`. Contract/check: C11 wrapper routes to the requested operation; `.claude/rules/code.md` fake-host `.probe` = probe answer, not command replacement.
 - Substring dispatch examines the entire remote command, including its quoted user argv. Any run containing `nproc` or `loadavg` bypasses execution and returns the probe fixture. A no-sync run of `printf %s literal-nproc` succeeds with `8 2.000000 1048576 0\n`, not its requested output. This is a harness defect, not a claim that real OpenSSH does this.
 - Red test: `test/e2e/cr_reviewer1_test.go`, `TestReviewR1HarnessProbeWordsStayCommandData`.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1HarnessProbeWordsStayCommandData$' ./test/e2e/` (also run paired with R2 red) → rc 1 on target code.
@@ -100,7 +100,7 @@
 
 ### R1-F8 — remote cancellation discards a returned command status
 
-- Severity: minor. Anchor: `internal/cli/cli.go:304–307` @ 41fd3c0 (`if err != nil || ctx.Err() != nil {` precedes `runlog.CommandStatus(rc)`). Contract: J2 `cmd_rc` = command status; null only when it never ran or its status never came back. X3 still owns the outer 143.
+- Severity: minor. Anchor: `internal/cli/cli.go:304–307` @ 640f24f (`if err != nil || ctx.Err() != nil {` precedes `runlog.CommandStatus(rc)`). Contract: J2 `cmd_rc` = command status; null only when it never ran or its status never came back. X3 still owns the outer 143.
 - `Remote.Run` waits for the remote watcher and returns its ordinary status (17 here), even under cancellation. `remoteRun` returns early solely because ctx is canceled and drops that known status. Local execution records it correctly. Logging the returned command status must remain independent of the signal's precedence over offload's own status.
 - Red test: `test/e2e/cr_reviewer1_test.go`, `TestReviewR1J2CancellationKeepsReturnedCommandStatus`; local + remote TERM-trapping commands exit 17, offload exits 143. Local control records 17. Remote status file positively confirms `<nonce> 17`; remote end record records null.
 - Command (review worktree cwd): `go test -count=1 -run '^TestReviewR1J2CancellationKeepsReturnedCommandStatus$' ./test/e2e/` → rc 1 on target code.
@@ -113,7 +113,7 @@
 
 ## Test artifact + verification
 
-- Red-test commit: `3b56e10ce7980988d0b35300111cd7083b3eadcd` on `wt/reviewer-1`; parent = target `41fd3c016caf6ed2e7cbace6f14e7f316d57ac32`. Implementation unchanged. Four new files: `internal/{cli,ledger,shell}/cr_reviewer1_test.go`, `test/e2e/cr_reviewer1_test.go`.
+- Red-test commit: `3b56e10ce7980988d0b35300111cd7083b3eadcd` on `wt/reviewer-1`; parent = target `640f24f293d7c0f3da20b0761bd4b521d3be2e13`. Implementation unchanged. Four new files: `internal/{cli,ledger,shell}/cr_reviewer1_test.go`, `test/e2e/cr_reviewer1_test.go`.
 - All commands below run from `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-1`. New tests finalized + rerun before their test-only commit:
 
 | command | result |

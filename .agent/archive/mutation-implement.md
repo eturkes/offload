@@ -1,4 +1,4 @@
-# Mutation survivors — IMPLEMENT close (Mutago v2.10.35, default operators, package tests only, at 57de297)
+# Mutation survivors — IMPLEMENT close (Mutago v2.10.35, default operators, package tests only, at 69861da)
 
 Ruling ∈ {killed-by (full-suite test name, shown with `.agent/plant`), test-added (name), contract-open (why), equivalent (why)}. Ruled by reviewer-6 (mirror) + reviewer-7 (pool/slots/probe), proofs via `.agent/plant`; remote hand-planted by MAIN.
 

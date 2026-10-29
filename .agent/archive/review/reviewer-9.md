@@ -1,4 +1,4 @@
-Target = 5e4bc3b..e8698cb; checkout `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-9`. R1–R7 fixed before target read. **7/7 adjudicated: 2 pass rows, 5 finding rows; 5 distinct findings (1 major, 4 minor).** Tracked target unchanged; review-only tests/fixtures + logs remain in worktree.
+Target = e5f45a5..547e86b; checkout `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-9`. R1–R7 fixed before target read. **7/7 adjudicated: 2 pass rows, 5 finding rows; 5 distinct findings (1 major, 4 minor).** Tracked target unchanged; review-only tests/fixtures + logs remain in worktree.
 
 | id | check | verdict | finding ids |
 |----|-------|---------|-------------|
@@ -132,6 +132,6 @@ Y5 excludes record became upload path: rc=1 stale exists=true stderr="offload: a
 - No off-check-set defect registered. F5 = explicit verification gap, not a defect in the current `+3` implementation.
 - All review-owned SSH clients reaped and masters closed/killed. Final `ps` over recorded PIDs3496365/3497570/3499868/3499871 → rc1, no output; positive control = current shell expected1, observed1, rc0. Other sessions' processes left untouched.
 - Removed review binary + disposable `.r9`/`.review-tmp` directories. Red tests, overlays, reproducible plant/lifecycle scripts, scratch pool file + logs retained as validator/replay inputs. Worktree deliberately retained for MAIN. No commits, staging, primary-tree source edits, instruction edits, account/host configuration changes or persistent remote project writes.
-- Final `git diff --exit-code` in worktree → rc0; HEAD=e8698cb. Main target remains read-only.
+- Final `git diff --exit-code` in worktree → rc0; HEAD=547e86b. Main target remains read-only.
 
 reviewer-9-DONE-1

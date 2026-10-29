@@ -1,4 +1,4 @@
-# reviewer-10 — survivor rulings, `internal/cli/cli.go` (sweep at 09e9969, CI replay run 40534349336)
+# reviewer-10 — survivor rulings, `internal/cli/cli.go` (sweep at b7645d8, CI replay run 40534349336)
 
 | id | site | func | mutator | change | replay | ruling |
 |----|------|------|---------|--------|--------|--------|
@@ -71,7 +71,7 @@
 
 ## Notes
 
-Baseline = `f0246b8204e893624d73b38dc8562a6a622eda08`; target source unchanged from sweep. Commands below run from `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-10` with `umask 022`. Each red uses the exact `agentic.json` diff, then restores `internal/cli/cli.go`.
+Baseline = `14994a8b6d9831e26e1dc060d6ea3d937110f24e`; target source unchanged from sweep. Commands below run from `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-10` with `umask 022`. Each red uses the exact `agentic.json` diff, then restores `internal/cli/cli.go`.
 
 ### 73ad10cd / e0d93f38
 
@@ -385,7 +385,7 @@ reviewer10_mutation_test.go:127: path must be absent: "/tmp/TestX2NonExecutableL
 ## Verification
 
 - Rulings = 66/66: `new test` 36; `equivalent` 18; `contract-open` 10; `killed` 2; `n/a` 0. No unresolved row.
-- Tests = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-10/test/e2e/reviewer10_mutation_test.go` (14 tests); commit `d7ef33bcf0ef40121dcbf699303a591dea992f83` on `wt/reviewer-10`. Product code unchanged; `cmp` against `09e9969:internal/cli/cli.go` → rc 0.
+- Tests = `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-10/test/e2e/reviewer10_mutation_test.go` (14 tests); commit `d7ef33bcf0ef40121dcbf699303a591dea992f83` on `wt/reviewer-10`. Product code unchanged; `cmp` against `b7645d8:internal/cli/cli.go` → rc 0.
 - Exact mutant replay: 36 new-test rows + 2 existing-test kills, each red twice. Per-row command + failing output above. The existing real-podman test also passed with restored code.
 - All 14 new tests, regex = their names joined by `|` inside `^(...)$`: `umask 022; go test -race -shuffle=on -count=2 -run REGEX ./test/e2e/` → rc 0 (24.540 s). Final helper-variable rename followed by `-race -shuffle=on -count=1` over the same regex → rc 0 (16.938 s).
 - `golangci-lint fmt --diff test/e2e/reviewer10_mutation_test.go` → rc 0; `golangci-lint run ./test/e2e/` → rc 0, `0 issues.`; `.agent/law` → rc 0. Binary = `/home/eturkes/Projects/offload/.tools/golangci-lint-2.15.0/golangci-lint`.

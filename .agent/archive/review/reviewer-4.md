@@ -1,6 +1,6 @@
 # reviewer-4 — verification integrity
 
-Target = `c32846f..47a8417b2bf241239d17824f45d285600ebece90`; private branch `wt/reviewer-4`. V1–V7 fixed before target inspection. Acceptance = `.agent/contract.md` + `.claude/rules/gate*.md` + verification-integrity law. Production plants reverted after each experiment. No real SSH, real pool config, or real heavy slots.
+Target = `fed6498..cac258b87885d725fbbf45d78afa10e1f9a1cd60`; private branch `wt/reviewer-4`. V1–V7 fixed before target inspection. Acceptance = `.agent/contract.md` + `.claude/rules/gate*.md` + verification-integrity law. Production plants reverted after each experiment. No real SSH, real pool config, or real heavy slots.
 
 | id | check | verdict | evidence |
 |----|-------|---------|----------|
@@ -14,7 +14,7 @@ Target = `c32846f..47a8417b2bf241239d17824f45d285600ebece90`; private branch `wt
 
 ## Experiment protocol
 
-`W=/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; each mutant starts at `47a8417`, changes one production mechanism, runs the same command, restores original bytes:
+`W=/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; each mutant starts at `cac258b`, changes one production mechanism, runs the same command, restores original bytes:
 
 ```sh
 cd "$W"
@@ -96,7 +96,7 @@ Each replacement is isolated + reverted. Commands use the private GOCACHE/runtim
 | remove finite-load guard | `./internal/probe -run '^TestParse$'` | 1; `Parse("8\\nNaN\\n1\\n0\\n") accepted`; `+Inf` likewise |
 | disable address/duplicate-address checks | `./internal/pool -run '^TestLoadRejects$'` | 1; missing/option/URI/port/space/user-option/duplicate address `err = <nil>` |
 
-Grace replay: separate temporary snapshot of `47a8417`; fixture PATH wraps `pgrep` with 40 ms delay (models process-list latency, no protocol change). `heavy go test -count=1 ./test/e2e -run '^TestX1ControllerDeathKillsSession$/local-kill-escalation$'`: current deadline rc 0; old `100 × (sleep .1 + pgrep)` count loop rc 1, `session process ... remains after 13s`, `session survived controller SIGKILL: [...]`. Initial driver run failed its own expected-anchor-count assertion before tests; corrected 2→1, then both checks ran. This recreates the reported slow-process-query failure, not the exact historical host load.
+Grace replay: separate temporary snapshot of `cac258b`; fixture PATH wraps `pgrep` with 40 ms delay (models process-list latency, no protocol change). `heavy go test -count=1 ./test/e2e -run '^TestX1ControllerDeathKillsSession$/local-kill-escalation$'`: current deadline rc 0; old `100 × (sleep .1 + pgrep)` count loop rc 1, `session process ... remains after 13s`, `session survived controller SIGKILL: [...]`. Initial driver run failed its own expected-anchor-count assertion before tests; corrected 2→1, then both checks ran. This recreates the reported slow-process-query failure, not the exact historical host load.
 
 ## Checks / limits
 

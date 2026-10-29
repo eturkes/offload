@@ -1,6 +1,6 @@
-# reviewer-4 — code review @ 41fd3c0
+# reviewer-4 — code review @ 640f24f
 
-Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; paths below are relative to it. Production bytes = 41fd3c0 throughout. Test-only commits: `7f9e791` (J2), `148ea90` (X2/K2). Check set = the 27 seeded rows, fixed before source reads. `pass` = no proven blocking claim defect within the stated evidence/limits, not exhaustive runtime proof.
+Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; paths below are relative to it. Production bytes = 640f24f throughout. Test-only commits: `7f9e791` (J2), `148ea90` (X2/K2). Check set = the 27 seeded rows, fixed before source reads. `pass` = no proven blocking claim defect within the stated evidence/limits, not exhaustive runtime proof.
 
 ## Verdict table
 
@@ -15,7 +15,7 @@ Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; pa
 | G3e | `.agent/contract.md` family L predicates vs behavior (each id) | pass |  | L1–L4: `internal/cli/place.go:57–181`; selected L e2e rc 0, including ratio/order, fallback, waiting/signals, down/busy/no-GPU. L2 reservation-order prose is mechanism drift (register R4-R1), not a demonstrated placement-result defect. |
 | G3f | `.agent/contract.md` family Y predicates vs behavior (each id) | pass |  | Y1–Y11: `internal/mirror/mirror.go`, `internal/run/remote.bash`, `internal/cli/cli.go:295–356`; mirror package + Y-prefixed e2e + run prune/framing/lock tests rc 0. Linked-worktree + checksum + ignored-path + no-sync/get behaviors exercised. |
 | G3g | `.agent/contract.md` family X predicates vs behavior (each id) | finding | R4-F4 | X2 fails explicit empty PATH. X1/X3/X8: run package rc 0 (93.7 s), including scope admission/teardown + boot witnesses; X2–X6/X8 e2e rc 0 (54.9 s batch); X5 options checked in fake ssh + remote package. X7 = environment requirements, not automatic enforcement. |
-| G3h | `.agent/contract.md` family J predicates vs behavior (each id) | finding | R4-F3 | J2 finalization does not freeze the returned status with the serialized one (`internal/ledger/ledger.go:215–229`), red `TestR4J2EndRecordAndExitShareFinalStatus` @ 41fd3c0, test commit `7f9e791`. J1/J3/J4/J5 mapping + remaining witnesses below. |
+| G3h | `.agent/contract.md` family J predicates vs behavior (each id) | finding | R4-F3 | J2 finalization does not freeze the returned status with the serialized one (`internal/ledger/ledger.go:215–229`), red `TestR4J2EndRecordAndExitShareFinalStatus` @ 640f24f, test commit `7f9e791`. J1/J3/J4/J5 mapping + remaining witnesses below. |
 | G3i | `.agent/contract.md` family K predicates vs behavior (each id) | finding | R4-F4 | K2/K7 inherit X2 empty-PATH failure. K1/K3–K10 implementations + tests mapped below; original ctr package rc 0. Parallel real K/X1 batch rc 1; narrow serial K7/K8/K10/X1 rerun rc 0 (7 events, zero skips); R4-R6 records limits. K11 requirements structurally present, compatibility floor not rerun on another host. |
 | G4 | `.agent/spec.md` `Artifacts` (paths, run commands, live facts) | pass |  | `.agent/spec.md:7–8`: named artifacts exist; build + CLI usage exercised. Read-only controller/pool sha256: offload `27f42327…`, heavy `cc6f4a50…` equal; live pool nixbox multiplex=true. Deploy/reinstall/re-seal recipes inspected, not executed. |
 | G5 | `machines/nixbox/README.md` runbook vs scripts + config | pass |  | `machines/nixbox/README.md:1–70` against all machine scripts + Nix imports; live read-only CPU=8, memory≈62.6 GiB, OFFLOAD_CTR=1, node26, swipl10.0.2, PL1=22000000, BIOS1.43.0, CPUWeight=idle/MemoryHigh=20GiB. Historical timings/firmware events unconfirmed; limits below. |
@@ -38,7 +38,7 @@ Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; pa
 
 ### R4-F1 — help skips the XDG_CONFIG_HOME pool tier
 
-- Severity: minor. Target: `internal/cli/cli.go:63` @ 41fd3c0.
+- Severity: minor. Target: `internal/cli/cli.go:63` @ 640f24f.
 - Wrong against P1: when OFFLOAD_CONFIG is unset, a nonempty XDG_CONFIG_HOME takes precedence over `~/.config`; the shared usage text says the latter is next. This is the displayed help of run, ctr + status, not merely a code comment.
 - Exact anchor: `The pool file is $OFFLOAD_CONFIG, else ~/.config/offload/pool.toml.`
 - Proof: `rg -Fn 'The pool file is $OFFLOAD_CONFIG, else ~/.config/offload/pool.toml.' internal/cli/cli.go` → line 63. `internal/pool/pool.go:46–51` implements the missing tier; `go test -count=1 ./internal/pool` → `ok .../internal/pool` (rc 0), including `TestPathPrecedence`. `.scratch/offload --help` prints that anchor (rc 0).
@@ -46,7 +46,7 @@ Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; pa
 
 ### R4-F2 — C3 still rejects supported linked worktrees
 
-- Severity: minor. Target: `.agent/contract.md:11` @ 41fd3c0.
+- Severity: minor. Target: `.agent/contract.md:11` @ 640f24f.
 - Wrong against Decision “A linked git worktree runs remotely too” + Y3/Y4: C3 lists a worktree under `--pool` among offload failures (125), although supported linked worktrees run successfully. This is a stale contract clause, not a requested behavioral restriction.
 - Exact anchor: `worktree or unsupported repo layout`.
 - Proof: `rg -Fn 'worktree or unsupported repo layout' .agent/contract.md` → line 11. `go test -count=1 -run '^TestY4LinkedWorktreeRunsRemotely$' ./test/e2e` is the narrow witness; the selected C/P/R/L/Y suite containing it ran rc 0. The test invokes pool mode and checks the linked worktree branch, staged changes, refs + git admin links (`test/e2e/sync_test.go:302–347`).
@@ -54,9 +54,9 @@ Subject root: `/home/eturkes/Projects/offload/.scratch/worktrees/reviewer-4`; pa
 
 ### R4-F3 — late signal splits run-log rc from returned rc
 
-- Severity: major. Target: `internal/ledger/ledger.go:215–229` @ 41fd3c0; especially the second `final()` at line 228.
+- Severity: major. Target: `internal/ledger/ledger.go:215–229` @ 640f24f; especially the second `final()` at line 228.
 - Wrong against J2: rc + signal must be fixed together once the end write holds its lock. End serializes the first `final()` result, then calls `final()` again after the file write. A signal delivered in between changes the returned status but not the stored record. The log can claim success for a run whose caller receives 143, defeating its field-assessment purpose.
-- Red test: `internal/ledger/cr_reviewer4_test.go`, `TestR4J2EndRecordAndExitShareFinalStatus`; committed `7f9e791` on `wt/reviewer-4`, production files unchanged from 41fd3c0.
+- Red test: `internal/ledger/cr_reviewer4_test.go`, `TestR4J2EndRecordAndExitShareFinalStatus`; committed `7f9e791` on `wt/reviewer-4`, production files unchanged from 640f24f.
 - Command (worktree root): `go test -count=1 -run '^TestR4J2EndRecordAndExitShareFinalStatus$' ./internal/ledger` → rc 1. The no-signal control passes; the existing openLog seam changes the status callback after serialization, inside the actual write interval.
 
 ```text
@@ -71,9 +71,9 @@ FAIL github.com/eturkes/offload/internal/ledger 0.005s
 
 ### R4-F4 — empty PATH fails bash-compatible lookup
 
-- Severity: major. Target: `internal/shell/look.go:28` @ 41fd3c0.
+- Severity: major. Target: `internal/shell/look.go:28` @ 640f24f.
 - Wrong against X2 + K2/K7: a name without `/` must use bash-compatible PATH lookup. An empty PATH denotes the current directory to bash; `filepath.SplitList("")` yields no entries, so Look reports 127 even for an executable in cwd. Native `offload ctr` therefore does not behave “as if typed”; the same helper is used by local run preflight + container init.
-- Red test: `internal/shell/cr_reviewer4_test.go`, `TestR4X2EmptyPATHSearchesCurrentDirectory`; committed `148ea90` on `wt/reviewer-4`, production unchanged from 41fd3c0. Bash is an executed differential oracle, not an assumed expectation.
+- Red test: `internal/shell/cr_reviewer4_test.go`, `TestR4X2EmptyPATHSearchesCurrentDirectory`; committed `148ea90` on `wt/reviewer-4`, production unchanged from 640f24f. Bash is an executed differential oracle, not an assumed expectation.
 - Command: `go test -count=1 -run '^TestR4X2EmptyPATHSearchesCurrentDirectory$' ./internal/shell` → rc 1.
 
 ```text
@@ -88,7 +88,7 @@ FAIL github.com/eturkes/offload/internal/shell 0.055s
 
 ### R4-F5 — no-sync help promises more than Y9
 
-- Severity: minor. Targets: `README.md:94`, `internal/cli/cli.go:55` @ 41fd3c0.
+- Severity: minor. Targets: `README.md:94`, `internal/cli/cli.go:55` @ 640f24f.
 - Wrong against Y9: `--no-sync` suppresses upload, prune + automatic download, but explicit `--get` still copies files back. Both user-facing surfaces instead promise no copies in either direction, without that exception.
 - Exact anchor in both targets: `Do not copy files to or from the host.`
 - Proof: `rg -Fn 'Do not copy files to or from the host.' README.md internal/cli/cli.go` → lines 94,55. `TestY9NoSync` (`test/e2e/sync_test.go:517–528`) invokes `--no-sync --get explicit`, requires the fetched content and absence of automatic output; it passed in both selected e2e batches. `internal/cli/cli.go:311–318` implements that exception.
@@ -96,7 +96,7 @@ FAIL github.com/eturkes/offload/internal/shell 0.055s
 
 ### R4-F6 — fake transport-failure marker documentation includes probes incorrectly
 
-- Severity: minor. Target: `.claude/rules/code.md:17` @ 41fd3c0.
+- Severity: minor. Target: `.claude/rules/code.md:17` @ 640f24f.
 - Wrong against the stated harness recipe: `.transport-fail` is documented as failing every call, but the fake ssh answers `.probe` / `.probe-hang` before it checks `.transport-fail`. An agent following this instruction to model a down host actually models an up host whose subsequent transfer/run fails.
 - Exact anchor: `(every call 255)`.
 - Proof: `rg -Fn '.transport-fail' .claude/rules/code.md` → line 17; `test/e2e/testdata/ssh:39–55` returns the probe first. `test/e2e/execution_test.go:373` names the fixture `fail after probe`; `TestX6Remote255AndTransport` passed in the selected X suite. Direct fake-ssh control: probe under marker → rc 0 + four fields, ordinary command under same marker → rc 255 (see execution record).
@@ -104,7 +104,7 @@ FAIL github.com/eturkes/offload/internal/shell 0.055s
 
 ### R4-F7 — lifecycle comments retain superseded lock/session semantics
 
-- Severity: minor. Targets: `internal/slots/slots.go:18`, `test/e2e/ctr_test.go:465` @ 41fd3c0.
+- Severity: minor. Targets: `internal/slots/slots.go:18`, `test/e2e/ctr_test.go:465` @ 640f24f.
 - Wrong against S5 + K8: offload's local slot remains held by the watcher after offload dies; podman runs in its own session, not merely another process group of offload's session. The current comments say the opposite. The test sends TERM to both PIDs directly; it does not establish shared-session delivery.
 - Exact anchors:
   - `Release frees it; the kernel frees it if offload dies first.`
@@ -137,7 +137,7 @@ Representative existing tests per id; all implementations read. This maps id cov
 
 ## Execution record
 
-- Build: `CGO_ENABLED=0 go build -o .scratch/offload ./cmd/offload` → rc 0. Built before the red-test commits; production revision 41fd3c0.
+- Build: `CGO_ENABLED=0 go build -o .scratch/offload ./cmd/offload` → rc 0. Built before the red-test commits; production revision 640f24f.
 - Direct CLI: no args; top/run/status/ctr help; missing command; local/pool conflict; missing pool; unknown verb; ctr layers/check conflict; bad switch; native ctr literal argv; heavy no args/-h/--help/--status. Outputs + rc in `.scratch/usage.log`; all expected. No real-pool run launched.
 - Packages, separately: `go test -count=1 ./internal/{pool,cli,probe,slots,mirror,remote,shell,ctr,run}` (one package per invocation) → each rc 0 before its respective red test was added; ledger originals `go test -count=1 -run '^TestJ' ./internal/ledger` → rc 0. Run package 93.712 s; other per-package outputs in `.scratch/claims-packages.log` (pool/cli/probe output in transcript). Quiet package output does not report individual skip counts.
 - CLI e2e subset: `go test -count=1 -run '^(TestC[1-5].*|TestP3MissingPool|TestR2.*|TestL[1-4].*|TestY4LinkedWorktreeRunsRemotely|TestY9NoSync.*)$' ./test/e2e` → rc 0, 43.996 s (`.scratch/claims-cli.log`).
