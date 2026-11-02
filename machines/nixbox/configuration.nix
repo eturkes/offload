@@ -1,6 +1,6 @@
 # nixbox = dedicated offload pool host: Dell Latitude 7400 (i7-8665U 4C/8T, 62 GiB, 2 TB NVMe),
 # lid shut on AC, Wi-Fi only (no Ethernet port).
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 let
   host = import ./host.nix;
   # nixos-unstable channel rev (Hydra-built ⇒ binary cache) for packages 26.05 ships too old.
@@ -68,8 +68,14 @@ in
     openssh.authorizedKeys.keys = host.authorizedKeys;
     linger = true; # user services + tmux sessions outlive the ssh connection
     # Projects pin the controller's node 26 (`node --test <dir>` needs it); trading stays on the
-    # system node.
-    packages = [ pkgs.nodejs_26 ];
+    # system node. git + coreutils: `lake check`'s sandbox hides /run (system profile) and passes
+    # PATH through, so a tool must sit in a PATH dir outside /run and /home: this profile's
+    # /etc/profiles/per-user/offload/bin (Lake runs `git`, elan's wrappers `dirname`).
+    packages = [
+      pkgs.nodejs_26
+      pkgs.git
+      pkgs.coreutils
+    ];
   };
   security.sudo.wheelNeedsPassword = false;
 
@@ -186,8 +192,13 @@ in
   # AT_SECURE check) ⇒ `check` rules every wrapper's /bin-style exec (wrappers.reviewed).
   services.envfs.enable = true;
   # A caller whose PATH holds no Nix dir (suites pinning PATH=<mock>:/usr/bin:/bin) falls back to the
-  # system profile, not just envfs's own sh + env.
-  fileSystems."/usr/bin".options = [ "fallback-path=/run/current-system/sw/bin" ];
+  # system profile, not just envfs's own sh + env: first by its store path, which sandboxes that hide
+  # /run still see (`lake check`: PATH cleared, /run on tmpfs ⇒ its `git` and elan's wrappers'
+  # `dirname` exited 127), then by /run/current-system (a store path the GC has taken).
+  fileSystems."/usr/bin".options = [
+    "fallback-path=${config.system.path}/bin"
+    "fallback-path=/run/current-system/sw/bin"
+  ];
   # Headless browsers lay out with these ⇒ the controller's resolved families (Noto CJK JP), so UI
   # suites tap the same targets there as here.
   fonts.packages = with pkgs; [
