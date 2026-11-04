@@ -276,8 +276,10 @@ in
     go
     # Gate tools projects take from the host: shellcheck; swipl 10.0.2 = cnl-ckc's pin (26.05: 9.2.9,
     # refused by its identity gate) → unstable, frozen at its rev; bwrap =
-    # `lake check`'s sandbox; clang's analyzer (lowPrio: gcc keeps `cc`).
+    # `lake check`'s sandbox; clang's analyzer (lowPrio: gcc keeps `cc`); xxd (26.05: tinyxxd) =
+    # hex dump + undump for gates that embed bytes (fva's check-notices).
     shellcheck
+    xxd
     unstable.swi-prolog
     bubblewrap
     (lib.lowPrio clang)
