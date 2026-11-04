@@ -1,10 +1,38 @@
 #!/usr/bin/env bash
 # gate — the repo's check chain (`.claude/rules/gate.md`): each step's rc + wall-clock, then the 10
-# slowest tests; rc 0 only when every step passes.
-#   .agent/gate                 full gate (CI runs exactly this)
-#   .agent/gate fast [pkg…]     iteration: fmt + lint + cached tests of pkg… (default ./...) + law + spec-lint
+# slowest tests; rc 0 only when every step passes. Each run appends one row per step to the step
+# ledger (gitignored, per checkout + host): date host mode tree step seconds verdict class, a red's
+# class `?` until classified. The ledger never changes rc.
+#   .agent/gate                          full gate (CI runs exactly this)
+#   .agent/gate fast [pkg…]              iteration: fmt + lint + cached tests of pkg… (default ./...) + law + spec-lint
+#   .agent/gate classify CLASS [step…]   CLASS = product|gate|flake|planted → the newest run's `?` reds
+#                                        (every step, or those named); rc 1 = none matched
 set -u
 cd "$(dirname "$0")/.." || exit 2
+ledger=.agent/step-ledger.tsv
+if [ "${1:-}" = classify ]; then
+  case ${2:-} in
+  product | gate | flake | planted) ;;
+  *)
+    echo 'usage: .agent/gate classify product|gate|flake|planted [step…]' >&2
+    exit 2
+    ;;
+  esac
+  [ -f "$ledger" ] || { echo "gate: no $ledger" >&2; exit 1; }
+  awk -F '\t' -v OFS='\t' -v class="$2" -v steps=" ${*:3} " '
+    function hit() { return $8 == "?" && (steps == "  " || index(steps, " " $5 " ")) }
+    NR == FNR { if (hit()) { rd = $1; rh = $2 }; next }
+    $1 == rd && $2 == rh && hit() { $8 = class; n++ }
+    { print }
+    END {
+      if (n) printf "gate: %d red(s) of run %s on %s → %s\n", n, rd, rh, class > "/dev/stderr"
+      else print "gate: no unclassified red matches" > "/dev/stderr"
+      exit !n
+    }' "$ledger" "$ledger" > "$ledger.$$"
+  rc=$?
+  if [ "$rc" -eq 0 ]; then mv "$ledger.$$" "$ledger"; else rm -f "$ledger.$$"; fi
+  exit "$rc"
+fi
 names=() rcs=() secs=()
 step() { # step <name> <cmd…>
   local name=$1 t0=$EPOCHREALTIME rc
@@ -24,12 +52,22 @@ nixlint() { # nixlint FILE… — statix over the tree (statix.toml), deadnix ov
   .agent/tool deadnix --fail -- "$@" || rc=1
   return "$rc"
 }
+tree_id() { # the working tree the steps read (tracked + untracked non-ignored) as a git tree id, via a
+  # private index: a copy of the real one keeps its stat cache, a missing file = an empty index.
+  # `git add` stores uncommitted content as loose objects in .git/objects (gc prunes them).
+  local idx=$PWD/.tools/gate-index.$$ src id=
+  src=$(git rev-parse --git-path index) && { [ ! -f "$src" ] || cp "$src" "$idx"; } &&
+    GIT_INDEX_FILE=$idx git add -A . && id=$(GIT_INDEX_FILE=$idx git write-tree)
+  rm -f "$idx"
+  printf '%s' "${id:-unknown}"
+}
 tests=.tools/test.json
 mkdir -p .tools
+run=$(date -u +%FT%T.%3NZ) host=$(uname -n) mode=full tree=$(tree_id)
 step fmt .agent/tool golangci-lint fmt --diff
 if [ "${1:-}" = fast ]; then
   shift
-  pkgs=("${@:-./...}")
+  mode=fast pkgs=("${@:-./...}")
   step lint .agent/tool golangci-lint run "${pkgs[@]}"
   step test .agent/tool gotestsum --format pkgname-and-test-fails --jsonfile "$tests" -- "${pkgs[@]}"
 else
@@ -55,6 +93,7 @@ else
 fi
 step law .agent/law
 step spec-lint .agent/spec-lint
+end=$(tree_id)
 printf '\n%-10s %4s %9s\n' step rc seconds
 fail=0
 for i in "${!names[@]}"; do
@@ -65,4 +104,18 @@ if [ -s "$tests" ]; then
   printf '\nslowest tests:\n'
   .agent/tool gotestsum tool slowest --jsonfile "$tests" --num 10
 fi
+if [ "$end" != "$tree" ]; then
+  printf '\ngate: the tree changed during the run (%s → %s): this verdict grades neither\n' "$tree" "$end"
+  tree=$tree..$end
+fi
+{
+  [ -s "$ledger" ] || printf 'date\thost\tmode\ttree\tstep\tseconds\tverdict\tclass\n'
+  for i in "${!names[@]}"; do
+    if [ "${rcs[$i]}" -eq 0 ]; then v=pass c=-; else v=red:${rcs[$i]} c='?'; fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$run" "$host" "$mode" "$tree" "${names[$i]}" "${secs[$i]}" "$v" "$c"
+  done
+} 2>/dev/null >> "$ledger" || echo "gate: $ledger not written" >&2
+printf '\ntree %s (%s, %s run %s)\n' "$tree" "$host" "$mode" "$run"
+open=$(awk -F '\t' '$8 == "?"' "$ledger" 2>/dev/null | wc -l)
+[ "$open" -eq 0 ] || printf 'gate: %s unclassified red(s) in %s → .agent/gate classify product|gate|flake|planted [step…]\n' "$open" "$ledger"
 exit "$fail"

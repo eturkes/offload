@@ -308,14 +308,17 @@ offload runs then take the CPU from the task at once.
 
 ## Develop
 
-Run the full check chain before you commit:
+Commit your change. Then run the full check chain on that commit:
 
 ```sh
 .agent/gate
 ```
 
 The chain checks formatting, lint, tests (with the race detector), the build, known vulnerabilities, secrets in the git history, the CI workflows, shell scripts, Nix files and the rules of the repository for its own text.
+The secrets check reads only the git history, so it does not see a change that you did not commit.
 The tests of `offload ctr` use Podman. Without Podman, these tests are skipped.
+Each run adds one line per step to `.agent/step-ledger.tsv`, a file that git ignores.
+Each line records the date, the host, the git tree that the run checked, the step, its time and its result.
 
 ## License
 
