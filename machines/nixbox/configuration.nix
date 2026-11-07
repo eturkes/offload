@@ -163,6 +163,8 @@ in
       curl
       glib
       libxml2
+      # libtinfo.so.6: wasi-sdk's clang (libLLVM → bundled libedit) loads it unbundled.
+      ncurses
       # Headless Chromium (Playwright's chrome-headless-shell, as projects' e2e suites fetch it).
       alsa-lib
       at-spi2-core
