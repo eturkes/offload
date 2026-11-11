@@ -36,7 +36,8 @@ Run the install script from the repository:
 tools/install
 ```
 
-The script builds one static binary and installs it as `~/.local/bin/offload` on this machine and on each host of the pool file.
+The script builds one static binary.
+It installs the binary as `~/.local/bin/offload` on this machine and on each host of the pool file.
 It also installs the `heavy` script from `tools/heavy` as `~/.local/bin/heavy`, so that project scripts that run slow commands through `heavy` also work on the pool hosts.
 It shows the SHA-256 checksum of each file that each machine reports. All checksums of a file must be the same.
 To install on specified hosts only, give their SSH addresses as arguments.
@@ -61,7 +62,7 @@ multiplex = true
 
 - `name` identifies the host in messages. Use letters, digits, `.`, `_` and `-`.
 - `address` is `[user@]host` or a host alias from your `~/.ssh/config`. To use a port or an IPv6 address, define an alias.
-- `slots` is the number of runs the host takes at the same time. The default is 2. When offload is killed, its host slot becomes free at once, but its command can need up to 10 seconds more to stop.
+- `slots` is the number of runs the host takes at the same time. The default is 2. When offload is killed, its host slot becomes free at once. Its command can need up to 10 seconds more to stop.
 - `multiplex = true` makes all connections to the host share one SSH connection. A run then starts faster. The shared connection stays open for 60 seconds after its last use. offload keeps its sockets in `$XDG_RUNTIME_DIR/offload/ssh`. When that path is not available, offload connects without sharing and tells you why. The default is `false`.
 
 To use a different file, set `OFFLOAD_CONFIG` to its path.
@@ -103,7 +104,7 @@ The command then runs in the same subdirectory on the host.
 
 - All files that git does not ignore go to the host. Tracked files always go, also when an ignore rule matches them.
 - The `.git` directory goes to the host, so the command can read the history.
-- Ignored files, for example virtual environments, caches and build output, stay on each side. Each host keeps its own copy and builds it again when necessary.
+- Ignored files, for example virtual environments, caches and build output, stay on each side. Each host keeps its own copy. It builds that copy again when necessary.
 - Files that you deleted here are also deleted on the host. Ignored files on the host are never deleted.
 - A file that git ignores only after offload copied it stays on the host. To remove it, delete it on the host.
 
@@ -149,7 +150,8 @@ offload puts the command in its own systemd scope when these conditions are true
 - The user manager starts the scope.
 
 Then a process that the command started also stops when it starts its own session, for example a daemon.
-If offload cannot start the scope, it tells you on stderr and runs the command without a scope.
+If offload cannot start the scope, it tells you on stderr.
+Then it runs the command without a scope.
 Without a scope, a process that starts its own session is not stopped.
 A process that another systemd unit takes over is not stopped.
 An offload run that the command starts also stops its own command. A command of that inner run that ignores TERM can outlive it.
@@ -163,7 +165,8 @@ For a command that can use much memory, start it in a systemd scope with a limit
 offload run -- systemd-run --user --scope -q -p MemoryMax=20G -p MemorySwapMax=0 make test
 ```
 
-When the command uses more memory than the limit, the kernel stops it, and the other programs on the machine keep their memory.
+When the command uses more memory than the limit, the kernel stops it.
+The other programs on the machine keep their memory.
 The command is then in that scope and not in the scope of offload. offload still stops it through its session.
 
 ## Run a command in the project image
@@ -212,8 +215,10 @@ To make sure that the pool hosts build the same image as this machine, run this 
 offload ctr --check
 ```
 
-The command builds the image on this machine and on each pool host, then compares the layer digests and the offload binary.
-It shows one line for each host and exits with 0 only when all hosts are the same.
+The command builds the image on this machine and on each pool host.
+Then it compares the layer digests and the offload binary.
+It shows one line for each host.
+It exits with 0 only when all hosts are the same.
 It waits for a free slot on each host. It does not compare the image configuration, for example `ENV`.
 `offload ctr --layers` shows the layer digests of this machine only.
 
@@ -242,9 +247,11 @@ offload uses these values for its own results:
 | 125 | offload could not run the command, for example the build failed or Podman failed. The message on stderr tells what failed. |
 
 offload sends HUP, INT, QUIT, TERM, USR1 and USR2 to the command when it receives them.
-The command then decides what to do, and `offload ctr` exits with the status of the command.
+The command then decides what to do.
+`offload ctr` exits with the status of the command.
 When the command stops, offload sends TERM to the processes that it left. After 10 seconds, it stops them with KILL.
-When offload itself stops, also with `kill -9`, all processes in the container stop at once and the container is removed.
+When offload itself stops, also with `kill -9`, all processes in the container stop at once.
+Then the container is removed.
 This does not work while the first process of the container is stopped, for example with SIGSTOP. The container then stays until that process continues.
 
 ### Remove old images
